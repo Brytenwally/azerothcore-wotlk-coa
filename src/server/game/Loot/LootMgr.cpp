@@ -21,6 +21,7 @@
 #include "Field.h"
 #include "Map.h"
 #include "Containers.h"
+#include "Creature.h"
 #include "DisableMgr.h"
 #include "Group.h"
 #include "ItemEnchantmentMgr.h"
@@ -542,12 +543,23 @@ void Loot::AddItem(LootStoreItem const& original)
     uint32 count = urand(item.mincount, item.maxcount);
     uint32 stacks = count / proto->GetMaxStackSize() + (count % proto->GetMaxStackSize() ? 1 : 0);
 
-    std::vector<LootItem>& lootItems = item.needs_quest ? quest_items : items;
-    uint32 limit = item.needs_quest ? MAX_NR_QUEST_ITEMS : MAX_NR_LOOT_ITEMS;
+    bool needsQuest = item.needs_quest;
+    if (sharedQuestLoot && !needsQuest)
+        if (Player* owner = ObjectAccessor::FindPlayer(lootOwnerGUID))
+            if (Creature* source = owner->GetMap()->GetCreature(sourceWorldObjectGUID))
+                needsQuest = source->IsSharedQuestItem(item.itemid);
+    std::vector<LootItem>& lootItems = needsQuest ? quest_items : items;
+    uint32 limit = needsQuest ? MAX_NR_QUEST_ITEMS : MAX_NR_LOOT_ITEMS;
 
     for (uint32 i = 0; i < stacks && lootItems.size() < limit; ++i)
     {
         LootItem generatedLoot(item);
+        generatedLoot.needs_quest = needsQuest && !(sharedQuestLoot && proto->StartQuest);
+        if (sharedQuestLoot && needsQuest)
+        {
+            generatedLoot.freeforall = true;
+            generatedLoot.follow_loot_rules = false;
+        }
         generatedLoot.count = std::min(count, proto->GetMaxStackSize());
         generatedLoot.itemIndex = lootItems.size();
         lootItems.push_back(generatedLoot);
@@ -586,7 +598,7 @@ void Loot::AddItem(LootStoreItem const& original)
         // non-conditional one-player only items are counted here,
         // free for all items are counted in FillFFALoot(),
         // non-ffa conditionals are counted in FillNonQuestNonFFAConditionalLoot()
-        if (!item.needs_quest && item.conditions.empty() && !proto->HasFlag(ITEM_FLAG_MULTI_DROP))
+        if (!needsQuest && item.conditions.empty() && !proto->HasFlag(ITEM_FLAG_MULTI_DROP))
             ++unlootedCount;
     }
 }
@@ -603,6 +615,8 @@ bool Loot::FillLoot(uint32 lootId, LootStore const& store, Player* lootOwner, bo
     bool const worldLoot = &store == &LootTemplates_Creature || &store == &LootTemplates_Gameobject;
     dungeonDifficulty = sourceMap ? DungeonLoot::Difficulty(sourceMap->GetId(),
         uint8(sourceMap->GetSpawnMode()), worldLoot) : 0;
+    Creature* sharedSource = lootSource ? lootSource->ToCreature() : nullptr;
+    sharedQuestLoot = sharedSource && &store == &LootTemplates_Creature && sharedSource->IsSharedQuestTarget();
 
     LootTemplate const* tab = store.GetLootFor(lootId);
 
@@ -648,6 +662,12 @@ bool Loot::FillLoot(uint32 lootId, LootStore const& store, Player* lootOwner, bo
     // ... for personal loot
     else
         FillNotNormalLootFor(lootOwner);
+
+    if (sharedQuestLoot)
+        for (ObjectGuid const& guid : sharedSource->GetSharedQuestParticipants())
+            if (Player* player = ObjectAccessor::FindPlayer(guid))
+                if (!PlayerQuestItems.contains(guid))
+                    FillQuestLoot(player);
 
     return true;
 }
@@ -727,9 +747,10 @@ QuestItemList* Loot::FillQuestLoot(Player* player)
 
         sScriptMgr->OnPlayerBeforeFillQuestLootItem(player, item);
 
-        bool allowed = item.AllowedForPlayer(player, sourceWorldObjectGUID);
+        bool allowed = item.AllowedForPlayer(player, sourceWorldObjectGUID)
+            && (!sharedQuestLoot || !item.needs_quest || player->HasQuestForItem(item.itemid));
 
-        if (!allowed && !isMasterLooter)
+        if (!allowed && (sharedQuestLoot || !isMasterLooter))
             continue;
 
         ql->push_back(QuestItem(i));
@@ -1043,7 +1064,7 @@ ByteBuffer& operator<<(ByteBuffer& b, LootView const& lv)
 
     uint8 itemsShown = 0;
 
-    b << uint32(l.gold);                                    //gold
+    b << uint32(lv.permission == QUEST_PERMISSION ? 0 : l.gold); // gold
 
     std::size_t count_pos = b.wpos();                            // pos of item count byte
     b << uint8(0);                                          // item count placeholder
@@ -1146,6 +1167,8 @@ ByteBuffer& operator<<(ByteBuffer& b, LootView const& lv)
                 }
                 break;
             }
+        case QUEST_PERMISSION:
+            break;
         default:
             return b;
     }
@@ -1167,6 +1190,8 @@ ByteBuffer& operator<<(ByteBuffer& b, LootView const& lv)
             {
                 bool showInLoot = true;
                 bool hasQuestForItem = lv.viewer->HasQuestForItem(item.itemid, 0, false, &showInLoot);
+                if (!item.needs_quest && item.AllowedForPlayer(lv.viewer, l.sourceWorldObjectGUID))
+                    hasQuestForItem = true;
                 if (!hasQuestForItem)
                 {
                     if (!showInLoot)
@@ -1223,7 +1248,7 @@ ByteBuffer& operator<<(ByteBuffer& b, LootView const& lv)
 
     QuestItemMap const& lootPlayerFFAItems = l.GetPlayerFFAItems();
     QuestItemMap::const_iterator ffa_itr = lootPlayerFFAItems.find(lv.viewer->GetGUID());
-    if (ffa_itr != lootPlayerFFAItems.end())
+    if (lv.permission != QUEST_PERMISSION && ffa_itr != lootPlayerFFAItems.end())
     {
         QuestItemList* ffa_list = ffa_itr->second;
         for (QuestItemList::const_iterator fi = ffa_list->begin(); fi != ffa_list->end(); ++fi)
@@ -1242,7 +1267,7 @@ ByteBuffer& operator<<(ByteBuffer& b, LootView const& lv)
 
     QuestItemMap const& lootPlayerNonQuestNonFFAConditionalItems = l.GetPlayerNonQuestNonFFAConditionalItems();
     QuestItemMap::const_iterator nn_itr = lootPlayerNonQuestNonFFAConditionalItems.find(lv.viewer->GetGUID());
-    if (nn_itr != lootPlayerNonQuestNonFFAConditionalItems.end())
+    if (lv.permission != QUEST_PERMISSION && nn_itr != lootPlayerNonQuestNonFFAConditionalItems.end())
     {
         QuestItemList* conditional_list = nn_itr->second;
         for (QuestItemList::const_iterator ci = conditional_list->begin(); ci != conditional_list->end(); ++ci)

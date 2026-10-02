@@ -1289,6 +1289,9 @@ uint32 Unit::DealDamage(Unit* attacker, Unit* victim, uint32 damage, CleanDamage
         ;//victim->ToPlayer()->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_HIGHEST_HIT_RECEIVED, damage); // pussywizard: optimization
     else if (!victim->IsControlledByPlayer() || victim->IsVehicle())
     {
+        if (damage)
+            victim->ToCreature()->RegisterSharedQuestContributor(attacker);
+
         if (!victim->ToCreature()->hasLootRecipient())
             victim->ToCreature()->SetLootRecipient(attacker);
 
@@ -15861,6 +15864,7 @@ void Unit::Kill(Unit* killer, Unit* victim, bool durabilityLoss, WeaponAttackTyp
         {
             Loot* loot = &creature->loot;
             loot->clear();
+            creature->FinalizeSharedQuestParticipants();
 
             if (uint32 lootid = creature->GetCreatureTemplate()->lootid)
                 loot->FillLoot(lootid, LootTemplates_Creature, looter, false, false, creature->GetLootMode(), creature);
@@ -15881,7 +15885,11 @@ void Unit::Kill(Unit* killer, Unit* victim, bool durabilityLoss, WeaponAttackTyp
             }
         }
 
+        ObjectGuid rewardedPlayer = player->GetGUID();
+        ObjectGuid rewardedGroup = player->GetGroup() ? player->GetGroup()->GetGUID() : ObjectGuid::Empty;
         player->RewardPlayerAndGroupAtKill(victim, false);
+        if (creature)
+            creature->RewardSharedQuestParticipants(rewardedPlayer, rewardedGroup);
     }
 
     if (killer && killer != victim && spellProto && killer->HasAura(12519))
@@ -18810,7 +18818,7 @@ void Unit::PatchValuesUpdate(ByteBuffer& valuesUpdateBuf, BuildValuesCachePosPoi
             if (creature->hasLootRecipient())
             {
                 dynamicFlags |= UNIT_DYNFLAG_TAPPED;
-                if (creature->isTappedBy(target))
+                if (creature->isTappedBy(target) || creature->IsSharedQuestParticipant(target))
                     dynamicFlags |= UNIT_DYNFLAG_TAPPED_BY_PLAYER;
             }
 
