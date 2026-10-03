@@ -24,7 +24,7 @@
     { "action": "gossip_hello", "actor": "classic", "target": "classic_book", "label": "classic: right-click the Book of Artisans" },
     { "action": "gossip_select", "actor": "classic", "option": 0, "label": "classic: I require training" },
     { "action": "assert", "actor": "classic", "metric": "trainer_list_packets", "equals": 1, "label": "classic: the trainer window opened" },
-    { "action": "assert", "actor": "classic", "metric": "trainer_window_state", "spell": 9786, "equals": 2, "label": "classic: Artisan Blacksmith reads known" },
+    { "action": "assert", "actor": "classic", "metric": "trainer_window_state", "spell": 9786, "equals": -1, "label": "classic: Artisan Blacksmith, already held, is not a row" },
     { "action": "assert", "actor": "classic", "metric": "trainer_window_state", "spell": 29845, "equals": -1, "label": "classic: Master Blacksmith is not offered on a classic session" },
     { "action": "trainer_buy", "actor": "classic", "target": "classic_book", "spell": 29845, "label": "classic: ask the book for Master Blacksmith anyway" },
     { "action": "assert", "actor": "classic", "metric": "spellbook_buy_failed", "spell": 29845, "equals": 1, "label": "classic: the purchase is refused" },
