@@ -15,6 +15,7 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "AscensionQuestLog.h"
 #include "CreatureAI.h"
 #include "../../../coa/AscensionFreePick.h"
 #include "DisableMgr.h"
@@ -50,6 +51,8 @@ void Player::RefreshQuestLogQueries()
         if (Quest const* quest = sObjectMgr->GetQuestTemplate(questId))
             PlayerTalkClass->SendQuestQueryResponse(quest);
     }
+
+    AscensionQuestLog::SendAll(this);
 }
 
 int32 Player::GetQuestLevel(Quest const* quest) const
@@ -618,6 +621,7 @@ void Player::AddQuest(Quest const* quest, Object* questGiver)
         PlayerTalkClass->SendQuestQueryResponse(quest);
 
     SetQuestSlot(log_slot, quest_id, qtime);
+    AscensionQuestLog::SendSlot(this, log_slot);
 
     m_QuestStatusSave[quest_id] = true;
 
