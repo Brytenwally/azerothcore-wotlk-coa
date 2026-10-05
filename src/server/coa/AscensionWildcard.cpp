@@ -697,6 +697,26 @@ void Enqueue(uint32 account, Request const& request)
     AnyPending = true;
 }
 
+struct BotRequests final : DataMap::Base
+{
+    std::deque<Request> Queue;
+};
+
+std::string const BotRequestsKey = "AscensionWildcardBotRequests";
+
+void Enqueue(Player* player, Request const& request)
+{
+    if (!player->GetSession()->IsBot())
+    {
+        Enqueue(player->GetSession()->GetAccountId(), request);
+        return;
+    }
+
+    std::deque<Request>& queue = player->CustomData.GetDefault<BotRequests>(BotRequestsKey)->Queue;
+    if (queue.size() < MaxQueuedRequests)
+        queue.push_back(request);
+}
+
 bool QueueRequest(WorldSession* session, WorldPacket const& packet)
 {
     if (!session)
@@ -2122,6 +2142,8 @@ public:
             std::lock_guard<std::mutex> lock(CollectionLock);
             Collections.erase(account);
         }
+        if (player->GetSession()->IsBot())
+            return;
         std::lock_guard<std::mutex> lock(PendingLock);
         PendingRequests.erase(account);
         AnyPending = !PendingRequests.empty();
@@ -2131,6 +2153,13 @@ public:
     {
         SyncRunes(player);
         SendDueRollReady(player);
+        if (player->GetSession()->IsBot())
+        {
+            if (BotRequests* own = player->CustomData.Get<BotRequests>(BotRequestsKey))
+                for (Request const& request : std::exchange(own->Queue, {}))
+                    Process(player, request);
+            return;
+        }
         if (!AnyPending)
             return;
 
@@ -2173,7 +2202,7 @@ public:
             Request open{ CMSG_PURCHASE_SEALED_CARD };
             open.CardType = pack->PurchaseType;
             open.Count = 1;
-            Enqueue(player->GetSession()->GetAccountId(), open);
+            Enqueue(player, open);
         }
 
         if (std::optional<ScrollToken> const token = RedeemToken(spellInfo))
