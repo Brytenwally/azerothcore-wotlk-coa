@@ -46,6 +46,7 @@ void AddSC_AscensionDifficultyRelease();
 void AddSC_AscensionQuestLog();
 void AddSC_AscensionRestingBuff();
 void AddSC_AscensionClosestResurrection();
+void AddSC_AscensionDungeonRelease();
 void AddSC_AscensionThreatRedirect();
 void AddSC_CoABossProbe();
 void AddSC_CoADungeonSpellDamage();
@@ -645,6 +646,7 @@ void AddCoAScripts()
     AddSC_AscensionQuestLog();
     AddSC_AscensionRestingBuff();
     AddSC_AscensionClosestResurrection();
+    AddSC_AscensionDungeonRelease();
     AddSC_AscensionThreatRedirect();
     AddSC_CoABossProbe();
     AddSC_CoADungeonSpellDamage();
