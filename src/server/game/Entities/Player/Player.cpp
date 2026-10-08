@@ -3540,7 +3540,13 @@ void Player::learnSpell(uint32 spellId, bool temporary /*= false*/, bool learnFr
         // leaves the client one extra copy of the spell per grant/revoke cycle, which both hides the real
         // spellbook entry behind duplicates and keeps the client believing a revoked spell is still known.
         if (IsInWorld() && (!temporary || learnFromSkill))
-            SendLearnPacket(spellId, true);
+        {
+            uint32 const replacement = GetTemporarySpellReplacement(spellId);
+            bool const artificersWandReplacement = replacement != spellId &&
+                (replacement == 561284 || (replacement >= 561354 && replacement <= 561357));
+            if (!artificersWandReplacement)
+                SendLearnPacket(spellId, true);
+        }
     }
 
     // pussywizard: rank stuff at the end!
@@ -4762,6 +4768,14 @@ void Player::ResurrectPlayer(float restore_percent, bool applySickness)
     uint32 newzone, newarea;
     GetZoneAndAreaId(newzone, newarea);
     UpdateZone(newzone, newarea, true);
+    if (sWorld->getBoolConfig(CONFIG_VMAP_INDOOR_CHECK))
+    {
+        SpellAttr0 const disallowedAttribute = IsOutdoors() ? SPELL_ATTR0_ONLY_INDOORS : SPELL_ATTR0_ONLY_OUTDOORS;
+        RemoveOwnedAuras([disallowedAttribute](Aura const* aura)
+        {
+            return !aura->IsPassive() && aura->GetSpellInfo()->HasAttribute(disallowedAttribute);
+        });
+    }
     sOutdoorPvPMgr->HandlePlayerResurrects(this, newzone);
 
     if (Battleground* bg = GetBattleground())
@@ -13901,6 +13915,11 @@ void Player::SetTemporarySpellReplacement(uint32 original, uint32 replacement)
 {
     auto itr = m_temporarySpellReplacements.find(original);
     uint32 previous = itr == m_temporarySpellReplacements.end() ? original : itr->second;
+    bool const sharedReplacement = replacement && std::any_of(m_temporarySpellReplacements.begin(),
+        m_temporarySpellReplacements.end(), [this, original, replacement](auto const& entry)
+        {
+            return entry.first != original && entry.second == replacement && HasActiveSpell(entry.first);
+        });
     if (!replacement)
     {
         m_temporarySpellReplacements.erase(original);
@@ -13914,6 +13933,8 @@ void Player::SetTemporarySpellReplacement(uint32 original, uint32 replacement)
     }
     if (previous != replacement && IsInWorld())
     {
+        if (sharedReplacement)
+            SendLearnPacket(replacement, false);
         WorldPacket packet(SMSG_SUPERCEDED_SPELL, 8);
         packet << previous << replacement;
         GetSession()->SendPacket(&packet);
