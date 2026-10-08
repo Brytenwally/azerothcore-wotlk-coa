@@ -571,7 +571,8 @@ def validate(scenario):
                           'ball_turn_in_count', 'ball_turn_in_quest',
                           'temporary_spell_replacement'} | PLAYER_STAT_METRICS:
                 require(step['actor'] in player_ids, f'{where}: metric needs a player')
-            shape = (metric, step.get('exclude'))
+            snapshot_metric = 'spell_event_count' if metric in {'spell_cast_count', 'spell_proc_count'} else metric
+            shape = (snapshot_metric, step.get('exclude'))
             if 'relative_to' in step:
                 require(snapshots.get(step['relative_to']) == shape, f'{where}: missing or incompatible snapshot')
             if 'ratio_to' in step:
