@@ -33,6 +33,7 @@
 #include "GameEventMgr.h"
 #include "GlobalScript.h"
 #include "Item.h"
+#include "LFGMgr.h"
 #include "Log.h"
 #include "Mail.h"
 #include "Map.h"
@@ -534,6 +535,7 @@ namespace
         else
             player->resetTalents(true);
         DismissPets(player);
+        sLFGMgr->LeaveLfg(player->GetGUID());
         ResetQuests(player, requiredLevel);
 
         std::unordered_set<uint32> const chains = ForgetRanksAbove(player, FirstLevel);
@@ -734,8 +736,10 @@ public:
 
     void OnPlayerCompleteQuest(Player* player, Quest const* quest) override
     {
-        // "Daily Quests Completed" objective: any daily quest turned in counts.
-        if (quest && quest->IsDaily())
+        // "World Quests Completed" objective: any quest turned in outside instances and
+        // battlegrounds counts, except the Prestige dailies themselves.
+        if (quest && !IsPrestigeDaily(quest->GetQuestId()) && player->GetMap()
+            && !player->GetMap()->Instanceable() && !player->InBattleground())
             player->KilledMonsterCredit(DailyCreditWorldQuests);
 
         // A turned-in daily leaves the quest panel, so its aura goes with it.
