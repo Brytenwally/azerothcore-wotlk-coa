@@ -2816,7 +2816,11 @@ public:
     void OnPeriodicDamageTick(Unit* target, Unit* attacker, uint32 damage,
         SpellInfo const* spellInfo) const
     {
-        if (!target || !attacker || !damage || !spellInfo)
+        if (!target || !attacker || !spellInfo)
+            return;
+
+        Creature const* creature = target->ToCreature();
+        if (!damage && !(creature && creature->GetScriptName() == "npc_training_dummy"))
             return;
 
         Player* player = attacker->ToPlayer();
