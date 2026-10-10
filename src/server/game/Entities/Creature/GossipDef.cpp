@@ -468,17 +468,7 @@ void PlayerMenu::SendQuestGiverQuestDetails(Quest const* quest, ObjectGuid npcGU
         moneyRew += quest->GetRewOrReqMoney(player ? player->GetLevel() : 0,
             LocalLevelScaling::QuestScalingEnabled(player)); // reward money (below max lvl)
         data << moneyRew;
-        uint32 questXp;
-        if (player && !sScriptMgr->OnPlayerShouldBeRewardedWithMoneyInsteadOfExp(player))
-        {
-            questXp = player->CalculateQuestRewardXP(quest);
-        }
-        else
-        {
-            questXp = 0;
-        }
-        sScriptMgr->OnPlayerQuestComputeXP(player, quest, questXp);
-        data << questXp;
+        data << AscensionQuestLog::RewardXPForDisplay(player, quest);
     }
 
     // rewarded honor points. Multiply with 10 to satisfy client
@@ -728,17 +718,7 @@ void PlayerMenu::SendQuestGiverOfferReward(Quest const* quest, ObjectGuid npcGUI
     moneyRew += quest->GetRewOrReqMoney(player ? player->GetLevel() : 0,
         LocalLevelScaling::QuestScalingEnabled(player)); // reward money (below max lvl)
     data << moneyRew;
-    uint32 questXp;
-    if (player && !sScriptMgr->OnPlayerShouldBeRewardedWithMoneyInsteadOfExp(player))
-    {
-        questXp = player->CalculateQuestRewardXP(quest);
-    }
-    else
-    {
-        questXp = 0;
-    }
-    sScriptMgr->OnPlayerQuestComputeXP(player, quest, questXp);
-    data << questXp;
+    data << AscensionQuestLog::RewardXPForDisplay(player, quest);
 
     // rewarded honor points. Multiply with 10 to satisfy client
     data << uint32(10 * quest->CalculateHonorGain(_session->GetPlayer()->GetQuestLevel(quest)));
