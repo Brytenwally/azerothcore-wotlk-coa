@@ -11,6 +11,11 @@ using namespace Acore::ChatCommands;
 namespace CoAChallenges
 {
 
+    bool UsesCoreProfessionXP(Player* player)
+    {
+        return player && ActiveChallenges(player->GetGUID().GetCounter()).contains(167);
+    }
+
     // Heal-path helpers (defined below, used by HealBlocked earlier in this TU).
     void AllowBandageHeal(uint32 guid);
     bool ConsumeBandageAllow(uint32 guid);
@@ -1552,7 +1557,8 @@ namespace CoAChallenges
         {
             if (PlayerHasRule(player, "CHALLENGE_RULES_TYPE_NO_PROFESSION_EXPERIENCE"))
                 gain = 0;
-            if (player && PlayerHasRule(player, "CHALLENGE_RULES_TYPE_NO_EXPERIENCE_EXCEPT_PROFESSIONS"))
+            if (player && PlayerHasRule(player, "CHALLENGE_RULES_TYPE_NO_EXPERIENCE_EXCEPT_PROFESSIONS")
+                && !UsesCoreProfessionXP(player))
             {
                 std::lock_guard<std::mutex> lock(CraftRarityMutex);
                 CraftRarity[player->GetGUID().GetCounter()] = CraftedItemRarity(skill);
@@ -1563,7 +1569,8 @@ namespace CoAChallenges
         {
             if (PlayerHasRule(player, "CHALLENGE_RULES_TYPE_NO_PROFESSION_EXPERIENCE"))
                 gain = 0;
-            if (player && PlayerHasRule(player, "CHALLENGE_RULES_TYPE_NO_EXPERIENCE_EXCEPT_PROFESSIONS"))
+            if (player && PlayerHasRule(player, "CHALLENGE_RULES_TYPE_NO_EXPERIENCE_EXCEPT_PROFESSIONS")
+                && !UsesCoreProfessionXP(player))
             {
                 // Gathering has no crafted item: flat XP, also clears a stale
                 // craft entry from a failed skill-up roll.
@@ -1589,6 +1596,8 @@ namespace CoAChallenges
             if (!player || !IsProfessionSkill(skillId))
                 return;
             if (!PlayerHasRule(player, "CHALLENGE_RULES_TYPE_NO_EXPERIENCE_EXCEPT_PROFESSIONS"))
+                return;
+            if (UsesCoreProfessionXP(player))
                 return;
             uint32 mult = 1;
             {
@@ -1682,7 +1691,9 @@ namespace CoAChallenges
             }
             else if (PlayerHasRule(player, "CHALLENGE_RULES_TYPE_NO_EXPERIENCE_EXCEPT_PROFESSIONS"))
             {
-                if (xpSource != XPSOURCE_PROFESSION_SKILL)
+                uint8 const professionSource = UsesCoreProfessionXP(player)
+                    ? XPSOURCE_PROFESSION : XPSOURCE_PROFESSION_SKILL;
+                if (xpSource != professionSource)
                     amount = 0;
             }
 
