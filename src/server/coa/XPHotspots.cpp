@@ -37,6 +37,7 @@ std::map<uint32, Location> Locations;
 std::set<uint32> ActiveIds;
 std::map<uint32, Tree> Records;
 std::map<ObjectGuid, Location> Drafts;
+std::map<ObjectGuid, std::vector<std::pair<uint32, uint32>>> MergeSources;
 std::map<ObjectGuid, uint64> Requests;
 std::map<ObjectGuid, uint32> Seen;
 std::map<ObjectGuid, uint32> Timers;
@@ -45,6 +46,7 @@ std::map<uint32, std::pair<uint32, std::vector<std::string>>> MaskWork;
 std::map<uint32, Location> MaskRequests;
 bool Enabled = false;
 bool Announce = true;
+std::string Brand;
 uint32 Generation = 1;
 uint32 MaxContinent = 2;
 uint32 Slots = 3;
@@ -106,9 +108,17 @@ Location Read(Tree const& t)
     r.Valid = t.get<bool>("valid", false);
     r.Icon = t.get<bool>("icon", true);
     r.Highlight = t.get<bool>("highlight", true);
+    r.Retired = t.get<bool>("retired", false);
     if (auto points = t.get_child_optional("points"))
         for (auto const& child : *points)
             r.Points.push_back({child.second.get<double>("x"), child.second.get<double>("y")});
+    if (auto parts = t.get_child_optional("parts"))
+        for (auto const& child : *parts)
+        {
+            if (r.Parts.size() >= 8 || child.second.get<std::string>("kind") == "union")
+                throw std::runtime_error("Invalid compound hotspot");
+            r.Parts.push_back(Read(child.second));
+        }
     return r;
 }
 
@@ -138,6 +148,14 @@ Tree Write(Location const& r)
     t.put("valid", r.Valid);
     t.put("icon", r.Icon);
     t.put("highlight", r.Highlight);
+    t.put("retired", r.Retired);
+    Tree parts;
+    for (auto part : r.Parts)
+    {
+        part.Id = 0;
+        parts.push_back({"", Write(part)});
+    }
+    t.put_child("parts", parts);
     Tree points;
     for (auto p : r.Points)
     {
@@ -213,30 +231,44 @@ bool Allowed(Location const& r)
 {
     auto map = sMapStore.LookupEntry(r.Map);
     auto area = GetAreaEntryByAreaID(r.Zone);
-    return r.Valid && map && !map->Instanceable() && r.Continent <= MaxContinent &&
+    return !r.Retired && r.Valid && map && !map->Instanceable() && r.Continent <= MaxContinent &&
         (r.Kind != "zone" || (area && area->mapid == r.Map && !area->zone));
 }
 
-bool Save(Location r)
+bool SaveMany(std::vector<Location> const& rows)
 {
-    auto tree = Write(r);
-    tree.erase("mask");
-    tree.erase("outlineUnavailable");
-    auto* statement = WorldDatabase.GetPreparedStatement(WORLD_REP_XP_HOTSPOT);
-    statement->SetData(0, r.Id);
-    statement->SetData(1, JSON(tree));
     auto transaction = WorldDatabase.BeginTransaction();
-    transaction->Append(statement);
+    std::vector<Tree> trees;
+    for (auto const& r : rows)
+    {
+        auto tree = Write(r);
+        tree.erase("mask");
+        tree.erase("outlineUnavailable");
+        auto* statement = WorldDatabase.GetPreparedStatement(WORLD_REP_XP_HOTSPOT);
+        statement->SetData(0, r.Id);
+        statement->SetData(1, JSON(tree));
+        transaction->Append(statement);
+        trees.push_back(std::move(tree));
+    }
     if (!WorldDatabase.AsyncCommitTransaction(transaction).m_future.get())
         return false;
-    Locations[r.Id] = r;
-    if (r.Enabled && r.Ends > Now() && Allowed(r))
-        ActiveIds.insert(r.Id);
-    else
-        ActiveIds.erase(r.Id);
-    Records[r.Id] = tree;
+    for (size_t i = 0; i < rows.size(); ++i)
+    {
+        auto const& r = rows[i];
+        Locations[r.Id] = r;
+        if (r.Enabled && r.Ends > Now() && Allowed(r))
+            ActiveIds.insert(r.Id);
+        else
+            ActiveIds.erase(r.Id);
+        Records[r.Id] = std::move(trees[i]);
+    }
     ++Generation;
     return true;
+}
+
+bool Save(Location const& r)
+{
+    return SaveMany({r});
 }
 
 void Send(Player* player, std::string const& text)
@@ -273,6 +305,8 @@ void Snapshot(Player* player, uint32 map, uint32 zone, uint32 page, bool catalog
     std::transform(search.begin(), search.end(), search.begin(), [](unsigned char c) { return std::tolower(c); });
     for (auto const& [id, r] : Locations)
     {
+        if (r.Retired)
+            continue;
         std::string name = r.Name;
         std::transform(name.begin(), name.end(), name.begin(), [](unsigned char c) { return std::tolower(c); });
         if (catalog && gm ? (map == UINT32_MAX || r.Map == map) && (!zone || r.Zone == zone) &&
@@ -292,6 +326,7 @@ void Snapshot(Player* player, uint32 map, uint32 zone, uint32 page, bool catalog
                 "% | " + std::to_string(rows[i].Duration / 60) + " minutes");
         return;
     }
+    Send(player, "BRAND|" + Brand);
     Send(player, "B|" + std::to_string(Generation) + "|" + std::to_string(gm) + "|" +
         std::to_string(Announce) + "|" + std::to_string(now) + "|" + std::to_string(page) + "|" +
         std::to_string(pages));
@@ -392,15 +427,27 @@ void Execute(Player* player, std::string const& command)
     }
     uint32 account = player->GetSession()->GetAccountId();
     ObjectGuid owner = player->GetGUID();
-    if (action == "new")
+    if (action == "new" || action == "newmap")
     {
         Location r;
         input >> r.Kind;
-        std::getline(input >> std::ws, r.Name);
         r.Map = player->GetMapId();
         r.Zone = player->GetZoneId();
         r.Continent = Continent(r.Map, r.Zone);
         r.Center = {player->GetPositionX(), player->GetPositionY()};
+        if (action == "newmap")
+        {
+            if (!(input >> r.Map >> r.Zone >> r.Center.X >> r.Center.Y))
+                return;
+            auto entry = sMapStore.LookupEntry(r.Map);
+            auto area = GetAreaEntryByAreaID(r.Zone);
+            if (!entry || entry->Instanceable() || !area || area->mapid != r.Map || area->zone ||
+                !std::isfinite(r.Center.X) || !std::isfinite(r.Center.Y) ||
+                std::abs(r.Center.X) > 20000 || std::abs(r.Center.Y) > 20000)
+                return;
+            r.Continent = Continent(r.Map, r.Zone);
+        }
+        std::getline(input >> std::ws, r.Name);
         r.Radius = 150;
         if (r.Kind != "circle" && r.Kind != "zone" && r.Kind != "polygon")
         {
@@ -408,6 +455,7 @@ void Execute(Player* player, std::string const& command)
             return;
         }
         Drafts[owner] = r;
+        MergeSources.erase(owner);
         if (r.Kind == "zone" && !Masks.contains(r.Zone) && MaskRequests.size() < 20)
             MaskRequests[r.Zone] = r;
     }
@@ -421,7 +469,49 @@ void Execute(Player* player, std::string const& command)
             return;
         Drafts[owner].Name = name;
     }
-    else if (action == "point" || action == "center" || action == "radius")
+    else if (action == "merge")
+    {
+        std::vector<std::pair<uint32, uint32>> sources;
+        Location r;
+        r.Kind = "union";
+        r.Source = "gm-merge";
+        uint32 id = 0, revision = 0;
+        std::set<uint32> ids;
+        while (input >> id >> revision)
+        {
+            if (sources.size() >= 8 || !Locations.contains(id) || !ids.insert(id).second)
+                return;
+            auto const& part = Locations.at(id);
+            if (part.Revision != revision || part.Retired || !Valid(part) || part.Kind == "zone" ||
+                (!sources.empty() && (part.Map != r.Map || part.Zone != r.Zone)))
+            {
+                Send(player, "ERROR|Choose current non-zone areas on the same map and zone.");
+                return;
+            }
+            if (sources.empty())
+            {
+                r.Map = part.Map;
+                r.Zone = part.Zone;
+                r.Continent = part.Continent;
+                r.Name = part.Name;
+                r.Center = part.Center;
+            }
+            sources.emplace_back(id, revision);
+            if (part.Kind == "union")
+                r.Parts.insert(r.Parts.end(), part.Parts.begin(), part.Parts.end());
+            else
+                r.Parts.push_back(part);
+        }
+        if (sources.size() < 2 || !Valid(r))
+        {
+            Send(player, "ERROR|Merge requires 2 to 8 areas, with at most 8 component boundaries.");
+            return;
+        }
+        Drafts[owner] = r;
+        MergeSources[owner] = std::move(sources);
+        Send(player, "OK|Preview the combined area. Save retires its source entries; enable the saved area separately.");
+    }
+    else if (action == "point" || action == "center" || action == "radius" || action == "vertex")
     {
         if (!Drafts.contains(owner))
         {
@@ -429,6 +519,14 @@ void Execute(Player* player, std::string const& command)
             return;
         }
         auto& r = Drafts[owner];
+        if (r.Kind == "union")
+        {
+            Send(player, "ERROR|Combined boundaries preserve their source shapes.");
+            return;
+        }
+        uint32 vertex = 0;
+        if (action == "vertex" && (!(input >> vertex) || !vertex || vertex > r.Points.size()))
+            return;
         Point p{player->GetPositionX(), player->GetPositionY()};
         if (action == "radius")
         {
@@ -444,17 +542,22 @@ void Execute(Player* player, std::string const& command)
                     return;
             }
             if (!std::isfinite(p.X) || !std::isfinite(p.Y) || std::abs(p.X) > 20000 || std::abs(p.Y) > 20000 ||
-                player->GetMapId() != r.Map)
+                !sMapStore.LookupEntry(r.Map))
                 return;
             if (action == "center")
             {
                 r.Center = p;
-                r.Zone = player->GetMap()->GetZoneId(PHASEMASK_NORMAL, p.X, p.Y, 10000);
+                auto map = sMapMgr->CreateBaseMap(r.Map);
+                if (!map || map->Instanceable())
+                    return;
+                r.Zone = map->GetZoneId(PHASEMASK_NORMAL, p.X, p.Y, 10000);
                 r.Continent = Continent(r.Map, r.Zone);
                 if (r.Kind == "zone" && !Masks.contains(r.Zone) && MaskRequests.size() < 20)
                     MaskRequests[r.Zone] = r;
             }
-            else if (r.Points.size() < 64)
+            else if (action == "vertex")
+                r.Points[vertex - 1] = p;
+            else if (r.Kind == "polygon" && r.Points.size() < 64)
                 r.Points.push_back(p);
         }
     }
@@ -462,9 +565,10 @@ void Execute(Player* player, std::string const& command)
     {
         uint32 id = 0;
         input >> id;
-        if (!Locations.contains(id))
+        if (!Locations.contains(id) || Locations.at(id).Retired)
             return;
         Drafts[owner] = Locations.at(id);
+        MergeSources.erase(owner);
     }
     else if (action == "undo" || action == "clear")
     {
@@ -521,12 +625,31 @@ void Execute(Player* player, std::string const& command)
         r.Valid = true;
         if (r.Ends > Now())
             r.Ends = r.Starts + r.Duration;
-        if (!Save(r))
+        std::vector<Location> changes;
+        if (MergeSources.contains(owner))
+            for (auto [id, revision] : MergeSources.at(owner))
+            {
+                auto part = Locations.at(id);
+                if (part.Revision != revision || part.Retired)
+                {
+                    Send(player, "ERROR|A merge source changed. Select the areas again.");
+                    return;
+                }
+                part.Retired = true;
+                part.Enabled = false;
+                part.Ends = 0;
+                part.Queued = 0;
+                ++part.Revision;
+                changes.push_back(part);
+            }
+        changes.push_back(r);
+        if (!SaveMany(changes))
         {
             Send(player, "ERROR|Database save failed.");
             return;
         }
         Drafts[owner] = r;
+        MergeSources.erase(owner);
         LOG_INFO("commands.gm", "XPHotspots account {} saved location {} revision {}", account, r.Id, r.Revision);
     }
     else if (action == "enable" || action == "disable" || action == "next" || action == "stop")
@@ -598,6 +721,7 @@ void Execute(Player* player, std::string const& command)
     else if (action == "cancel")
     {
         Drafts.erase(owner);
+        MergeSources.erase(owner);
         Send(player, "OK|Draft discarded.");
         return;
     }
@@ -633,6 +757,10 @@ public:
     {
         std::lock_guard lock(Mutex);
         Enabled = sConfigMgr->GetOption<bool>("XPHotspots.Enable", false);
+        Brand = sConfigMgr->GetOption<std::string>("XPHotspots.Brand", "");
+        if (Brand.size() > 32 || std::any_of(Brand.begin(), Brand.end(),
+            [](unsigned char c) { return c < 32 || c == '|'; }))
+            Brand.clear();
         uint32 expansion = std::min(2u, sWorld->getIntConfig(CONFIG_EXPANSION));
         MaxContinent = std::min(expansion, sConfigMgr->GetOption<uint32>("XPHotspots.MaxContinent", 2));
         Slots = std::clamp(sConfigMgr->GetOption<uint32>("XPHotspots.ActiveCount", 3), 1u, 20u);
@@ -777,6 +905,7 @@ public:
         Timers.erase(p->GetGUID());
         Seen.erase(p->GetGUID());
         Drafts.erase(p->GetGUID());
+        MergeSources.erase(p->GetGUID());
         Requests.erase(p->GetGUID());
     }
 

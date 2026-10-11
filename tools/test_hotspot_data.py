@@ -10,12 +10,44 @@ import tempfile
 import unittest
 from import_hotspot_locations import catalog, map_rows
 from package_hotspot_client import extend_toc
+from refine_hotspot_locations import polygon, refine, migration
 
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 class HotspotDataTests(unittest.TestCase):
+    def test_polygon_normalization_rejects_crossings_and_preserves_concavity(self):
+        ring = [(0, 0), (10, 0), (10, 10), (5, 5), (0, 10)]
+        self.assertEqual(polygon(ring), polygon(ring[2:]+ring[:2]))
+        self.assertEqual(polygon(ring), polygon(ring[::-1]))
+        self.assertEqual(len(polygon(ring)), 5)
+        self.assertIsNone(polygon([(0, 0), (10, 10), (0, 10), (10, 0)]))
+
+    def test_precise_boundaries_holidays_and_duplicates(self):
+        zone = dict(id=44, zone=44, map=0, kind='zone', name='Redridge',
+                    bounds=[100, 0, 100, 0], valid=True, enabled=True, revision=1)
+        target = dict(zone, id=100000, kind='circle', name='Quest monster', x=10, y=10,
+                      radius=150, source='quest:7:0:1:10:44', original=dict(quest_id='7', objective_idx='0'))
+        holiday = dict(target, id=100001, original=dict(quest_id='9', objective_idx='0'))
+        maps = [dict(ID=36, AreaID=44)]
+        pois = [(7, 0, 0, 0, 36, 0), (8, 0, 0, 0, 36, 0), (9, 0, 0, 0, 36, 0),
+                (10, 0, -1, 0, 36, 0), (11, 0, 0, 0, 36, 1)]
+        vertices = [(q, 0, i, x, y) for q in range(7, 12)
+                    for i, (x, y) in enumerate([(0, 0), (10, 0), (10, 10), (0, 10)])]
+        rows = refine([zone, target, holiday], maps, pois, vertices, {9})
+        self.assertEqual(rows[1]['retirementReason'], 'precise-quest-poi')
+        self.assertEqual(rows[2]['retirementReason'], 'holiday')
+        visible = [r for r in rows if not r.get('retired')]
+        self.assertEqual(len(visible), 2)
+        self.assertEqual(visible[1]['kind'], 'polygon')
+        self.assertEqual(visible[1]['equivalentSources'], ['quest-poi:8:0'])
+        self.assertNotIn('monster', rows[1]['name'])
+        sql = migration([zone, target, holiday], rows)
+        self.assertIn("'$.revision'))='1'", sql)
+        self.assertIn('JSON_SET', sql)
+        self.assertNotIn('DELETE FROM', sql)
+
     def test_loader_preserves_existing_entries_and_is_idempotent(self):
         original = b'\xef\xbb\xbfWorldMapFrame.xml\r\nExistingFeature.lua\r\n'
         updated = extend_toc(original)

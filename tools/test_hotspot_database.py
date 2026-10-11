@@ -32,6 +32,24 @@ class HotspotDatabaseTests(unittest.TestCase):
                          'GM edited\t2000000000')
         self.assertEqual(self.sql('SELECT value FROM xp_hotspot_setting WHERE id=1;'), '0')
         self.assertEqual(self.sql('SELECT COUNT(*) FROM xp_hotspot_location;'), '3129')
+        refinement = (ROOT / 'data/sql/updates/pending_db_world/rev_20261011_02_hotspot_boundaries.sql').read_text()
+        self.sql("UPDATE xp_hotspot_location SET payload=JSON_SET(payload,'$.name','Custom GM boundary',"
+                 "'$.revision',2,'$.radius',75) WHERE id=100052;")
+        self.sql("UPDATE xp_hotspot_location SET payload=JSON_SET(payload,'$.ends',2000000000) WHERE id=100126;")
+        self.sql(refinement)
+        count = self.sql('SELECT COUNT(*) FROM xp_hotspot_location;')
+        self.assertGreater(int(count), 3129)
+        self.assertEqual(self.sql("SELECT JSON_UNQUOTE(JSON_EXTRACT(payload,'$.name')),"
+                                 "JSON_EXTRACT(payload,'$.radius') FROM xp_hotspot_location WHERE id=100052;"),
+                         'Custom GM boundary\t75')
+        self.assertEqual(self.sql("SELECT JSON_EXTRACT(payload,'$.retired') "
+                                 "FROM xp_hotspot_location WHERE id=102536;"), 'true')
+        self.assertEqual(self.sql("SELECT JSON_EXTRACT(payload,'$.ends') "
+                                 "FROM xp_hotspot_location WHERE id=102536;"), '0')
+        self.sql(refinement)
+        self.assertEqual(self.sql('SELECT COUNT(*) FROM xp_hotspot_location;'), count)
+        self.assertEqual(self.sql("SELECT JSON_UNQUOTE(JSON_EXTRACT(payload,'$.name')) "
+                                 "FROM xp_hotspot_location WHERE id=100052;"), 'Custom GM boundary')
 
 
 if __name__ == '__main__':

@@ -8,13 +8,15 @@ extension displays the server's data and submits editing requests.
 ## Installation
 
 Build this server revision and let the normal world database updater apply
-`rev_20261011_00_hotspots.sql`. It adds only `xp_hotspot_location` and `xp_hotspot_setting`. Initial
+`rev_20261011_00_hotspots.sql` and `rev_20261011_02_hotspot_boundaries.sql`. They use only
+`xp_hotspot_location` and `xp_hotspot_setting`. Initial
 inserts preserve an existing location with the same ID, including GM changes and rotation state.
 
 The feature defaults to disabled. Add the following to the realm's loaded configuration and restart:
 
 ```ini
 XPHotspots.Enable = 1
+XPHotspots.Brand = ""
 XPHotspots.MaxContinent = 2
 XPHotspots.ActiveCount = 3
 XPHotspots.BuffSpell = 993945
@@ -25,6 +27,8 @@ ceiling cannot exceed the core `Expansion` setting. An Azeroth-only progression 
 expansion-2 client should explicitly set this option to 0. Blood elf and draenei starting zones on
 physical map 530 count as Azeroth. Instances, battlegrounds and unsupported physical maps are
 excluded. Changing these options requires a restart; the GM announcement toggle is immediate.
+Both map panels use a dark-blue/gold theme. Set `XPHotspots.Brand = "Bear Cave"` for Bear Cave
+headings; the shared default remains neutral. The server supplies this label to the same client code.
 
 The original buff 993945 must exist with a monster-kill-only XP aura. Startup refuses to enable the
 service when the configured spell is incompatible. While enabled, that spell is reserved for hotspot
@@ -89,21 +93,31 @@ calculation. Missing terrain/map coverage is labelled unavailable rather than dr
 
 For a Game Master:
 
-1. **Browse / active** opens a paginated catalog with search by name or exact ID. **This map / all
+1. **Browse / active** opens a paginated catalog with live, debounced search by name or exact ID. **This map / all
    locations** also exposes records outside the current map, including disabled/unresolved records.
    Catalog pages contain 12 locations to bound packet volume. Disabled icons remain selectable there.
 2. Select a marker or catalog row, then **Edit selected**. Change the name, bonus, duration, rotation
    weight, cooldown, icon visibility or highlight visibility. **Save draft** submits the settings
    together. A stale edit is rejected rather than overwriting another GM's work.
-3. **New circle**, **Whole zone** and **Polygon** start a disabled draft at the GM's current location.
-   CTRL-left-click the map to set a circle center or add polygon vertices. CTRL-right-click undoes
-   the last polygon vertex. **Add point here** records the GM's current position. A draft remains on
-   its original physical map; stand on another map before creating a location there.
+3. **New circle**, **Whole zone** and **Polygon** arm placement on the viewed zone map. CTRL-click
+   creates the disabled draft there, without requiring the character to travel. Additional CTRL-clicks
+   set a circle center or add polygon vertices. ALT-click selects the nearest existing vertex;
+   CTRL-click moves that vertex. CTRL-right-click undoes the last vertex. Use the radius field for circles.
+   Edit an existing boundary through **Edit selected**, then the same map controls.
 4. Save, then **Enable selected** to admit it to rotation. **Move to next** prioritizes it for the next
    available slot, bypassing its cooldown but preserving the realm and same-zone restrictions. A
    later priority request moves ahead of an earlier one. It does not interrupt an active event.
 5. **Disable selected** removes a location from rotation and ends its event. **Stop selected** ends
    its event but leaves it eligible after cooldown. **Announcements** toggles global start messages.
+6. SHIFT-click 2–8 non-zone catalog rows, then **Merge selection**. All must belong to the same map
+   and zone. Preview the union and set its name/settings before saving. Saving atomically retires the
+   source entries and creates one disabled entry; enable it separately. The union preserves the source
+   boundaries and does not fill gaps. Up to eight primitive boundaries are supported, including when
+   merging an existing union. Stale source revisions reject the entire operation. Cancel leaves sources
+   unchanged. Retired records stay in the database for provenance but cannot rotate or be re-enabled.
+
+Additional map-editor protocol commands are `newmap KIND MAP ZONE X Y NAME`, `vertex INDEX X Y`
+and `merge ID REVISION ID REVISION ...`. They have the same GM authorization as the text fallback.
 
 The text command fallback uses the same server validation and requires GM security and the existing
 event-start command permission. Console execution is disabled because placement needs a character.
@@ -165,6 +179,50 @@ python tools/import_hotspot_locations.py --archive tables.tar --client-maps Worl
 
 The checked-in migration needs no archive download at installation. Regeneration checks the archive
 hash and objective count and produces location JSON, migration SQL and provenance hashes.
+
+### Boundary refinement
+
+The initial export contains spawn centroids/radii, not quest polygons. Its Barrens coverage was only
+two objective rows. The refinement uses the effective server's `quest_poi` and `quest_poi_points`,
+the same boundary data requested by the client's quest overlay (`WorldMapBlobFrame:DrawQuestBlob`).
+Only outdoor, floor-zero, non-completion objective polygons with valid simple boundaries are imported.
+Single-point icons, malformed/self-crossing boundaries and unsupported maps are not fabricated into polygons.
+
+The refined default catalog has 6,164 visible entries: 5,009 distinct polygons, 741 remaining approximate
+spawn circles, and 414 whole-zone entries, including disabled/unresolved records. The Barrens has 106
+entries including its whole zone. 1,513 old circles are retired in favor of objective polygons; 2,661 exact
+boundary duplicates are retired; 290 holiday-derived seed entries are retired. Holiday/event quest relations
+and explicit seasonal quest sorts also exclude holiday polygons from import. All original records remain
+recoverable. Names use the covered zone and a geographic sector rather than the original target name;
+they do not claim an unverified named subzone. GM tooltips label approximate circles.
+
+Exact polygon equivalence ignores starting vertex and winding direction. Nonidentical overlaps are left
+for deliberate GM selection, avoiding transitive overlap chains that could cover most of a zone.
+Refinement updates only unchanged revision-1 seed names; GM edits are preserved, including any such
+edited entry requiring manual holiday/duplicate review. Reapplication preserves new edits and schedules.
+
+The reviewed upstream revision is `4b25cd5d56d353061075916ee6c6f071b57d0465`; the qualification base
+remains `231b9958f1a33cc256078fcdcb635c36b29b3580`. The intervening Architect board change does not
+alter hotspot or quest geometry handling. Upstream base SQL contains 18,771 POIs and 57,162 points;
+the effective Area 52 database contains 24,941 POIs and 90,131 points after applied updates. The latter
+is the refinement source, not a claim that untouched upstream base SQL is identical. This remains an
+independent reconstruction, not recovered official Ascension scheduling logic.
+
+Reproduce refinement with tab-separated, headerless exports ordered by their primary keys:
+
+| File | Columns / query source | SHA-256 of reviewed export |
+| --- | --- | --- |
+| poi.tsv | QuestID,id,ObjectiveIndex,MapID,WorldMapAreaId,Floor from quest_poi | d07a4ad6bb9837e6e7ecc33aff56b03b6294195b6a5af0aba4d2a5f2d25422a2 |
+| points.tsv | QuestID,Idx1,Idx2,X,Y from quest_poi_points | 5790f7a026eaaebe01d659d843ab9ce1d241bdc1c90846f92c86725e91efd315 |
+| holidays.tsv | Seasonal quest IDs, union creature/gameobject event quest IDs linked to a nonzero game_event.holiday | e0c3a17ffe13de6c93cbe5709f1feb40747f59681ee470cd04392d22470cd937 |
+| quests.tsv | ID,QuestSortID,HEX(LogTitle) from quest_template | 236574526c337e706577ea6a8560e2fd12c163e35254575d7d3276c259aa5e70 |
+
+```text
+python tools/refine_hotspot_locations.py --seed staging/locations.json --maps WorldMapArea.dbc --export exports --output refined
+```
+
+The committed second migration includes the resulting boundaries; deployment needs no external data service.
+The client and server must be updated together for compound geometry and direct-map editing.
 
 ## Qualification
 

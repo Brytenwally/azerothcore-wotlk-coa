@@ -428,6 +428,7 @@ CrowsCache.Barrens.O = 2.3004022
 # Azeroth starting zones on map 530 remain eligible with MaxContinent = 0.
 # The client FrameXML extension is required for map display and the GM editor.
 XPHotspots.Enable = 0
+XPHotspots.Brand = ""
 XPHotspots.MaxContinent = 2
 XPHotspots.ActiveCount = 3
 XPHotspots.BuffSpell = 993945

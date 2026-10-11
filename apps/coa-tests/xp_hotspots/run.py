@@ -1,4 +1,6 @@
 from pathlib import Path
+import json
+import re
 import subprocess
 import tempfile
 
@@ -7,6 +9,7 @@ source = r'''
 #include "XPHotspotRules.h"
 #include <cassert>
 #include <limits>
+#include <iostream>
 int main()
 {
     using namespace XPHotspots;
@@ -26,6 +29,27 @@ int main()
     r.Points = {{0,0},{10,0},{10,10},{0,10}};
     assert(Valid(r) && Contains(r,0,44,{5,5}) && Contains(r,0,44,{10,5}));
     assert(!Contains(r,0,44,{11,5}));
+    Location compound = r;
+    compound.Kind = "union";
+    Location second = r;
+    second.Kind = "circle";
+    second.Center = {100,100};
+    second.Radius = 10;
+    compound.Parts = {r, second};
+    assert(Valid(compound));
+    assert(Contains(compound,0,44,{5,5}));
+    assert(Contains(compound,0,44,{100,100}));
+    assert(!Contains(compound,0,44,{50,50}));
+    assert(!Contains(compound,1,44,{5,5}));
+    compound.Parts[1].Zone = 45;
+    assert(!Valid(compound));
+    compound.Parts = {r, compound};
+    assert(!Valid(compound));
+    compound.Parts.assign(9, r);
+    assert(!Valid(compound));
+    Location retired = r;
+    retired.Retired = true;
+    assert(!Eligible(retired,0,10000));
     r.Points = {{0,0},{10,10},{0,10},{10,0}};
     assert(!Valid(r));
     r.Points = {{0,0},{10,0},{5,0},{5,5}};
@@ -65,6 +89,20 @@ int main()
     assert(Select(candidates,1)->Id == 2);
     candidates[0].Queued = 12;
     assert(Select(candidates,4)->Id == 1);
+    size_t vertices = 0;
+    while (std::cin >> vertices)
+    {
+        Location imported;
+        imported.Name = "Imported boundary";
+        imported.Kind = "polygon";
+        for (size_t i = 0; i < vertices; ++i)
+        {
+            Point point;
+            std::cin >> point.X >> point.Y;
+            imported.Points.push_back(point);
+        }
+        assert(Valid(imported));
+    }
 }
 '''
 with tempfile.TemporaryDirectory() as directory:
@@ -72,5 +110,11 @@ with tempfile.TemporaryDirectory() as directory:
     (out/'test.cpp').write_text(source)
     subprocess.run(['c++','-std=c++20','-I'+str(root/'src/server/coa'),str(out/'test.cpp'),
                     '-o',str(out/'test')],check=True)
-    subprocess.run([str(out/'test')],check=True)
+    migration = (root/'data/sql/updates/pending_db_world/rev_20261011_02_hotspot_boundaries.sql').read_text()
+    rows = [json.loads(bytes.fromhex(value)) for value in
+            re.findall(r'VALUES \(\d+, CONVERT\(0x([0-9a-f]+) USING', migration)]
+    geometry = '\n'.join(str(len(row['points']))+' '+
+                         ' '.join(str(p[k]) for p in row['points'] for k in ('x', 'y'))
+                         for row in rows if row['kind'] == 'polygon')
+    subprocess.run([str(out/'test')],check=True,input=geometry,text=True)
 print('Hotspot geometry, realm restrictions and eligibility passed')

@@ -47,6 +47,8 @@ C_Serialize={FromJSON=function(self,value) return testRow end}
 function UnitName() return "Tester" end
 function GetCursorPosition() return 25,75 end
 function IsControlKeyDown() return control end
+function IsShiftKeyDown() return shift end
+function IsAltKeyDown() return alt end
 function SendAddonMessage(...) messages[#messages+1]={...} end
 function time() return clock end
 function GetTime() return clock end
@@ -155,6 +157,56 @@ XPHotspots.Highlight({kind="zone",map=0,highlight=true,
         self.receive('E')
         self.assertEqual(self.lua.eval('XPHotspots.page'), 3)
         self.assertEqual(self.lua.eval('XPHotspots.queue[2]'), 'list 0 44 3 ')
+
+    def test_search_is_debounced_and_resets_page(self):
+        self.snapshot()
+        self.lua.execute('''
+XPHotspots.ShowPanel();b=ButtonNamed("Browse / active");b.scripts.OnClick(b)
+XPHotspots.refreshPending=false;XPHotspots.queue={}
+s=XPHotspots.searchBox;s:SetText("Barr");s.scripts.OnTextChanged(s,true)
+driver.scripts.OnUpdate(driver,0.3)
+''')
+        self.assertEqual(self.lua.eval('#XPHotspots.queue'), 0)
+        self.lua.execute('''
+clock=1000.2;s:SetText("Barrens");s.scripts.OnTextChanged(s,true)
+clock=1000.7;driver.scripts.OnUpdate(driver,0.3)
+''')
+        self.assertEqual(self.lua.eval('messages[#messages][2]'), 'list 0 44 1 Barrens')
+
+    def test_realm_brand_updates_both_panels(self):
+        self.snapshot()
+        self.lua.execute('XPHotspots.ShowPanel();b=ButtonNamed("Browse / active");b.scripts.OnClick(b)')
+        self.receive('BRAND|Bear Cave')
+        self.assertTrue(self.lua.eval('ButtonNamed("Bear Cave Hotspots")~=nil'))
+        self.assertTrue(self.lua.eval('ButtonNamed("Bear Cave Hotspot Manager")~=nil'))
+        self.receive('BRAND|')
+        self.assertTrue(self.lua.eval('ButtonNamed("XP Hotspots")~=nil'))
+
+    def test_new_polygon_starts_at_map_cursor(self):
+        self.snapshot()
+        self.lua.execute('''
+XPHotspots.ShowPanel();XPHotspots.queue={}
+b=ButtonNamed("Polygon");b.scripts.OnClick(b)
+control=true;WorldMapButton.scripts.OnMouseUp(WorldMapButton,"LeftButton")
+''')
+        self.assertEqual(self.lua.eval('XPHotspots.queue[1]'), 'newmap polygon 0 44 75 75 New Hotspot')
+        self.assertEqual(self.lua.eval('XPHotspots.queue[2]'), 'point 75 75')
+
+    def test_merge_uses_revisions_and_union_highlight_preserves_gap(self):
+        self.snapshot()
+        self.lua.execute('''
+XPHotspots.ShowPanel();XPHotspots.queue={};XPHotspots.merge={[1]=3,[2]=7}
+b=ButtonNamed("Merge selection");b.scripts.OnClick(b)
+XPHotspots.Highlight({kind="union",map=0,highlight=true,parts={
+ {kind="circle",x=50,y=20,radius=10},{kind="circle",x=50,y=80,radius=10}}})
+''')
+        self.assertEqual(self.lua.eval('XPHotspots.queue[1]'), 'merge 1 3 2 7')
+        self.assertTrue(self.lua.eval('XPHotspots.fills[1].shown'))
+        self.assertTrue(self.lua.eval('''(function()
+for _,f in ipairs(XPHotspots.fills) do
+ if f.shown and f.point[4]<50 and f.point[4]+f.width>50 then return false end
+end
+return true end)()'''))
 
 
 if __name__ == '__main__':

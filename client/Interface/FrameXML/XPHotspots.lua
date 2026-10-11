@@ -1,7 +1,8 @@
-local H = { rows = {}, pins = {}, fills = {}, queue = {}, page = 1 }
+local H = { rows = {}, pins = {}, fills = {}, queue = {}, page = 1, merge = {} }
 XPHotspots = H
 local frame = CreateFrame("Frame")
 local selected, draft, hovered, panel, enabled, gm, announcements
+local brand=""
 local clockOffset = 0
 local chunks, chunkNext, chunkCount
 local snapshot, incoming
@@ -39,6 +40,12 @@ local function AtCursor()
     return top + y * (bottom-top), left + x * (right-left)
 end
 local function Inside(r, x, y)
+    if r.kind == "union" then
+        for _,part in ipairs(type(r.parts)=="table" and r.parts or {}) do
+            if Inside(part,x,y) then return true end
+        end
+        return false
+    end
     if r.kind == "circle" then return (x-N(r.x))^2 + (y-N(r.y))^2 <= N(r.radius)^2 end
     if r.kind == "zone" then
         if type(r.mask)~="table" or type(r.bounds)~="table" then return false end
@@ -81,9 +88,13 @@ local function Tooltip(r, owner)
     WorldMapTooltip:ClearLines()
     WorldMapTooltip:AddLine(r.name or "Hotspot",1,1,1)
     WorldMapTooltip:AddLine("+" .. N(r.xp) .. "% monster-kill experience",0.7,1,0.4)
+    WorldMapTooltip:AddLine("Any eligible creature kill while you are inside this area.",0.7,0.8,1,true)
     local remaining=math.max(0,N(r.ends)-Now())
     WorldMapTooltip:AddLine(remaining>0 and SecondsToTime(remaining) .. " remaining" or "Inactive",1,0.82,0)
     if r.kind == "zone" then WorldMapTooltip:AddLine("Entire zone",0.7,0.8,1) end
+    if gm and r.geometrySource=="approximate-spawn-circle" then
+        WorldMapTooltip:AddLine("Approximate spawn area; no usable quest polygon recovered.",1,0.7,0.3,true)
+    end
     if B(r.outlineUnavailable) then WorldMapTooltip:AddLine("Zone boundary preview unavailable",1,0.7,0.3,true) end
     if gm then
         WorldMapTooltip:AddLine("ID " .. N(r.id) .. " | " .. (B(r.enabled) and "Enabled" or "Disabled"),0.8,0.8,0.8)
@@ -195,6 +206,13 @@ end
 local function Button(parent,text,x,y,width,click)
     local b=CreateFrame("Button",nil,parent,"UIPanelButtonTemplate")
     b:SetSize(width or 130,22);b:SetPoint("TOPLEFT",x,y);b:SetText(text);b:SetScript("OnClick",click)
+    b:SetBackdrop({bgFile="Interface\\Buttons\\WHITE8X8",
+        edgeFile="Interface\\Buttons\\WHITE8X8",edgeSize=1})
+    b:SetBackdropColor(0.03,0.11,0.17,1);b:SetBackdropBorderColor(0.78,0.60,0.27,1)
+    b:SetNormalTexture("");b:SetPushedTexture("")
+    local glow=b:CreateTexture(nil,"HIGHLIGHT");glow:SetAllPoints();glow:SetTexture(0.90,0.70,0.30,0.16)
+    b:SetHighlightTexture(glow)
+    b:SetNormalFontObject("GameFontNormalSmall");b:SetHighlightFontObject("GameFontHighlightSmall")
     return b
 end
 local fields={}
@@ -210,7 +228,7 @@ function H.DrawBrowser()
         b.row=r
         if r then
             b:SetText((N(r.ends)>Now() and "|cff80ff80" or B(r.enabled) and "|cffffffff" or "|cff888888") ..
-                N(r.id).." "..(r.name or "").."|r")
+                (H.merge[N(r.id)] and "[+] " or "")..N(r.id).." "..(r.name or "").."|r")
             b:Show()
         else b:Hide() end
     end
@@ -220,19 +238,39 @@ end
 local function ShowBrowser()
     if not browser then
         browser=CreateFrame("Frame",nil,WorldMapFrame)
-        browser:SetSize(260,445);browser:SetPoint("TOPLEFT",WorldMapFrame,"TOPLEFT",12,-65)
+        browser:SetSize(260,469);browser:SetPoint("TOPLEFT",WorldMapFrame,"TOPLEFT",12,-65)
         browser:SetFrameStrata("DIALOG");browser:EnableMouse(true)
         browser:SetBackdrop({bgFile="Interface\\Buttons\\WHITE8X8",
             edgeFile="Interface\\Tooltips\\UI-Tooltip-Border",edgeSize=12})
-        browser:SetBackdropColor(0.04,0.06,0.12,0.96)
-        local search=CreateFrame("EditBox",nil,browser,"InputBoxTemplate")
-        search:SetPoint("TOPLEFT",12,-12);search:SetSize(190,20);search:SetAutoFocus(false);search:SetMaxLetters(100)
-        local function Search() H.search=search:GetText();H.Refresh(1) end
+        browser:SetBackdropColor(0.03,0.11,0.17,0.97)
+        browser:SetBackdropBorderColor(0.78,0.60,0.27,1)
+        local title=browser:CreateFontString(nil,"OVERLAY","GameFontNormal")
+        title:SetPoint("TOPLEFT",12,-12);title:SetText((brand~="" and brand or "XP").." Hotspots")
+        title:SetTextColor(0.95,0.76,0.39)
+        browser.title=title
+        local search=CreateFrame("EditBox",nil,browser)
+        search:SetFontObject("GameFontHighlightSmall")
+        search:SetTextInsets(6,6,2,2)
+        search:SetBackdrop({bgFile="Interface\\Buttons\\WHITE8X8",
+            edgeFile="Interface\\Buttons\\WHITE8X8",edgeSize=1})
+        search:SetBackdropColor(0.02,0.03,0.06,1);search:SetBackdropBorderColor(0.65,0.53,0.3,1)
+        search:SetPoint("TOPLEFT",12,-36);search:SetSize(190,20);search:SetAutoFocus(false);search:SetMaxLetters(100)
+        H.searchBox=search
+        local function Search() H.searchAt=nil;H.search=search:GetText();H.Refresh(1) end
+        search:SetScript("OnTextChanged",function(self,user)
+            if user then H.searchAt=GetTime()+0.4 end
+        end)
+        search:SetScript("OnEscapePressed",function(self) self:ClearFocus() end)
         search:SetScript("OnEnterPressed",function(self) self:ClearFocus();Search() end)
-        Button(browser,"Find",205,-10,45,Search)
+        Button(browser,"Find",205,-34,45,Search)
         browser.rows={}
         for i=1,12 do
-            local b=Button(browser,"",10,-40-(i-1)*27,240,function(self)
+            local b=Button(browser,"",10,-64-(i-1)*27,240,function(self)
+                if IsShiftKeyDown() and self.row and self.row.kind~="zone" then
+                    local id=N(self.row.id)
+                    H.merge[id]=not H.merge[id] and N(self.row.revision) or nil
+                    H.DrawBrowser();return
+                end
                 selected=self.row;H.ShowPanel();H.Highlight(selected)
             end)
             b:SetScript("OnEnter",function(self)
@@ -245,18 +283,22 @@ local function ShowBrowser()
             end)
             browser.rows[i]=b
         end
-        Button(browser,"Previous",10,-369,100,function() H.Refresh(math.max(1,(H.page or 1)-1)) end)
-        Button(browser,"Next",150,-369,100,function() H.Refresh(math.min(H.pages or 1,(H.page or 1)+1)) end)
+        Button(browser,"Previous",10,-393,100,function() H.Refresh(math.max(1,(H.page or 1)-1)) end)
+        Button(browser,"Next",150,-393,100,function() H.Refresh(math.min(H.pages or 1,(H.page or 1)+1)) end)
         browser.page=browser:CreateFontString(nil,"OVERLAY","GameFontNormalSmall")
-        browser.page:SetPoint("TOP",0,-400)
-        Button(browser,"This map / all locations",10,-416,240,function() H.allMaps=not H.allMaps;H.Refresh(1) end)
+        browser.page:SetPoint("TOP",0,-424)
+        Button(browser,"This map / all locations",10,-440,240,function() H.allMaps=not H.allMaps;H.Refresh(1) end)
     end
     H.DrawBrowser()
 end
 local function Field(label,y,default)
     local text=panel:CreateFontString(nil,"OVERLAY","GameFontNormalSmall")
     text:SetPoint("TOPLEFT",10,y);text:SetText(label)
-    local edit=CreateFrame("EditBox",nil,panel,"InputBoxTemplate")
+    local edit=CreateFrame("EditBox",nil,panel)
+    edit:SetFontObject("GameFontHighlightSmall");edit:SetTextInsets(5,5,2,2)
+    edit:SetBackdrop({bgFile="Interface\\Buttons\\WHITE8X8",
+        edgeFile="Interface\\Buttons\\WHITE8X8",edgeSize=1})
+    edit:SetBackdropColor(0.02,0.06,0.10,1);edit:SetBackdropBorderColor(0.78,0.60,0.27,1)
     edit:SetSize(160,20);edit:SetPoint("TOPLEFT",115,y+3);edit:SetAutoFocus(false)
     edit:SetText(default);edit:SetMaxLetters(100);fields[label]=edit
     return edit
@@ -271,7 +313,7 @@ local function ApplyFields()
     Send("settings "..fields["XP bonus %"]:GetText().." "..N(fields.Minutes:GetText())*60 .." "..
         fields.Weight:GetText().." "..N(fields["Cooldown min"]:GetText())*60 .." "..
         (fields.icon:GetChecked() and "1" or "0").." "..(fields.fill:GetChecked() and "1" or "0"))
-    Send("radius "..fields["Radius yards"]:GetText())
+    if draft.kind=="circle" then Send("radius "..fields["Radius yards"]:GetText()) end
     return true
 end
 function H.ShowPanel()
@@ -282,9 +324,12 @@ function H.ShowPanel()
         panel:SetFrameStrata("DIALOG");panel:EnableMouse(true)
         panel:SetBackdrop({bgFile="Interface\\Buttons\\WHITE8X8",
             edgeFile="Interface\\Tooltips\\UI-Tooltip-Border",edgeSize=12})
-        panel:SetBackdropColor(0.04,0.06,0.12,0.96)
+        panel:SetBackdropColor(0.03,0.11,0.17,0.97)
+        panel:SetBackdropBorderColor(0.78,0.60,0.27,1)
         local title=panel:CreateFontString(nil,"OVERLAY","GameFontNormal")
-        title:SetPoint("TOPLEFT",10,-12);title:SetText("XP Hotspot Manager")
+        title:SetPoint("TOPLEFT",10,-12);title:SetText((brand~="" and brand.." " or "").."Hotspot Manager")
+        title:SetTextColor(0.95,0.76,0.39)
+        panel.title=title
         Button(panel,"X",265,-5,25,function() panel:Hide();if browser then browser:Hide() end end)
         Field("Name",-45,"New Hotspot")
         Field("XP bonus %",-75,"150")
@@ -302,12 +347,25 @@ function H.ShowPanel()
         fillText:SetPoint("LEFT",fill,"RIGHT",0,0);fillText:SetText("Show highlight")
         fields.icon,fields.fill=icon,fill
         Button(panel,"New circle",10,-225,90,function()
-            Send("new circle "..fields.Name:GetText());Send("radius "..fields["Radius yards"]:GetText())
+            H.newKind="circle";Notify("CTRL-click the map to place the center.")
         end)
-        Button(panel,"Whole zone",105,-225,90,function() Send("new zone "..fields.Name:GetText()) end)
-        Button(panel,"Polygon",200,-225,90,function() Send("new polygon "..fields.Name:GetText()) end)
-        Button(panel,"Edit selected",10,-255,130,function() if selected then Send("edit "..N(selected.id)) end end)
-        Button(panel,"Add point here",155,-255,130,function() Send("point") end)
+        Button(panel,"Whole zone",105,-225,90,function()
+            H.newKind="zone";Notify("CTRL-click the zone map to create its hotspot.")
+        end)
+        Button(panel,"Polygon",200,-225,90,function()
+            H.newKind="polygon";Notify("CTRL-click the map to start the boundary, then add vertices.")
+        end)
+        Button(panel,"Edit selected",10,-255,130,function()
+            H.vertex=nil;H.newKind=nil
+            if selected then Send("edit "..N(selected.id)) end
+        end)
+        Button(panel,"Merge selection",155,-255,130,function()
+            local ids={};for id in pairs(H.merge) do ids[#ids+1]=id end;table.sort(ids)
+            if #ids<2 or #ids>8 then Notify("SHIFT-click 2 to 8 non-zone browser rows to merge.");return end
+            local command="merge"
+            for _,id in ipairs(ids) do command=command.." "..id.." "..H.merge[id] end
+            Send(command);H.newKind=nil;H.vertex=nil
+        end)
         Button(panel,"Apply settings",10,-285,130,ApplyFields)
         Button(panel,"Save draft",155,-285,130,function()
             if not draft then Notify("Create or edit a draft first.");return end
@@ -328,13 +386,13 @@ function H.ShowPanel()
         end)
         Button(panel,"Cancel draft",10,-405,130,function()
             if selected then selected=H.rows[N(selected.id)] end
-            draft=nil;Send("cancel");H.Draw()
+            draft=nil;H.newKind=nil;H.vertex=nil;H.merge={};Send("cancel");H.Draw();H.DrawBrowser()
         end)
         Button(panel,"Refresh",155,-405,130,H.Refresh)
         local hint=panel:CreateFontString(nil,"OVERLAY","GameFontHighlightSmall")
         hint:SetPoint("TOPLEFT",10,-488);hint:SetWidth(280)
-        hint:SetText("New areas start at your character. CTRL-left-click: center/vertex; "..
-            "CTRL-right-click: undo vertex. Save, then Enable. Browse includes disabled locations.")
+        hint:SetText("CTRL-click map: place center/add vertex. ALT-click: select nearest vertex; "..
+            "CTRL-click: move it. CTRL-right: undo. SHIFT-click browser rows to merge. Save, then Enable.")
     end
     local r=draft or selected
     if r then
@@ -349,6 +407,12 @@ function H.ShowPanel()
     ShowBrowser()
 end
 local function Receive(text)
+    if text:sub(1,6)=="BRAND|" then
+        brand=text:sub(7,38)
+        if browser then browser.title:SetText((brand~="" and brand or "XP").." Hotspots") end
+        if panel then panel.title:SetText((brand~="" and brand.." " or "").."Hotspot Manager") end
+        return
+    end
     if text=="OFF" then
         enabled=false;gm=false;H.rows={};H.queue={};H.refreshPending=false;H.refreshAgain=false
         selected=nil;draft=nil;hovered=nil;snapshot=nil;incoming=nil;chunks=nil
@@ -369,7 +433,7 @@ local function Receive(text)
     local index,total,data=text:match("^R|(%d+)|(%d+)|(.*)$")
     if index then
         index,total=N(index),N(total)
-        if total>100 or total<1 then return end
+        if total>256 or total<1 then return end
         if index==0 then chunks={};chunkNext=0;chunkCount=total end
         if not chunks or index~=chunkNext or total~=chunkCount then chunks=nil;return end
         chunks[#chunks+1]=data;chunkNext=chunkNext+1
@@ -381,7 +445,10 @@ local function Receive(text)
                         draft.mask=r.mask;draft.bounds=r.bounds;draft.outlineUnavailable=r.outlineUnavailable
                     end
                     H.Draw()
-                elseif B(r.draft) then draft=r;selected=r;H.ShowPanel();H.Draw()
+                elseif B(r.draft) then
+                    draft=r;selected=r
+                    if r.kind=="union" and N(r.id)>0 then H.merge={} end
+                    H.ShowPanel();H.Draw()
                 elseif incoming then incoming[N(r.id)]=r end
             end
         end
@@ -419,16 +486,38 @@ frame:SetScript("OnEvent",function(_,event,prefix,text,channel,sender)
         open:SetScript("OnLeave",function() GameTooltip:Hide() end)
         local priorMouseUp=WorldMapButton:GetScript("OnMouseUp")
         WorldMapButton:SetScript("OnMouseUp",function(self,button,...)
+            if gm and H.newKind and IsControlKeyDown() and button=="LeftButton" then
+                local map,zone=View();local x,y=AtCursor()
+                if not x or not zone or zone==0 then Notify("Open a zone map first.");return end
+                local kind=H.newKind;H.newKind=nil;H.vertex=nil
+                Send("newmap "..kind.." "..map.." "..zone.." "..x.." "..y.." "..fields.Name:GetText())
+                if kind=="polygon" then Send("point "..x.." "..y)
+                elseif kind=="circle" then Send("radius "..fields["Radius yards"]:GetText()) end
+                return
+            end
+            if gm and draft and draft.kind=="polygon" and IsAltKeyDown() and button=="LeftButton" then
+                local map=View();local x,y=AtCursor();local best
+                if map~=N(draft.map) or not x then return end
+                for i,p in ipairs(type(draft.points)=="table" and draft.points or {}) do
+                    local distance=(x-N(p.x))^2+(y-N(p.y))^2
+                    if not best or distance<best then H.vertex=i;best=distance end
+                end
+                if best then Notify("Vertex "..H.vertex.." selected. CTRL-click its new position.") end
+                return
+            end
             if gm and draft and IsControlKeyDown() and button=="RightButton" and draft.kind=="polygon" then
-                Send("undo");return
+                H.vertex=nil;Send("undo");return
             end
             if gm and draft and IsControlKeyDown() and button=="LeftButton" then
                 local map=View()
                 if map~=N(draft.map) then
-                    Notify("Draft belongs to another map. Create it while on that map.");return
+                    Notify("Open the map where this draft belongs.");return
                 end
                 local x,y=AtCursor()
-                if x then Send((draft.kind=="polygon" and "point " or "center ")..x.." "..y) end
+                if x then
+                    local command=H.vertex and "vertex "..H.vertex.." " or draft.kind=="polygon" and "point " or "center "
+                    Send(command..x.." "..y);H.vertex=nil
+                end
                 return
             end
             if priorMouseUp then priorMouseUp(self,button,...) end
@@ -440,6 +529,9 @@ frame:SetScript("OnUpdate",function(_,diff)
     elapsed=elapsed+diff
     if elapsed<0.3 then return end
     elapsed=0
+    if H.searchAt and GetTime()>=H.searchAt then
+        H.searchAt=nil;H.search=H.searchBox:GetText();H.Refresh(1)
+    end
     if hovered and H.hoverOwner and H.tooltipSecond~=Now() then
         H.tooltipSecond=Now();Tooltip(hovered,H.hoverOwner)
     end

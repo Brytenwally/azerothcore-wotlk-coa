@@ -28,6 +28,7 @@ struct Location
     Point Center;
     double Radius = 150;
     std::vector<Point> Points;
+    std::vector<Location> Parts;
     uint32_t Bonus = 150;
     uint32_t Duration = 3600;
     uint32_t Weight = 1;
@@ -40,6 +41,7 @@ struct Location
     bool Valid = true;
     bool Icon = true;
     bool Highlight = true;
+    bool Retired = false;
 };
 
 inline double Cross(Point a, Point b, Point p)
@@ -94,6 +96,11 @@ inline bool Contains(Location const& row, uint32_t map, uint32_t zone, Point p)
         return row.Zone == zone;
     if (row.Kind == "circle")
         return std::hypot(p.X - row.Center.X, p.Y - row.Center.Y) <= row.Radius;
+    if (row.Kind == "union")
+        return std::any_of(row.Parts.begin(), row.Parts.end(), [&](Location const& part)
+        {
+            return Contains(part, map, zone, p);
+        });
     bool inside = false;
     for (size_t i = 0, j = row.Points.size() - 1; i < row.Points.size(); j = i++)
     {
@@ -109,7 +116,7 @@ inline bool Contains(Location const& row, uint32_t map, uint32_t zone, Point p)
 
 inline bool Eligible(Location const& row, uint32_t continent, uint64_t now)
 {
-    return row.Enabled && row.Valid && row.Continent <= continent && (row.Weight || row.Queued) &&
+    return !row.Retired && row.Enabled && row.Valid && row.Continent <= continent && (row.Weight || row.Queued) &&
         row.Ends <= now && (row.Queued || row.LastEnd + row.Cooldown <= now);
 }
 
@@ -141,7 +148,13 @@ inline bool Valid(Location const& row)
         std::abs(row.Center.X) <= 20000 && std::abs(row.Center.Y) <= 20000 &&
         ((row.Kind == "zone" && row.Zone) ||
          (row.Kind == "circle" && std::isfinite(row.Radius) && row.Radius >= 1 && row.Radius <= 5000) ||
-         (row.Kind == "polygon" && ValidPolygon(row.Points)));
+         (row.Kind == "polygon" && ValidPolygon(row.Points)) ||
+         (row.Kind == "union" && !row.Parts.empty() && row.Parts.size() <= 8 &&
+          std::all_of(row.Parts.begin(), row.Parts.end(), [&](Location const& part)
+          {
+              return (part.Kind == "circle" || part.Kind == "polygon") &&
+                  part.Map == row.Map && part.Zone == row.Zone && Valid(part);
+          })));
 }
 }
 
