@@ -90,3 +90,52 @@ Copy the extracted files into `<DataDir>/dbc` and restart the worldserver.
 - `diff` compares the values the core reads, so a rebuilt string block is not a change.
 
 Tests: `python apps/coa-dbc/test_client_dbc.py`
+
+## Four missing Area 52 heirloom ring profiles
+
+The four XP-only rings gain separate level-1–80 combat-stat profiles. The world migration
+`rev_20261011_00_area52_heirloom_ring_stats.sql` adds distribution IDs 12040–12043 and changes
+only the four items' scaling distribution and mask. Existing XP spell 71354, item identities,
+prices, bindings, quality, appearances, ownership, and inventory instances remain unchanged.
+
+Generate the matching client table with:
+
+```sh
+python apps/coa-dbc/patch_area52_heirloom_rings.py original/ScalingStatDistribution.dbc candidate/ScalingStatDistribution.dbc
+python -B tools/verify_all.py --stages harness --harness test_area52_heirloom_rings
+```
+
+The patcher preserves existing records and rejects ID collisions. Include its output in the
+effective Area 52 client overlay before activating the server migration through the normal updater.
+The server can use the identical DBC; the SQL definitions are byte-equivalent. Apply the client
+overlay together with the item mappings and refresh cached item queries before comparing tooltips.
+The migration advances the reviewed client-cache version from 17 to 18. With the live
+`ClientCacheVersion = 0` configuration, the server sends this version on the next login to refresh
+cached item definitions. If a different version or explicit configuration is active, reconcile the
+cache refresh before deployment rather than relying on this conditional bump.
+No server core rebuild is needed. Preflight both DBC and SQL profile IDs and item references before
+installation; future conflicting definitions must be reconciled rather than overwritten.
+
+The profiles use the already deployed Area 52 one-hand/accessory stat curve (mask 4), with a
+level-80 budget of 115. They do not modify that curve or other items. Under the deployed curve:
+
+| Ring | Level-80 stats |
+| --- | --- |
+| Antique Myrmidon's Signet (62035) | 39 Strength, 39 Stamina, 24 Hit, 22 Crit |
+| Ornate Band of Accuria (62036) | 37 Agility, 39 Stamina, 25 Crit, 25 Haste |
+| Gleaming Seal of the Archmagus (62037) | 28 Intellect, 30 Stamina, 46 Spell Power, 13 Crit, 15 Haste |
+| Burnished Dark Iron Ring (69891) | 23 Strength, 52 Stamina, 28 Dodge, 28 Expertise |
+
+These are Area 52 balancing profiles, not a claim of recovered official Ascension values. They
+retain distinct physical, caster, and tank roles. Explicit Spell Power keeps the caster ring useful
+under the existing level-80 item model. Weighted stat totals target approximately 90% of basic
+item-level 187 rare ring references, using the same point convention as the deployed category tune.
+The JSON records target stats, reference item IDs/budgets, and the installed level-1–80 curve.
+The current Callboard pool has no level-80 reference rewards. On a different scaling curve the
+profiles still function, but the stated endpoint values and budget ratios do not apply.
+
+Structural checks cover source/client agreement, unchanged XP fields, complete monotonic level
+growth, the endpoint budget, collision rejection and idempotency. The optional temporary-table
+MySQL test uses `AREA52_RING_MYSQL_CONTAINER` with the established container-local root option file;
+it applies the migration twice to connection-local fixtures without changing persistent world data.
+In-game tooltip/equipped-stat confirmation remains a separate activation acceptance check.
