@@ -90,3 +90,63 @@ Copy the extracted files into `<DataDir>/dbc` and restart the worldserver.
 - `diff` compares the values the core reads, so a rebuilt string block is not a change.
 
 Tests: `python apps/coa-dbc/test_client_dbc.py`
+
+## Area 52 high-level heirloom budgets (opt-in)
+
+`patch_area52_heirloom_scaling.py` stages a matching client/server `ScalingStatValues.dbc`
+for Area 52. It is not an automatic upstream database migration and does not install anything.
+
+```sh
+python apps/coa-dbc/patch_area52_heirloom_scaling.py /path/to/ScalingStatValues.dbc out/ScalingStatValues.dbc
+python -B tools/verify_all.py --stages harness --harness test_area52_heirloom_scaling
+```
+
+The profile targets approximately 90% of basic item-level 187 rare dungeon equipment at level 80.
+It changes shared category budgets at levels 68–80, preserving each item's stat distribution,
+levels 1–67, armor values/types, XP bonuses, and proc spells. Primary/secondary stat budgets use
+the median matched-item point ratio; weapon DPS and caster weapon spell power use separate curves.
+The point convention is 1 per ordinary stat/rating, 2/3 per Stamina, 1/2 per AP/RAP, 6/7 per spell
+power, and 2.5 per mana-per-five. This is an alpha balancing convention, not a combat-power guarantee.
+Item mixes vary; individual items and stats can fall above or below the category target.
+
+The calibration excludes heroic/raid, Bloodforged, random-property and random-suffix equipment.
+It matches slot, armor-budget material or weapon subtype, and dominant primary stat. Duplicate
+peer stat profiles count once. The live Callboard pools currently contain level-60 rewards and
+are not used as level-80 references. Four XP-only vendor rings have no stat distribution and are
+unchanged; 18 vendor items without a direct peer inherit their shared category curve.
+
+| Budget | Level 80 before | After |
+| --- | ---: | ---: |
+| Shoulder | 97 | 203 |
+| Trinket | 97 | 296 |
+| One-hand stat | 56 | 115 |
+| Primary | 131 | 257 |
+| Ranged stat | 41 | 80 |
+| Tertiary | 73 | 227 |
+| Melee one-hand DPS | 94 | 108 |
+| Melee two-hand DPS | 122 | 140 |
+| Caster one-hand DPS | 42 | 62 |
+| Caster two-hand DPS | 50 | 98 |
+| Ranged DPS | 85 | 98 |
+| Wand DPS | 173 | 198 |
+| Caster weapon spell power | 343 | 283 |
+
+Positive budget multipliers begin at level 68 and follow the existing curve through 80.
+The caster weapon spell-power reduction phases in over 68–80; its final value is lower than the
+old level-80 value, but still grows with each character level. No category drops on leveling.
+Burnished Spaulders of Might consequently reach 38 Strength, 82 Stamina, 16 Hit and 27 Defense
+at 80; their existing 1,256 armor is unchanged.
+
+These are shared DBC curves. The live impact audit also identifies 18 Felforged armor pieces,
+three test heirloom templates and eleven developer templates with applicable level-80 caps.
+Do not represent this as an item-quality-only change. Lower-cap Battleground Spoils and Necklace
+of the Sunken Empire remain unaffected. Deployment must account for that shared scope.
+
+For installation, use the generated table in both the server's DBC directory and the effective
+Area 52 client overlay, preserving all other archive entries. First check
+`SELECT * FROM scalingstatvalues_dbc WHERE Charlevel BETWEEN 68 AND 80`; unexpected SQL overrides
+must be reconciled before activation because they override the server DBC. The existing level-20
+SQL fix is outside this patch. Hash and retain the prior client/server files for rollback, stop the
+client before replacement, and activate the matched pair during the announced server restart.
+Publish through the separate Area 52 launcher channel only after activation checks. A source push
+does not distribute the client patch or activate these budgets.
