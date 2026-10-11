@@ -1,0 +1,10 @@
+{
+  "Area52Certification.cpp": {
+    "before": "a47aff5c6f042277a5b2d5c9cdb19001f633bd03c828ad3418e211a9fc3e34bb",
+    "after": "146beb6ef1f21ce3db4de6db47d43f322e74eab4354e759d05a13d9327500b77"
+  },
+  "Area52CertificationRules.h": {
+    "before": "b4d3c0efce1bfaeea7cecd7e60c98985772708dc9436b3ed35fed24435dad6ec",
+    "after": "b5dae75f049127ab9d2fa05c39a797867ebe7897e87f5b7c8259748e470d2983"
+  }
+}

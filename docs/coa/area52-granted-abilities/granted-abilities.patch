@@ -1,0 +1,99 @@
+--- a/src/server/coa/Area52Certification.cpp
++++ b/src/server/coa/Area52Certification.cpp
+@@ -21,6 +21,7 @@
+ namespace
+ {
+ std::map<std::uint32_t, bool> Entries;
++std::map<std::uint32_t, std::vector<std::uint32_t>> GrantedRanks;
+ std::map<std::uint32_t, TesterScore> Scores;
+ std::map<std::uint32_t, std::chrono::steady_clock::time_point> Requests;
+ std::mutex Mutex;
+@@ -140,6 +141,7 @@
+             boost::property_tree::ptree report;
+             boost::property_tree::read_json(sConfigMgr->GetOption<std::string>(
+                 "CoA.FreePick.CertificationFile", ""), report);
++            GrantedRanks = ReadGrantedRanks(report);
+             Entries = ReadEligibility(report);
+             Evidence = report.get<std::string>("evidence_sha256", "");
+             auto* statement = CharacterDatabase.GetPreparedStatement(CHAR_SEL_A52_CERTIFICATIONS);
+@@ -158,6 +160,7 @@
+         catch (std::exception const& error)
+         {
+             Entries.clear();
++            GrantedRanks.clear();
+             LOG_ERROR("coa", "Area 52 tester certification disabled: {}", error.what());
+         }
+     }
+@@ -223,6 +226,13 @@
+             Send(player, "ERROR|Only VERIFIED abilities, talents, or Mystic Enchants can be certified.");
+             return false;
+         }
++        if (auto const grants = GrantedRanks.find(id); grants != GrantedRanks.end())
++            if (std::none_of(grants->second.begin(), grants->second.end(),
++                [&](std::uint32_t spell) { return player->HasSpell(spell); }))
++            {
++                Send(player, "ERROR|Learn this granted ability before certifying it.");
++                return false;
++            }
+         if (!entry->second)
+         {
+             auto* insert = CharacterDatabase.GetPreparedStatement(CHAR_INS_A52_CERTIFICATION);
+--- a/src/server/coa/Area52CertificationRules.h
++++ b/src/server/coa/Area52CertificationRules.h
+@@ -13,6 +13,7 @@
+ 
+ namespace Area52Certification
+ {
++inline constexpr std::uint32_t GrantedEntryMask = 0x40000000u;
+ inline constexpr std::uint32_t MysticEntryMask = 0x80000000u;
+ inline constexpr std::string_view Prefix = "A52CERT\t";
+ 
+@@ -66,18 +67,46 @@
+     {
+         auto const& row = child.second;
+         auto const kind = row.get<std::string>("kind");
+-        if (kind != "advancement" && kind != "mystic")
++        if (kind != "advancement" && kind != "mystic" && kind != "granted")
+             continue;
+         auto id = row.get<std::uint32_t>("id");
+-        if (!id || id >= MysticEntryMask)
++        if (!id || id >= GrantedEntryMask)
+             throw std::runtime_error("Invalid certification identifier");
+         if (kind == "mystic")
+             id |= MysticEntryMask;
++        else if (kind == "granted")
++            id |= GrantedEntryMask;
+         if (!seen.emplace(id, true).second)
+             throw std::runtime_error("Duplicate certification entry");
+         auto const status = row.get<std::string>("status");
+         if (status == "VERIFIED" || status == "CERTIFIED")
+             result.emplace(id, status == "CERTIFIED" || row.get<bool>("certified", false));
++    }
++    return result;
++}
++
++inline std::map<std::uint32_t, std::vector<std::uint32_t>> ReadGrantedRanks(boost::property_tree::ptree const& report)
++{
++    std::map<std::uint32_t, std::vector<std::uint32_t>> result;
++    for (auto const& child : report.get_child("entries"))
++    {
++        auto const& row = child.second;
++        if (row.get<std::string>("kind") != "granted")
++            continue;
++        auto const root = row.get<std::uint32_t>("id");
++        if (!root || root >= GrantedEntryMask || result.contains(root | GrantedEntryMask))
++            throw std::runtime_error("Invalid granted ability identifier");
++        auto& ranks = result[root | GrantedEntryMask];
++        for (auto const& childRank : row.get_child("ranks"))
++        {
++            auto const rank = childRank.second.get_value<std::uint32_t>();
++            if (!rank || rank >= GrantedEntryMask || ranks.size() >= 100 ||
++                std::find(ranks.begin(), ranks.end(), rank) != ranks.end())
++                throw std::runtime_error("Invalid granted ability rank");
++            ranks.push_back(rank);
++        }
++        if (std::find(ranks.begin(), ranks.end(), root) == ranks.end())
++            throw std::runtime_error("Granted ability root missing from ranks");
+     }
+     return result;
+ }
