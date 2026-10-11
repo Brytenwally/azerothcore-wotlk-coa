@@ -14,13 +14,15 @@ using SpellEffIndex = int;
 constexpr int EFFECT_0 = 0, SPELL_EFFECT_TRIGGER_SPELL = 64;
 constexpr int SPELL_WARRIOR_SWORD_AND_BOARD_PROC = 50227;
 constexpr int SPELL_WARRIOR_SHIELD_SLAM_DISPEL = 823922;
+constexpr int SPELL_WARRIOR_SWORD_AND_THUNDER = 979777;
 #define PrepareSpellScript(x) public:
 #define SpellEffectFn(a,b,c) 0
 struct Effect { int TriggerSpell = 823922; };
 struct Info { Effect Effects[3]; };
 struct Caster {
     bool proc = false;
-    bool HasAura(int id) { assert(id == 50227); return proc; }
+    bool enchant = false;
+    bool HasAura(int id) { return id == 979777 ? enchant : id == 50227 && proc; }
 };
 struct SpellScript {
     Info info;
@@ -42,6 +44,11 @@ int main() {
         spell.HandleDispelTrigger(0);
         assert(spell.prevented == !proc);
     }
+    spell_warr_shield_slam_dispel_gate redirected;
+    redirected.caster.proc = true;
+    redirected.caster.enchant = true;
+    redirected.HandleDispelTrigger(0);
+    assert(redirected.prevented);
     spell_warr_shield_slam_dispel_gate other;
     other.info.Effects[0].TriggerSpell = 1;
     other.HandleDispelTrigger(0);

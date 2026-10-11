@@ -75,6 +75,8 @@ enum WarriorSpells
     SPELL_WARRIOR_WARRIORS_WRATH                    = 21887,
     SPELL_WARRIOR_SWORD_AND_BOARD_PROC              = 50227,
     SPELL_WARRIOR_SHIELD_SLAM_DISPEL                = 823922,
+    SPELL_WARRIOR_SWORD_AND_THUNDER                 = 979777,
+    SPELL_WARRIOR_THUNDER_CLAP                      = 6343,
 };
 
 enum WarriorSpellIcons
@@ -1168,7 +1170,8 @@ class spell_warr_shield_slam_dispel_gate : public SpellScript
     void HandleDispelTrigger(SpellEffIndex effIndex)
     {
         if (GetSpellInfo()->Effects[effIndex].TriggerSpell == SPELL_WARRIOR_SHIELD_SLAM_DISPEL
-            && !GetCaster()->HasAura(SPELL_WARRIOR_SWORD_AND_BOARD_PROC))
+            && (!GetCaster()->HasAura(SPELL_WARRIOR_SWORD_AND_BOARD_PROC)
+                || GetCaster()->HasAura(SPELL_WARRIOR_SWORD_AND_THUNDER)))
             PreventHitDefaultEffect(effIndex);
     }
 
@@ -1176,6 +1179,76 @@ class spell_warr_shield_slam_dispel_gate : public SpellScript
     {
         OnEffectLaunchTarget += SpellEffectFn(spell_warr_shield_slam_dispel_gate::HandleDispelTrigger,
             EFFECT_0, SPELL_EFFECT_TRIGGER_SPELL);
+    }
+};
+
+class spell_warr_sword_and_thunder_modifiers : public AuraScript
+{
+    PrepareAuraScript(spell_warr_sword_and_thunder_modifiers);
+
+    void CalculateModifier(AuraEffect const* effect, SpellModifier*& modifier)
+    {
+        if (!modifier || !GetUnitOwner()->HasAura(SPELL_WARRIOR_SWORD_AND_THUNDER))
+            return;
+
+        modifier->mask = effect->GetEffIndex() == EFFECT_2 ? flag96(0, 0, 0) : flag96(0x80, 0, 0);
+        if (effect->GetEffIndex() == EFFECT_0)
+            modifier->value = -100;
+        else if (effect->GetEffIndex() == EFFECT_2)
+            modifier->value = 0;
+    }
+
+    void Register() override
+    {
+        DoEffectCalcSpellMod += AuraEffectCalcSpellModFn(spell_warr_sword_and_thunder_modifiers::CalculateModifier,
+            EFFECT_ALL, SPELL_AURA_ADD_PCT_MODIFIER);
+    }
+};
+
+class spell_warr_sword_and_thunder_dispel : public SpellScript
+{
+    PrepareSpellScript(spell_warr_sword_and_thunder_dispel);
+
+    bool _empowered = false;
+    ObjectGuid _selectedTarget;
+
+    void CaptureProc()
+    {
+        _empowered = GetCaster()->HasAura(SPELL_WARRIOR_SWORD_AND_THUNDER)
+            && GetCaster()->HasAura(SPELL_WARRIOR_SWORD_AND_BOARD_PROC);
+        if (Player* player = GetCaster()->ToPlayer())
+            _selectedTarget = player->GetTarget();
+    }
+
+    void DispelTarget(SpellEffIndex)
+    {
+        if (_empowered && GetHitUnit() && GetHitUnit()->GetGUID() == _selectedTarget)
+            GetCaster()->CastSpell(GetHitUnit(), SPELL_WARRIOR_SHIELD_SLAM_DISPEL, true);
+    }
+
+    void Register() override
+    {
+        BeforeCast += SpellCastFn(spell_warr_sword_and_thunder_dispel::CaptureProc);
+        OnEffectHitTarget += SpellEffectFn(spell_warr_sword_and_thunder_dispel::DispelTarget,
+            EFFECT_0, SPELL_EFFECT_SCHOOL_DAMAGE);
+    }
+};
+
+class spell_warr_sword_and_thunder_cleanup : public AuraScript
+{
+    PrepareAuraScript(spell_warr_sword_and_thunder_cleanup);
+
+    void ClearProc(AuraEffect const*, AuraEffectHandleModes)
+    {
+        GetTarget()->RemoveAurasDueToSpell(SPELL_WARRIOR_SWORD_AND_BOARD_PROC);
+    }
+
+    void Register() override
+    {
+        AfterEffectApply += AuraEffectApplyFn(spell_warr_sword_and_thunder_cleanup::ClearProc,
+            EFFECT_0, SPELL_AURA_ADD_FLAT_MODIFIER, AURA_EFFECT_HANDLE_REAL);
+        AfterEffectRemove += AuraEffectRemoveFn(spell_warr_sword_and_thunder_cleanup::ClearProc,
+            EFFECT_0, SPELL_AURA_ADD_FLAT_MODIFIER, AURA_EFFECT_HANDLE_REAL);
     }
 };
 
@@ -1187,7 +1260,12 @@ class spell_warr_sword_and_board : public AuraScript
     void HandleProc(AuraEffect const* /*aurEff*/, ProcEventInfo& /*eventInfo*/)
     {
         Unit* caster = GetTarget();
-        if (caster->IsPlayer())
+        if (caster->IsPlayer() && caster->HasAura(SPELL_WARRIOR_SWORD_AND_THUNDER))
+        {
+            if (SpellInfo const* thunderClap = sSpellMgr->GetSpellInfo(SPELL_WARRIOR_THUNDER_CLAP))
+                caster->ToPlayer()->RemoveCategoryCooldown(thunderClap->GetCategory());
+        }
+        else if (caster->IsPlayer())
             caster->ToPlayer()->RemoveCategoryCooldown(1209); // Shield Slam category
     }
 
@@ -1300,6 +1378,9 @@ void AddSC_warrior_spell_scripts()
     RegisterSpellScript(spell_warr_extra_proc);
     RegisterSpellScript(spell_warr_sword_and_board);
     RegisterSpellScript(spell_warr_shield_slam_dispel_gate);
+    RegisterSpellScript(spell_warr_sword_and_thunder_modifiers);
+    RegisterSpellScript(spell_warr_sword_and_thunder_dispel);
+    RegisterSpellScript(spell_warr_sword_and_thunder_cleanup);
     RegisterSpellScript(spell_warr_glyph_of_blocking);
     RegisterSpellScript(spell_warr_item_t10_prot_4p_bonus);
 }
