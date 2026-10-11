@@ -421,3 +421,13 @@ CrowsCache.Barrens.X = -763.6296
 CrowsCache.Barrens.Y = -3191.6892
 CrowsCache.Barrens.Z = 91.666626
 CrowsCache.Barrens.O = 2.3004022
+
+# Optional shared-client XP hotspots. Independent of class or realm ruleset.
+# MaxContinent: 0 = Azeroth, 1 = Azeroth and Outland, 2 = all three continents.
+# The effective ceiling never exceeds the worldserver Expansion setting.
+# Azeroth starting zones on map 530 remain eligible with MaxContinent = 0.
+# The client FrameXML extension is required for map display and the GM editor.
+XPHotspots.Enable = 0
+XPHotspots.MaxContinent = 2
+XPHotspots.ActiveCount = 3
+XPHotspots.BuffSpell = 993945

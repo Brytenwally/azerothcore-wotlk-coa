@@ -1,0 +1,148 @@
+#ifndef XP_HOTSPOT_RULES_H
+#define XP_HOTSPOT_RULES_H
+
+#include <algorithm>
+#include <cmath>
+#include <cstdint>
+#include <string>
+#include <vector>
+
+namespace XPHotspots
+{
+struct Point
+{
+    double X = 0;
+    double Y = 0;
+};
+
+struct Location
+{
+    uint32_t Id = 0;
+    uint32_t Revision = 1;
+    uint32_t Map = 0;
+    uint32_t Zone = 0;
+    uint32_t Continent = 0;
+    std::string Name;
+    std::string Kind = "circle";
+    std::string Source = "gm";
+    Point Center;
+    double Radius = 150;
+    std::vector<Point> Points;
+    uint32_t Bonus = 150;
+    uint32_t Duration = 3600;
+    uint32_t Weight = 1;
+    uint32_t Cooldown = 3600;
+    uint64_t Queued = 0;
+    uint64_t Starts = 0;
+    uint64_t Ends = 0;
+    uint64_t LastEnd = 0;
+    bool Enabled = false;
+    bool Valid = true;
+    bool Icon = true;
+    bool Highlight = true;
+};
+
+inline double Cross(Point a, Point b, Point p)
+{
+    return (b.X - a.X) * (p.Y - a.Y) - (b.Y - a.Y) * (p.X - a.X);
+}
+
+inline bool OnSegment(Point a, Point b, Point p)
+{
+    return std::abs(Cross(a, b, p)) < 0.0001 &&
+        p.X >= std::min(a.X, b.X) - 0.0001 && p.X <= std::max(a.X, b.X) + 0.0001 &&
+        p.Y >= std::min(a.Y, b.Y) - 0.0001 && p.Y <= std::max(a.Y, b.Y) + 0.0001;
+}
+
+inline bool Intersects(Point a, Point b, Point c, Point d)
+{
+    return OnSegment(a, b, c) || OnSegment(a, b, d) || OnSegment(c, d, a) || OnSegment(c, d, b) ||
+        ((Cross(a, b, c) > 0) != (Cross(a, b, d) > 0) &&
+         (Cross(c, d, a) > 0) != (Cross(c, d, b) > 0));
+}
+
+inline bool ValidPolygon(std::vector<Point> const& points)
+{
+    if (points.size() < 3 || points.size() > 64)
+        return false;
+    double area = 0;
+    for (size_t i = 0; i < points.size(); ++i)
+    {
+        auto a = points[i];
+        auto b = points[(i + 1) % points.size()];
+        auto previous = points[(i + points.size() - 1) % points.size()];
+        if (!std::isfinite(a.X) || !std::isfinite(a.Y) || std::abs(a.X) > 20000 ||
+            std::abs(a.Y) > 20000 || (a.X == b.X && a.Y == b.Y))
+            return false;
+        if (std::abs(Cross(previous, a, b)) < 0.0001 &&
+            (previous.X - a.X) * (b.X - a.X) + (previous.Y - a.Y) * (b.Y - a.Y) > 0)
+            return false;
+        area += a.X * b.Y - b.X * a.Y;
+        for (size_t j = i + 1; j < points.size(); ++j)
+            if (j != i + 1 && !(i == 0 && j == points.size() - 1) &&
+                Intersects(a, b, points[j], points[(j + 1) % points.size()]))
+                return false;
+    }
+    return std::abs(area) > 1;
+}
+
+inline bool Contains(Location const& row, uint32_t map, uint32_t zone, Point p)
+{
+    if (row.Map != map)
+        return false;
+    if (row.Kind == "zone")
+        return row.Zone == zone;
+    if (row.Kind == "circle")
+        return std::hypot(p.X - row.Center.X, p.Y - row.Center.Y) <= row.Radius;
+    bool inside = false;
+    for (size_t i = 0, j = row.Points.size() - 1; i < row.Points.size(); j = i++)
+    {
+        auto a = row.Points[i];
+        auto b = row.Points[j];
+        if (OnSegment(a, b, p))
+            return true;
+        if ((a.Y > p.Y) != (b.Y > p.Y) && p.X < (b.X - a.X) * (p.Y - a.Y) / (b.Y - a.Y) + a.X)
+            inside = !inside;
+    }
+    return inside;
+}
+
+inline bool Eligible(Location const& row, uint32_t continent, uint64_t now)
+{
+    return row.Enabled && row.Valid && row.Continent <= continent && (row.Weight || row.Queued) &&
+        row.Ends <= now && (row.Queued || row.LastEnd + row.Cooldown <= now);
+}
+
+inline Location const* Select(std::vector<Location> const& candidates, uint32_t roll)
+{
+    Location const* queued = nullptr;
+    for (auto const& row : candidates)
+        if (row.Queued && (!queued || row.Queued > queued->Queued))
+            queued = &row;
+    if (queued)
+        return queued;
+    if (!roll)
+        return nullptr;
+    for (auto const& row : candidates)
+    {
+        if (roll <= row.Weight)
+            return &row;
+        roll -= row.Weight;
+    }
+    return nullptr;
+}
+
+inline bool Valid(Location const& row)
+{
+    return !row.Name.empty() && row.Name.size() <= 100 && row.Bonus <= 1000 &&
+        std::none_of(row.Name.begin(), row.Name.end(), [](unsigned char c) { return c < 32 || c == '|'; }) &&
+        row.Duration >= 60 && row.Duration <= 86400 && row.Weight <= 1000 && row.Cooldown <= 604800 &&
+        std::isfinite(row.Center.X) && std::isfinite(row.Center.Y) &&
+        std::abs(row.Center.X) <= 20000 && std::abs(row.Center.Y) <= 20000 &&
+        ((row.Kind == "zone" && row.Zone) ||
+         (row.Kind == "circle" && std::isfinite(row.Radius) && row.Radius >= 1 && row.Radius <= 5000) ||
+         (row.Kind == "polygon" && ValidPolygon(row.Points)));
+}
+}
+
+#endif

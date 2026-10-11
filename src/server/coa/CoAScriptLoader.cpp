@@ -19,6 +19,7 @@
 #include "AscensionTinkerCombatSymbiosis.h"
 
 void AddAscensionCompatScripts();
+void AddSC_XPHotspots();
 void AddAscensionTravelPermitScripts();
 void AddSC_AscensionRulesets();
 void AddSC_AscensionMercenary();
@@ -709,4 +710,5 @@ void AddCoAScripts()
     AddSC_AscensionClassBundleStore();
     AddSC_AscensionLfgObjective();
     AddSC_AscensionBushcraft();
+    AddSC_XPHotspots();
 }
