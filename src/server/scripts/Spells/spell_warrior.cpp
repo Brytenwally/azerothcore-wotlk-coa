@@ -73,6 +73,8 @@ enum WarriorSpells
     SPELL_WARRIOR_SLAM_GCD_REDUCED                  = 71072,
     SPELL_WARRIOR_EXECUTE_GCD_REDUCED               = 71069,
     SPELL_WARRIOR_WARRIORS_WRATH                    = 21887,
+    SPELL_WARRIOR_SWORD_AND_BOARD_PROC              = 50227,
+    SPELL_WARRIOR_SHIELD_SLAM_DISPEL                = 823922,
 };
 
 enum WarriorSpellIcons
@@ -1159,6 +1161,24 @@ class spell_warr_extra_proc : public AuraScript
     }
 };
 
+class spell_warr_shield_slam_dispel_gate : public SpellScript
+{
+    PrepareSpellScript(spell_warr_shield_slam_dispel_gate);
+
+    void HandleDispelTrigger(SpellEffIndex effIndex)
+    {
+        if (GetSpellInfo()->Effects[effIndex].TriggerSpell == SPELL_WARRIOR_SHIELD_SLAM_DISPEL
+            && !GetCaster()->HasAura(SPELL_WARRIOR_SWORD_AND_BOARD_PROC))
+            PreventHitDefaultEffect(effIndex);
+    }
+
+    void Register() override
+    {
+        OnEffectLaunchTarget += SpellEffectFn(spell_warr_shield_slam_dispel_gate::HandleDispelTrigger,
+            EFFECT_0, SPELL_EFFECT_TRIGGER_SPELL);
+    }
+};
+
 // Sword and Board proc - remove Shield Slam cooldown
 class spell_warr_sword_and_board : public AuraScript
 {
@@ -1279,6 +1299,7 @@ void AddSC_warrior_spell_scripts()
     RegisterSpellScript(spell_warr_deep_wounds_aura);
     RegisterSpellScript(spell_warr_extra_proc);
     RegisterSpellScript(spell_warr_sword_and_board);
+    RegisterSpellScript(spell_warr_shield_slam_dispel_gate);
     RegisterSpellScript(spell_warr_glyph_of_blocking);
     RegisterSpellScript(spell_warr_item_t10_prot_4p_bonus);
 }
