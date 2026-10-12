@@ -20,7 +20,8 @@ def method(text, name):
 def main():
     source = (ROOT / 'src/server/scripts/World/npc_advanced_training_dummy.cpp').read_text()
     methods = '\n'.join(method(source, name) for name in (
-        'bool UpdateBossSession()', 'void SetBossCounterImmunity(', 'void HandleBossEvent('))
+        'bool UpdateBossSession()', 'void SetBossCounterImmunity(', 'void HandleBossEvent(',
+        'void EnsureBossVisual()'))
     code = (Path(__file__).parent / 'scenario.cpp.in').read_text().replace('ACTUAL_METHODS', methods)
     with tempfile.TemporaryDirectory() as directory:
         path = Path(directory)

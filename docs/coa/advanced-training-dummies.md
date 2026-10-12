@@ -97,3 +97,19 @@ Build and the `boss_dummy` focused extracted-handler harness passed. The harness
 stun/disarm cancellation, lockout deferral, range, reset and restoring the melee damage modifier.
 Visual warning/cast-bar presentation, first-hit scaling, actual player mitigation and nonlethal behavior
 still require in-game acceptance. This prototype does not introduce death/overkill proc simulation.
+
+### O'mrogg hologram appearance
+
+The staged Boss Simulator uses Warbringer O'mrogg's display 18031 (model 2401), preserving the display's
+native scale, and his normal weapon item 29484. Only simulator entry 9780200 changes; the dungeon boss
+and the other training dummies remain unchanged.
+
+Cosmetic aura 2180104, `Cosmetic - Ghost Visual Blue Fog Transparent`, exists in both the effective
+client and server Spell.dbc. It has one apply-aura dummy effect, visual 886, indefinite duration 21,
+and no stat, invisibility, phase or transform effect. No spell_script_names override was present.
+The simulator applies it on reset and restores it on maintenance after aura cleanup without stacking
+copies. The focused harness checks restoration and exclusion of other dummy roles.
+
+The expected blue translucent appearance still needs visual acceptance on O'mrogg; it is based on
+the client definition, not a rendered preview. The existing client already has these definitions.
+No mechanical projector-pad placement is included in this visual step.

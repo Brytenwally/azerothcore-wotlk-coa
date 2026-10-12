@@ -12,7 +12,7 @@ enum { EVENT_BOSS_SPELL=2, EVENT_BOSS_WARNING, EVENT_BOSS_HEAVY_HIT,
     SPELL_AURA_MOD_STUN, SPELL_AURA_MOD_DISARM, LANG_UNIVERSAL,
     SPELL_SCHOOL_MASK_SHADOW, SPELL_PRACTICE_SHADOW_BOLT, SPELLVALUE_BASE_POINT0,
     BASE_ATTACK, MAXDAMAGE, TRIGGERED_IGNORE_POWER_AND_REAGENT_COST,
-    UNIT_MOD_DAMAGE_MAINHAND, TOTAL_PCT };
+    UNIT_MOD_DAMAGE_MAINHAND, TOTAL_PCT, SPELL_BOSS_HOLOGRAM };
 constexpr unsigned UNIT_STATE_CASTING=1, UNIT_STATE_STUNNED=2;
 struct Guid { bool IsEmpty() const { return false; } };
 struct Player { bool alive=true; bool IsAlive() const { return alive; } };
@@ -25,6 +25,9 @@ struct Creature {
     bool IsWithinDistInMap(Player*, float) { return near; }
     bool IsWithinMeleeRange(Player*) { return melee; }
     bool HasAuraType(unsigned id) { return auras.contains(id); }
+    bool HasAura(unsigned id) { return auras.contains(id); }
+    unsigned auraAdds=0;
+    void AddAura(unsigned id, Creature*) { auras.insert(id); ++auraAdds; }
     bool HasUnitState(unsigned flags) { return state & flags; }
     bool IsSpellProhibited(unsigned) { return locked; }
     void ApplySpellImmune(unsigned, unsigned, unsigned id, bool enabled) {
@@ -61,13 +64,25 @@ struct AI {
     std::vector<int> _activity{1};
     bool _heavyPending=false, reset=false;
     Events events;
-    bool IsBoss() { return true; }
+    bool boss=true;
+    bool IsBoss() { return boss; }
     void Reset() { reset=true; _heavyPending=false; events.scheduled.clear(); }
 ACTUAL_METHODS
 };
 int main() {
     Creature creature;
     AI ai{&creature};
+    ai.EnsureBossVisual();
+    ai.EnsureBossVisual();
+    assert(creature.HasAura(SPELL_BOSS_HOLOGRAM) && creature.auraAdds==1);
+    creature.RemoveAllAuras();
+    ai.EnsureBossVisual();
+    assert(creature.HasAura(SPELL_BOSS_HOLOGRAM) && creature.auraAdds==2);
+    creature.RemoveAllAuras();
+    ai.boss=false;
+    ai.EnsureBossVisual();
+    assert(creature.auras.empty());
+    ai.boss=true;
     ai.HandleBossEvent(EVENT_BOSS_WARNING);
     assert(ai._heavyPending && ai.events.scheduled[EVENT_BOSS_HEAVY_HIT]==3000);
     assert(!creature.immunities.contains(MECHANIC_STUN));

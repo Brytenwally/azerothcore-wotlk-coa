@@ -31,7 +31,8 @@ enum DummyEntries
 
 enum DummySpells
 {
-    SPELL_PRACTICE_SHADOW_BOLT = 686
+    SPELL_PRACTICE_SHADOW_BOLT = 686,
+    SPELL_BOSS_HOLOGRAM = 2180104
 };
 }
 
@@ -100,6 +101,7 @@ struct npc_advanced_training_dummy : ScriptedAI
         me->SetImmuneToPC(false);
         me->SetRegeneratingHealth(!IsExecute());
         SetTrainingLevel(IsDynamic() ? 1 : me->GetCreatureTemplate()->minlevel);
+        EnsureBossVisual();
     }
 
     void MoveInLineOfSight(Unit*) override { }
@@ -328,6 +330,13 @@ private:
             if (IsHealing() && _healingEnabled)
                 me->SetHealth(me->CountPctFromMaxHealth(50));
         }
+        EnsureBossVisual();
+    }
+
+    void EnsureBossVisual()
+    {
+        if (IsBoss() && !me->HasAura(SPELL_BOSS_HOLOGRAM))
+            me->AddAura(SPELL_BOSS_HOLOGRAM, me);
     }
 
     void SetBossCounterImmunity(bool enabled)
