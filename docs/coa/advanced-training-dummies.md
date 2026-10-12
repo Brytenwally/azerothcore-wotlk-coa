@@ -131,3 +131,11 @@ and `boss_dummy` harness; separate source and C++ style checks passed. Reports a
 checks retained movement immunity across configurable CC toggles and boss counter windows, alongside
 existing rotation and reset checks. Live spell casts were not run; runtime flakiness is unmeasured.
 No SQL or client update is required. This source repair is staged for the next server activation.
+
+
+### Goblin simulator base
+
+Entry `990001`, Boss Simulator - Goblin Teleporter Base (3x), is a separate decorative
+clone of `188454` at three times its template scale. The original stays unchanged.
+After loading the template at server startup, stand at the intended center and use
+`.gobject add 990001`. No spawn is included; placement remains a GM choice.
