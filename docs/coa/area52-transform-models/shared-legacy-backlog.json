@@ -1,0 +1,132 @@
+{
+  "scope": "Shared/legacy content; no current Area 52 player dependency found. Not proven CoA-only.",
+  "reopen_when": "A quest, encounter, item, ability, or tester report establishes an active dependency, or reliable missing mapping/assets become available.",
+  "entries": [
+    {
+      "spell": 8324,
+      "name": "Perm. Illusion HE Hunter",
+      "effect": 0,
+      "creature": 6029,
+      "status": "shared-legacy-backlog",
+      "evidence": {
+        "name": "Lava Spout Totem",
+        "displays": [
+          1421
+        ],
+        "row": 5460
+      },
+      "paths": [
+        "Creature\\Spells\\StasisTotem.mdx"
+      ],
+      "finding": "name-conflict",
+      "area52_activation_blocker": false
+    },
+    {
+      "spell": 35375,
+      "name": "Dive Bomb",
+      "effect": 0,
+      "creature": 20559,
+      "status": "shared-legacy-backlog",
+      "evidence": null,
+      "finding": "unresolved",
+      "area52_activation_blocker": false
+    },
+    {
+      "spell": 68662,
+      "name": "Goblinated",
+      "effect": 0,
+      "creature": 37925,
+      "status": "shared-legacy-backlog",
+      "evidence": null,
+      "finding": "unresolved",
+      "area52_activation_blocker": false
+    },
+    {
+      "spell": 73952,
+      "name": "Motivate",
+      "effect": 0,
+      "creature": 4294967295,
+      "status": "shared-legacy-backlog",
+      "evidence": null,
+      "finding": "unresolved",
+      "area52_activation_blocker": false
+    },
+    {
+      "spell": 77776,
+      "name": "Lavamans Stalker",
+      "effect": 0,
+      "creature": 41624,
+      "status": "shared-legacy-backlog",
+      "evidence": null,
+      "finding": "unresolved",
+      "area52_activation_blocker": false
+    },
+    {
+      "spell": 955175,
+      "name": "Plank morph",
+      "effect": 0,
+      "creature": 1462185,
+      "status": "shared-legacy-backlog",
+      "evidence": {
+        "name": "Invisible Bridge",
+        "displays": [
+          508802
+        ],
+        "row": 114450
+      },
+      "paths": [
+        "world\\expansion06\\doodads\\warden\\7wd_warden_bridge01.m2"
+      ],
+      "finding": "model-file-unresolved",
+      "area52_activation_blocker": false
+    },
+    {
+      "spell": 991034,
+      "name": "Madness Transform #1",
+      "effect": 0,
+      "creature": 103200,
+      "status": "shared-legacy-backlog",
+      "evidence": {
+        "name": "Past Illidan Transform",
+        "displays": [
+          139183
+        ],
+        "row": 41920
+      },
+      "paths": [
+        "CREATURE\\ILLIDAN_PAST\\ILLIDAN_PAST.M2"
+      ],
+      "finding": "model-file-unresolved",
+      "area52_activation_blocker": false
+    },
+    {
+      "spell": 993948,
+      "name": "Falling!",
+      "effect": 1,
+      "creature": 407512,
+      "status": "shared-legacy-backlog",
+      "evidence": {
+        "name": "world\\expansion05\\doodads\\ogre\\6og_ogre_boulder_02.m2",
+        "displays": [
+          407512
+        ],
+        "row": 81721
+      },
+      "paths": [
+        "world\\expansion05\\doodads\\ogre\\6og_ogre_boulder_02.m2"
+      ],
+      "finding": "model-file-unresolved",
+      "area52_activation_blocker": false
+    },
+    {
+      "spell": 5011107,
+      "name": "Transform",
+      "effect": 0,
+      "creature": 49930,
+      "status": "shared-legacy-backlog",
+      "evidence": null,
+      "finding": "unresolved",
+      "area52_activation_blocker": false
+    }
+  ]
+}

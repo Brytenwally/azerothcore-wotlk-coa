@@ -6,13 +6,13 @@ The pending migration supplies 219 missing creature/model mappings covering 293 
 
 The migration only fills entries with no model rows and no world spawns. Existing templates and existing model mappings remain unchanged; newly created templates are visual references with no new spawns, scripts, loot or services. Reapplication does not duplicate or overwrite mappings. It intentionally leaves partly populated existing mappings alone.
 
-## Audit scope and exceptions
+## Audit scope and shared/legacy backlog
 
 The census examined 1,836 transform effects in the union of installed client and server Spell.dbc, with SQL spell rows taking precedence and recovered native effective exports used where available. 1,466 already have valid model links; 293 receive repairs. The 67 zero-target effects use specialized/scripted handling and do not enter the missing-creature pig fallback. Their individual gameplay behavior is not certified by this audit.
 
 All 59 client creature entries explicitly named as incarnations have valid display/model links. All 61 client shapeshift-form records have valid nonzero display/model links. These are structural checks, not proof of every incarnation's visual rendering or unlock behavior.
 
-The initial scan left eleven candidates unchanged. Follow-up review cleared 986317 as a non-transform visual-kit effect; nine actual transform cases remain after the Twisted Seal follow-up. The historical census includes that one inert aura-field false positive. All 293 staged repairs use real apply-aura effects.
+The initial scan left eleven candidates unchanged. Follow-up review cleared 986317 as a non-transform visual-kit effect; nine actual transform cases remain in the shared/legacy backlog after the Twisted Seal follow-up. The historical census includes that one inert aura-field false positive. All 293 staged repairs use real apply-aura effects.
 
 | Spell | Reason |
 | --- | --- |
@@ -53,3 +53,7 @@ Twisted Seal is now a concrete repair candidate: Creature.dbc calls creature 190
 Twisted Seal was added after authorization to implement the established mapping. The three missing model files remain missing after searching archive filenames as well as their exact DBC paths. Missing spell/creature links are not evidence that an entry is unused; usage and intended replacements remain unresolved for the remaining legacy/NPC-looking spells.
 
 The follow-up checked direct DBC trigger references, effective SmartAI casts and linked spells, quest reward spells, and spell-bearing fields in Exiles quest/item/creature tables. No incoming links identifying replacements were recovered. Outgoing helper 991996 names Past Illidan Visual, corroborating that identity; Falling! triggers 993949 Meteor movement, corroborating its boulder/meteor theme without establishing an alternative asset. Absence of these links does not prove the spells are unused.
+
+## Backlog disposition
+
+At the owner's direction, spells 8324, 35375, 68662, 73952, 77776, 955175, 991034, 993948 and 5011107 are tracked in shared-legacy-backlog.json. They no longer block the Area 52 transformation batch. Their unresolved findings and provenance remain preserved; this is a scope classification, not a repair or VERIFIED promotion. No current Area 52 Advancement/ME dependency was found, and CoA-only ownership was not established. Reopen an entry when an active content dependency or tester report is found, or when reliable missing mappings/assets become available. Class comparison reviewed upstream b8e4f26165334d77264e0ab041c804f16a5976c9. No gameplay, deployment, or client release changes accompany this disposition.

@@ -2,11 +2,9 @@
   "transform_effects": 1836,
   "statuses": {
     "mapped": 1466,
-    "name-conflict": 1,
+    "shared-legacy-backlog": 9,
     "scripted-zero-target": 67,
     "staged-repair": 293,
-    "unresolved": 5,
-    "model-file-unresolved": 3,
     "not-a-transform": 1
   },
   "creature_repairs": 219,
@@ -14,5 +12,7 @@
   "incarnations": 59,
   "incarnation_statuses": {
     "display-linked": 59
-  }
+  },
+  "shared_legacy_backlog": 9,
+  "area52_unresolved_model_blockers": 0
 }
