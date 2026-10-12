@@ -14,9 +14,9 @@ source = r'''
 int main()
 {
     using namespace XPHotspots;
-    for (auto action : {"new", "newmap", "delete", "merge", "brush", "shape", "point", "center", "clear"})
+    for (auto action : {"new", "newmap", "merge", "brush", "shape", "point", "center", "clear"})
     {
-        assert(!CanManage(2, action));
+        assert(CanManage(2, action));
         assert(CanManage(3, action));
     }
     for (auto action : {"general", "edit", "save", "stop", "next", "enable", "disable", "announce", "teleport"})
@@ -24,6 +24,8 @@ int main()
         assert(CanManage(2, action));
         assert(!CanManage(1, action));
     }
+    assert(!CanManage(2, "delete"));
+    assert(CanManage(3, "delete"));
     GeneralSettings settings;
     assert(ValidSettings(settings));
     std::array<uint32_t, SettingCount> counts{};

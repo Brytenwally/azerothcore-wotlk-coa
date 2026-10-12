@@ -106,22 +106,26 @@ class HotspotClientTests(unittest.TestCase):
         self.row(**values)
         self.receive('E')
 
-    def test_level_two_can_manage_but_cannot_design(self):
+    def test_level_two_can_design_but_cannot_delete(self):
         self.snapshot(kind='polygon', draft=True)
         self.receive('ACCESS|2')
-        self.lua.execute('XPHotspots.ShowPanel();XPHotspots.queue={};XPHotspots.NewDraft();XPHotspots.StartShape("circle")')
-        self.assertEqual(self.lua.eval('#XPHotspots.queue'), 0)
-        self.lua.execute('b=ButtonNamed("Stop selected");b.scripts.OnClick(b)')
-        self.assertTrue(self.lua.eval('XPHotspots.queue[1]:match("^stop ")~=nil'))
+        self.lua.execute('XPHotspots.ShowPanel();XPHotspots.queue={};XPHotspots.StartShape("circle")')
+        self.assertEqual(self.lua.eval('XPHotspots.queue[1]'), 'shape circle')
         self.lua.execute('XPHotspots.ShowPaintTools()')
-        self.assertTrue(self.lua.eval('XPHotspots.paintPanel==nil'))
+        self.assertTrue(self.lua.eval('XPHotspots.paintPanel~=nil'))
+        self.lua.execute('XPHotspots.queue={};b=ButtonNamed("Delete selected");b.scripts.OnClick(b)')
+        self.assertEqual(self.lua.eval('#XPHotspots.queue'), 0)
+        self.assertTrue(self.lua.eval('popup==nil'))
+        self.lua.execute('XPHotspots.NewDraft()')
+        self.assertTrue(self.lua.eval('XPHotspots.canDesign'))
 
-    def test_level_two_apply_settings_does_not_send_design_commands(self):
+    def test_level_two_apply_settings_includes_design_commands(self):
         self.snapshot(draft=True)
         self.receive('ACCESS|2')
         self.lua.execute('XPHotspots.ShowPanel();XPHotspots.queue={};b=ButtonNamed("Apply settings");b.scripts.OnClick(b)')
-        self.assertEqual(self.lua.eval('#XPHotspots.queue'), 1)
-        self.assertTrue(self.lua.eval('XPHotspots.queue[1]:match("^settings ")~=nil'))
+        self.assertEqual(self.lua.eval('#XPHotspots.queue'), 3)
+        self.assertTrue(self.lua.eval('XPHotspots.queue[1]:match("^name ")~=nil'))
+        self.assertTrue(self.lua.eval('XPHotspots.queue[3]:match("^radius ")~=nil'))
 
     def test_save_waits_for_finished_paint_preview(self):
         self.snapshot(kind='polygon', draft=True)

@@ -314,11 +314,10 @@ and Kalimdor respectively. Outland and Northrend overviews show only their own l
 
 ## Polygon painting and permissions
 
-Level 2 GMs can browse and manage existing hotspots: enable/disable, stop, move to next, teleport,
-edit XP/timing/rotation/display settings, manage general limits and announcements, and apply defaults.
-Level 3 GMs additionally create, delete, merge, rename and edit boundaries. The server checks each
-operation, including addon requests; Level 2 saves retain the existing identity and geometry.
-The client receives a separate ACCESS capability packet and disables design controls for Level 2.
+Level 2 GMs have all hotspot controls except permanent deletion, including creation, merging,
+renaming, boundary painting, saving new drafts, and all operational/general settings.
+Permanent deletion requires Level 3. Both addon requests and text commands enforce this server-side;
+the client disables Delete selected for Level 2 while enabling all design tools.
 
 Open Drawing tools while creating or editing a polygon. Points retains the original vertex editing.
 Trace perimeter uses CTRL-drag, then closes the outline on release. It replaces the draft boundary

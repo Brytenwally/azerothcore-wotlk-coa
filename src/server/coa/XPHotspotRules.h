@@ -14,13 +14,7 @@ namespace XPHotspots
 {
 inline bool CanManage(uint32_t security, std::string_view action)
 {
-    if (security >= 3)
-        return true;
-    if (security < 2)
-        return false;
-    return action == "general" || action == "edit" || action == "settings" || action == "save" ||
-        action == "preview" || action == "enable" || action == "disable" || action == "next" ||
-        action == "stop" || action == "announce" || action == "teleport" || action == "cancel";
+    return security >= 2 && (action != "delete" || security >= 3);
 }
 
 enum Setting : size_t

@@ -462,7 +462,7 @@ void Execute(Player* player, std::string const& command)
     }
     if (!CanManage(player->GetSession()->GetSecurity(), action))
     {
-        Send(player, "ERROR|Level 3 GM is required to create, delete, merge or redraw hotspots.");
+        Send(player, "ERROR|Level 3 GM is required to permanently delete hotspots.");
         return;
     }
     uint32 account = player->GetSession()->GetAccountId();
@@ -800,23 +800,6 @@ void Execute(Player* player, std::string const& command)
                 return;
             }
             std::getline(input >> std::ws, r.Name);
-        }
-        if (player->GetSession()->GetSecurity() < SEC_ADMINISTRATOR)
-        {
-            if (!r.Id || !Locations.contains(r.Id) || MergeSources.contains(owner))
-            {
-                Send(player, "ERROR|Level 2 GM may save settings only for an existing hotspot.");
-                return;
-            }
-            auto settingsOnly = Locations.at(r.Id);
-            settingsOnly.Revision = r.Revision;
-            settingsOnly.Bonus = r.Bonus;
-            settingsOnly.Duration = r.Duration;
-            settingsOnly.Weight = r.Weight;
-            settingsOnly.Cooldown = r.Cooldown;
-            settingsOnly.Icon = r.Icon;
-            settingsOnly.Highlight = r.Highlight;
-            r = std::move(settingsOnly);
         }
         if (!Valid(r) || (r.Id && (!Locations.contains(r.Id) || Locations.at(r.Id).Revision != r.Revision)))
         {

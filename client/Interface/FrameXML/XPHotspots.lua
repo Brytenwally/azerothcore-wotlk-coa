@@ -573,7 +573,8 @@ function H.ShowPanel()
         Button(panel,"Move to next",12,-375,150,function() SelectedCommand("next") end)
         Button(panel,"Stop selected",180,-375,165,function() SelectedCommand("stop") end)
         Button(panel,"Teleport to center",12,-465,333,function() SelectedCommand("teleport") end)
-        DesignButton("Delete selected",180,-405,165,function()
+        H.deleteButton=Button(panel,"Delete selected",180,-405,165,function()
+            if not H.canDelete then Notify("Level 3 GM required to permanently delete hotspots.");return end
             if not selected or B(selected.draft) or N(selected.id)==0 then
                 Notify("Select a saved hotspot first.");return
             end
@@ -619,7 +620,7 @@ function H.ShowPanel()
     ShowBrowser()
 end
 function H.NewDraft()
-    if not H.canDesign then Notify("Level 3 GM required to create hotspots.");return end
+    if not H.canDesign then Notify("Level 2 GM required to create hotspots.");return end
     H.stroke=nil
     selected=nil;draft=nil;H.newKind=nil;H.newCenter=nil;H.vertex=nil;H.merge={}
     H.ShowPanel()
@@ -632,7 +633,7 @@ function H.NewDraft()
     H.Draw();Notify("CTRL-click a zone map to start a circular draft. Choose Polygon to map a boundary.")
 end
 function H.StartShape(kind)
-    if not H.canDesign then Notify("Level 3 GM required to change boundaries.");return end
+    if not H.canDesign then Notify("Level 2 GM required to change boundaries.");return end
     if draft and N(draft.id)~=0 and (kind=="circle" or kind=="polygon") then
         if Send("shape "..kind) then H.paintPending=true end;return
     end
@@ -766,6 +767,9 @@ function H.UpdateDesignAccess()
     for _,button in ipairs(H.designButtons or {}) do
         if H.canDesign then button:Enable() else button:Disable() end
     end
+    if H.deleteButton then
+        if H.canDelete then H.deleteButton:Enable() else H.deleteButton:Disable() end
+    end
     if not H.canDesign then
         H.stroke=nil;H.paintMode="Points"
         if H.paintPanel then H.paintPanel:Hide() end
@@ -774,7 +778,7 @@ end
 local function Receive(text)
     if text=="PAINTREADY" then H.paintPending=nil;return end
     local access=text:match("^ACCESS|(%d+)$")
-    if access then H.canDesign=N(access)>=3;H.UpdateDesignAccess();return end
+    if access then H.canDesign=N(access)>=2;H.canDelete=N(access)>=3;H.UpdateDesignAccess();return end
     if text:sub(1,13)=="DRAFTCLEARED|" then
         if selected and B(selected.draft) then selected=nil end
         draft=nil;H.merge={};H.newKind=nil;H.newCenter=nil;H.vertex=nil
@@ -800,7 +804,7 @@ local function Receive(text)
     end
     if text:sub(1,6)=="BRAND|" then return end
     if text=="OFF" then
-        enabled=false;gm=false;H.canDesign=false;H.UpdateDesignAccess();H.rows={};H.queue={};H.refreshPending=false;H.refreshAgain=false
+        enabled=false;gm=false;H.canDesign=false;H.canDelete=false;H.UpdateDesignAccess();H.rows={};H.queue={};H.refreshPending=false;H.refreshAgain=false
         selected=nil;draft=nil;hovered=nil;snapshot=nil;incoming=nil;chunks=nil
         if panel then panel:Hide() end
         if browser then browser:Hide() end
