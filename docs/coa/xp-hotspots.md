@@ -26,7 +26,8 @@ XPHotspots.BuffSpell = 993945
 ceiling cannot exceed the core `Expansion` setting. An Azeroth-only progression realm using an
 expansion-2 client should explicitly set this option to 0. Blood elf and draenei starting zones on
 physical map 530 count as Azeroth. Instances, battlegrounds and unsupported physical maps are
-excluded. Changing these options requires a restart; the GM announcement toggle is immediate.
+excluded. Enable, map ceiling and buff changes require a restart. Active count is the startup fallback;
+saved GM General Settings override it and apply without a restart.
 Both map panels use a dark-blue/gold theme with neutral XP Hotspot titles. The client ignores the
 legacy server brand label. GMs open the manager from **XP Hotspot Menu** in the world map
 magnifying-glass filter menu. Clicking a hotspot opens its details, labels its ID in the manager,
@@ -87,7 +88,7 @@ Normal players cannot open the GM editor or mutate server state by forging UI re
 
 ## Map and GM editor
 
-Open the world map and choose **Hotspots**. Hover a marker to show its server-provided name, bonus,
+GMs open the world map magnifying-glass menu and choose **XP Hotspot Menu**. Hover a marker to show its server-provided name, bonus,
 remaining time and coverage highlight. Circle and polygon coverage comes from the stored geometry.
 Whole-zone membership uses the server's actual zone ID. Its map preview is a sampled 64-by-64 terrain
 mask, generated incrementally and cached; it is an approximate visual boundary, not the XP eligibility
@@ -117,6 +118,34 @@ For a Game Master:
    boundaries and does not fill gaps. Up to eight primitive boundaries are supported, including when
    merging an existing union. Stale source revisions reject the entire operation. Cancel leaves sources
    unchanged. Retired records stay in the database for provenance but cannot rotate or be re-enabled.
+
+### General Settings
+
+The **General Settings** tab manages the total active count (0–20), maximum active counts for
+Eastern Kingdoms, Kalimdor, Outland and Northrend, and maximums for Alliance, Horde and
+neutral/contested areas. Quotas are caps, not reserved minimums; 0 excludes a group, 20 leaves it
+unrestricted within the global limit. Total 0 pauses rotation. The scheduler keeps at most one
+active hotspot per zone, and realm expansion restrictions always apply. Blood elf starting zones
+count toward Eastern Kingdoms; draenei starting zones count toward Kalimdor. Faction classification
+uses the zone's AreaTable territory team; it never restricts the receiving player's faction.
+
+Lower limits stop excess events on the next scheduler tick (within one second), retaining active
+locations in ascending ID order when necessary. Raised limits fill from eligible weighted locations;
+insufficient candidates can leave slots empty. Stopped events receive their normal cooldown.
+
+Defaults include XP bonus (0–1000%), duration (1–1440 minutes), cooldown (0–10080 minutes), and a
+global announcement switch. New locations, including merges, inherit the defaults. Existing locations
+keep their values unless **Apply defaults to all existing hotspots** is explicitly checked. That option
+updates XP, duration and cooldown for every non-retired location, including disabled and active ones;
+it preserves geometry, eligibility, weight and queue state. Active end times are recalculated from their
+original start and may expire immediately. The checkbox clears after a successful save.
+
+All settings and optional bulk updates commit atomically to the existing `xp_hotspot_setting` and
+`xp_hotspot_location` tables; no schema migration is needed. IDs 1–13 store announcements, total,
+bonus, duration seconds, cooldown seconds, four continent caps, three faction caps, and revision.
+They survive restarts. Concurrent GM saves reject stale revisions; **Reload** retrieves current values.
+The protocol fallback `.hotspot general` reads settings. To save, pass those 13 integer values in order,
+followed by 0 or 1 for applying defaults. Both entry points require GM authorization.
 
 Additional map-editor protocol commands are `newmap KIND MAP ZONE X Y NAME`, `vertex INDEX X Y`
 and `merge ID REVISION ID REVISION ...`. They have the same GM authorization as the text fallback.

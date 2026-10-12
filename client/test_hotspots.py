@@ -14,7 +14,7 @@ function methods:HookScript(k,v)
  local old=self.scripts[k]
  self.scripts[k]=function(...) if old then old(...) end;v(...) end
 end
-function methods:SetText(t) self.text=t end
+function methods:SetText(t) self.text=tostring(t) end
 function methods:GetText() return self.text or "" end
 function methods:SetChecked(t) self.checked=t end
 function methods:GetChecked() return self.checked end
@@ -224,6 +224,46 @@ clock=1000.7;driver.scripts.OnUpdate(driver,0.3)
         self.assertEqual(self.lua.eval('p.width'), 32)
         self.lua.execute('p.scripts.OnLeave(p)')
         self.assertTrue(self.lua.eval('p.selection.shown'))
+
+    def test_general_settings_save_units_and_explicit_bulk_option(self):
+        self.snapshot()
+        self.receive('G|1|3|150|3600|3600|20|20|20|20|20|20|20|4')
+        self.lua.execute('XPHotspots.ShowGeneral();XPHotspots.queue={};b=ButtonNamed("Save general settings");b.scripts.OnClick(b)')
+        self.assertEqual(self.lua.eval('XPHotspots.queue[1]'), 'general 1 3 150 3600 3600 20 20 20 20 20 20 20 4 0')
+        self.lua.execute('''
+for _,f in ipairs(frames) do
+ if f.kind=="Font" and f.text=="Apply defaults to all existing hotspots" then f.point[2]:SetChecked(true) end
+end
+b.scripts.OnClick(b)
+''')
+        self.assertTrue(self.lua.eval('XPHotspots.queue[2]:match("4 1$")~=nil'))
+        self.receive('G|1|3|150|3600|3600|20|20|20|20|20|20|20|5')
+        self.receive('OK|General settings saved.')
+        self.lua.execute('b.scripts.OnClick(b)')
+        self.assertTrue(self.lua.eval('XPHotspots.queue[3]:match("5 0$")~=nil'))
+
+    def test_general_settings_are_gm_only_and_validate_fields(self):
+        self.snapshot(gm=0)
+        self.lua.execute('XPHotspots.ShowGeneral()')
+        self.assertTrue(self.lua.eval('ButtonNamed("Save general settings")==nil'))
+        self.snapshot()
+        self.receive('G|1|3|150|3600|3600|20|20|20|20|20|20|20|1')
+        self.lua.execute('XPHotspots.ShowGeneral();XPHotspots.queue={};ButtonNamed("3"):SetText("21");b=ButtonNamed("Save general settings");b.scripts.OnClick(b)')
+        self.assertEqual(self.lua.eval('#XPHotspots.queue'), 0)
+
+    def test_general_unsaved_edits_survive_snapshot_and_stale_save(self):
+        self.snapshot()
+        self.receive('G|1|3|150|3600|3600|20|20|20|20|20|20|20|4')
+        self.lua.execute('XPHotspots.ShowGeneral();edit=ButtonNamed("3");edit:SetText("5");edit.scripts.OnTextChanged(edit,true)')
+        self.receive('G|1|7|150|3600|3600|20|20|20|20|20|20|20|5')
+        self.assertEqual(self.lua.eval('edit:GetText()'), '5')
+        self.lua.execute('XPHotspots.queue={};b=ButtonNamed("Save general settings");b.scripts.OnClick(b)')
+        self.assertTrue(self.lua.eval('XPHotspots.queue[1]:match("4 0$")~=nil'))
+        self.receive('ERROR|Invalid or stale general settings. Refresh and try again.')
+        self.assertEqual(self.lua.eval('edit:GetText()'), '5')
+        self.lua.execute('b=ButtonNamed("Reload");b.scripts.OnClick(b)')
+        self.receive('G|1|7|150|3600|3600|20|20|20|20|20|20|20|5')
+        self.assertEqual(self.lua.eval('edit:GetText()'), '7')
 
     def test_new_polygon_starts_at_map_cursor(self):
         self.snapshot()

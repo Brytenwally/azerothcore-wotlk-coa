@@ -45,11 +45,10 @@ std::map<uint32, std::vector<std::string>> Masks;
 std::map<uint32, std::pair<uint32, std::vector<std::string>>> MaskWork;
 std::map<uint32, Location> MaskRequests;
 bool Enabled = false;
-bool Announce = true;
+GeneralSettings General;
 std::string Brand;
 uint32 Generation = 1;
 uint32 MaxContinent = 2;
-uint32 Slots = 3;
 uint32 Buff = 993945;
 uint32 WorldTimer = 0;
 constexpr char Prefix[] = "XPHOT\t";
@@ -235,7 +234,7 @@ bool Allowed(Location const& r)
         (r.Kind != "zone" || (area && area->mapid == r.Map && !area->zone));
 }
 
-bool SaveMany(std::vector<Location> const& rows)
+bool SaveMany(std::vector<Location> const& rows, GeneralSettings const* settings = nullptr)
 {
     auto transaction = WorldDatabase.BeginTransaction();
     std::vector<Tree> trees;
@@ -250,8 +249,18 @@ bool SaveMany(std::vector<Location> const& rows)
         transaction->Append(statement);
         trees.push_back(std::move(tree));
     }
+    if (settings)
+        for (size_t i = 0; i < SettingCount; ++i)
+        {
+            auto* statement = WorldDatabase.GetPreparedStatement(WORLD_UPD_XP_HOTSPOT_SETTING);
+            statement->SetData(0, uint32(i + 1));
+            statement->SetData(1, settings->Values[i]);
+            transaction->Append(statement);
+        }
     if (!WorldDatabase.AsyncCommitTransaction(transaction).m_future.get())
         return false;
+    if (settings)
+        General = *settings;
     for (size_t i = 0; i < rows.size(); ++i)
     {
         auto const& r = rows[i];
@@ -297,6 +306,24 @@ bool GM(Player* player)
     return player->GetSession()->GetSecurity() >= SEC_GAMEMASTER;
 }
 
+size_t FactionQuota(Location const& r)
+{
+    auto area = GetAreaEntryByAreaID(r.Zone);
+    if (area && area->team == AREATEAM_ALLY)
+        return Alliance;
+    if (area && area->team == AREATEAM_HORDE)
+        return Horde;
+    return Neutral;
+}
+
+void SendGeneral(Player* player)
+{
+    std::string packet = "G";
+    for (auto value : General.Values)
+        packet += "|" + std::to_string(value);
+    Send(player, packet);
+}
+
 void Snapshot(Player* player, uint32 map, uint32 zone, uint32 page, bool catalog, std::string search)
 {
     bool gm = GM(player);
@@ -326,9 +353,11 @@ void Snapshot(Player* player, uint32 map, uint32 zone, uint32 page, bool catalog
                 "% | " + std::to_string(rows[i].Duration / 60) + " minutes");
         return;
     }
+    if (gm)
+        SendGeneral(player);
     Send(player, "BRAND|" + Brand);
     Send(player, "B|" + std::to_string(Generation) + "|" + std::to_string(gm) + "|" +
-        std::to_string(Announce) + "|" + std::to_string(now) + "|" + std::to_string(page) + "|" +
+        std::to_string(General.Values[Announcements]) + "|" + std::to_string(now) + "|" + std::to_string(page) + "|" +
         std::to_string(pages));
     for (uint32 i = (page - 1) * perPage; i < std::min(uint32(rows.size()), page * perPage); ++i)
     {
@@ -427,9 +456,62 @@ void Execute(Player* player, std::string const& command)
     }
     uint32 account = player->GetSession()->GetAccountId();
     ObjectGuid owner = player->GetGUID();
+    if (action == "general")
+    {
+        input >> std::ws;
+        if (input.eof())
+        {
+            SendGeneral(player);
+            return;
+        }
+        GeneralSettings settings;
+        uint32 apply = 2;
+        for (auto& value : settings.Values)
+            if (!(input >> value))
+            {
+                Send(player, "ERROR|Invalid general settings. Nothing was saved.");
+                return;
+            }
+        std::string extra;
+        if (!(input >> apply) || apply > 1 || (input >> extra) || !ValidSettings(settings) ||
+            settings.Values[SettingsRevision] != General.Values[SettingsRevision])
+        {
+            Send(player, "ERROR|Invalid or stale general settings. Refresh and try again.");
+            return;
+        }
+        ++settings.Values[SettingsRevision];
+        std::vector<Location> changes;
+        if (apply)
+            for (auto const& [id, row] : Locations)
+            {
+                if (row.Retired)
+                    continue;
+                auto r = row;
+                r.Bonus = settings.Values[DefaultBonus];
+                r.Duration = settings.Values[DefaultDuration];
+                r.Cooldown = settings.Values[DefaultCooldown];
+                if (r.Ends > Now())
+                    r.Ends = r.Starts + r.Duration;
+                ++r.Revision;
+                changes.push_back(r);
+            }
+        if (!SaveMany(changes, &settings))
+        {
+            Send(player, "ERROR|Database save failed. General settings unchanged.");
+            return;
+        }
+        LOG_INFO("commands.gm", "XPHotspots account {} saved general settings revision {}, apply defaults {}",
+            account, settings.Values[SettingsRevision], apply);
+        SendGeneral(player);
+        Send(player, "OK|General settings saved. Rotation limits apply within one second.");
+        return;
+    }
     if (action == "new" || action == "newmap")
     {
         Location r;
+        r.Bonus = General.Values[DefaultBonus];
+        r.Duration = General.Values[DefaultDuration];
+        r.Cooldown = General.Values[DefaultCooldown];
         input >> r.Kind;
         r.Map = player->GetMapId();
         r.Zone = player->GetZoneId();
@@ -473,6 +555,9 @@ void Execute(Player* player, std::string const& command)
     {
         std::vector<std::pair<uint32, uint32>> sources;
         Location r;
+        r.Bonus = General.Values[DefaultBonus];
+        r.Duration = General.Values[DefaultDuration];
+        r.Cooldown = General.Values[DefaultCooldown];
         r.Kind = "union";
         r.Source = "gm-merge";
         uint32 id = 0, revision = 0;
@@ -706,15 +791,16 @@ void Execute(Player* player, std::string const& command)
         uint32 value = 2;
         if (!(input >> value) || value > 1)
             return;
-        auto* statement = WorldDatabase.GetPreparedStatement(WORLD_UPD_XP_HOTSPOT_SETTING);
-        statement->SetData(0, value);
-        auto transaction = WorldDatabase.BeginTransaction();
-        transaction->Append(statement);
-        if (!WorldDatabase.AsyncCommitTransaction(transaction).m_future.get())
+        auto settings = General;
+        settings.Values[Announcements] = value;
+        ++settings.Values[SettingsRevision];
+        if (!SaveMany({}, &settings))
+        {
+            Send(player, "ERROR|Database save failed.");
             return;
-        Announce = value;
+        }
         LOG_INFO("commands.gm", "XPHotspots account {} set announcements to {}", account, value);
-        ++Generation;
+        SendGeneral(player);
         Send(player, "OK|Announcement setting saved.");
         return;
     }
@@ -763,7 +849,7 @@ public:
             Brand.clear();
         uint32 expansion = std::min(2u, sWorld->getIntConfig(CONFIG_EXPANSION));
         MaxContinent = std::min(expansion, sConfigMgr->GetOption<uint32>("XPHotspots.MaxContinent", 2));
-        Slots = std::clamp(sConfigMgr->GetOption<uint32>("XPHotspots.ActiveCount", 3), 1u, 20u);
+        General.Values[ActiveCount] = std::clamp(sConfigMgr->GetOption<uint32>("XPHotspots.ActiveCount", 3), 0u, 20u);
         Buff = sConfigMgr->GetOption<uint32>("XPHotspots.BuffSpell", 993945);
         if (!Enabled)
             return;
@@ -781,7 +867,19 @@ public:
             return;
         }
         if (auto settings = WorldDatabase.Query(WorldDatabase.GetPreparedStatement(WORLD_SEL_XP_HOTSPOT_SETTING)))
-            Announce = settings->Fetch()[0].Get<uint32>() != 0;
+        {
+            auto loaded = General;
+            do
+            {
+                uint32 id = settings->Fetch()[0].Get<uint32>();
+                if (id >= 1 && id <= SettingCount)
+                    loaded.Values[id - 1] = settings->Fetch()[1].Get<uint32>();
+            } while (settings->NextRow());
+            if (ValidSettings(loaded))
+                General = loaded;
+            else
+                LOG_ERROR("server.loading", "Invalid XP hotspot general settings; using startup defaults");
+        }
         if (auto rows = WorldDatabase.Query(WorldDatabase.GetPreparedStatement(WORLD_SEL_XP_HOTSPOTS)))
             do
             {
@@ -827,11 +925,12 @@ public:
         WorldTimer = 0;
         uint64 now = Now();
         std::vector<uint32> activeZones;
-        uint32 count = 0;
+        std::array<uint32, SettingCount> counts{};
         for (auto const& [id, row] : Locations)
         {
             auto r = row;
-            if (r.Ends && (r.Ends <= now || !Allowed(r) || !r.Enabled))
+            if (r.Ends && (r.Ends <= now || !Allowed(r) || !r.Enabled ||
+                !QuotaAvailable(General, counts, ContinentQuota(r.Map, r.Zone), FactionQuota(r))))
             {
                 r.LastEnd = std::min(r.Ends, now);
                 r.Ends = 0;
@@ -840,16 +939,19 @@ public:
             }
             if (r.Ends > now)
             {
-                ++count;
+                ++counts[ActiveCount];
+                ++counts[ContinentQuota(r.Map, r.Zone)];
+                ++counts[FactionQuota(r)];
                 activeZones.push_back(r.Zone);
             }
         }
-        while (count < Slots)
+        while (counts[ActiveCount] < General.Values[ActiveCount])
         {
             std::vector<Location> candidates;
             uint32 total = 0;
             for (auto const& [id, r] : Locations)
                 if (Allowed(r) && Eligible(r, MaxContinent, now) &&
+                    QuotaAvailable(General, counts, ContinentQuota(r.Map, r.Zone), FactionQuota(r)) &&
                     std::find(activeZones.begin(), activeZones.end(), r.Zone) == activeZones.end())
                 {
                     candidates.push_back(r);
@@ -868,9 +970,11 @@ public:
             r.Queued = 0;
             if (!Save(r))
                 break;
-            ++count;
+            ++counts[ActiveCount];
+            ++counts[ContinentQuota(r.Map, r.Zone)];
+            ++counts[FactionQuota(r)];
             activeZones.push_back(r.Zone);
-            if (Announce)
+            if (General.Values[Announcements])
             {
                 auto message = "XP Hotspot: " + r.Name + " — +" + std::to_string(r.Bonus) +
                     "% monster-kill XP for " + std::to_string(r.Duration / 60) + " minutes.";

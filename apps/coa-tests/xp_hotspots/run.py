@@ -13,6 +13,34 @@ source = r'''
 int main()
 {
     using namespace XPHotspots;
+    GeneralSettings settings;
+    assert(ValidSettings(settings));
+    std::array<uint32_t, SettingCount> counts{};
+    assert(QuotaAvailable(settings, counts, EasternKingdoms, Alliance));
+    settings.Values[Alliance] = 1;
+    counts[Alliance] = 1;
+    assert(!QuotaAvailable(settings, counts, EasternKingdoms, Alliance));
+    assert(QuotaAvailable(settings, counts, EasternKingdoms, Horde));
+    counts[EasternKingdoms] = 20;
+    assert(!QuotaAvailable(settings, counts, EasternKingdoms, Horde));
+    assert(QuotaAvailable(settings, counts, Kalimdor, Horde));
+    settings.Values[ActiveCount] = 0;
+    assert(ValidSettings(settings));
+    assert(!QuotaAvailable(settings, counts, Kalimdor, Horde));
+    settings.Values[ActiveCount] = 21;
+    assert(!ValidSettings(settings));
+    settings.Values[ActiveCount] = 3;
+    settings.Values[DefaultDuration] = 59;
+    assert(!ValidSettings(settings));
+    settings.Values[DefaultDuration] = 86400;
+    settings.Values[DefaultCooldown] = 604801;
+    assert(!ValidSettings(settings));
+    settings.Values[DefaultCooldown] = 604800;
+    assert(ValidSettings(settings));
+    assert(ContinentQuota(530,3430) == EasternKingdoms);
+    assert(ContinentQuota(530,3524) == Kalimdor);
+    assert(ContinentQuota(530,3483) == Outland);
+    assert(ContinentQuota(571,65) == Northrend);
     Location r;
     r.Name = "Test";
     r.Map = 0;

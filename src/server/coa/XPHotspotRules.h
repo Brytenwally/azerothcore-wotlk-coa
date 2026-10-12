@@ -2,13 +2,52 @@
 #define XP_HOTSPOT_RULES_H
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdint>
+#include <cstddef>
 #include <string>
 #include <vector>
 
 namespace XPHotspots
 {
+enum Setting : size_t
+{
+    Announcements, ActiveCount, DefaultBonus, DefaultDuration, DefaultCooldown,
+    EasternKingdoms, Kalimdor, Outland, Northrend, Alliance, Horde, Neutral, SettingsRevision, SettingCount
+};
+
+struct GeneralSettings
+{
+    std::array<uint32_t, SettingCount> Values = {1, 3, 150, 3600, 3600, 20, 20, 20, 20, 20, 20, 20, 1};
+};
+
+inline bool ValidSettings(GeneralSettings const& settings)
+{
+    auto const& v = settings.Values;
+    return v[Announcements] <= 1 && v[ActiveCount] <= 20 && v[DefaultBonus] <= 1000 &&
+        v[DefaultDuration] >= 60 && v[DefaultDuration] <= 86400 && v[DefaultCooldown] <= 604800 &&
+        v[SettingsRevision] > 0 && v[SettingsRevision] < UINT32_MAX &&
+        std::all_of(v.begin() + EasternKingdoms, v.begin() + SettingsRevision,
+            [](uint32_t cap) { return cap <= 20; });
+}
+
+inline size_t ContinentQuota(uint32_t map, uint32_t zone)
+{
+    if (map == 0 || (map == 530 && (zone == 3430 || zone == 3433 || zone == 3487)))
+        return EasternKingdoms;
+    if (map == 1 || (map == 530 && (zone == 3524 || zone == 3525 || zone == 3557)))
+        return Kalimdor;
+    return map == 530 ? Outland : Northrend;
+}
+
+inline bool QuotaAvailable(GeneralSettings const& settings, std::array<uint32_t, SettingCount> const& counts,
+    size_t continent, size_t faction)
+{
+    return counts[ActiveCount] < settings.Values[ActiveCount] &&
+        counts[continent] < settings.Values[continent] && counts[faction] < settings.Values[faction];
+}
+
 struct Point
 {
     double X = 0;

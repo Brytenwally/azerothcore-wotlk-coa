@@ -50,3 +50,19 @@ the one-hour defaults for the seeded catalog. Reset test-only location settings 
 Upstream PR gate: complete the multiplayer/lifecycle checks, preserve evidence and limitations,
 run full upstream qualification, review the focused diff, then publish the standalone PR. Do not
 include unrelated Area 52 client fixes, progression changes, launcher assets or private test data.
+
+## General settings acceptance
+
+Open the magnifying-glass menu as a GM, choose XP Hotspot Menu, then General Settings.
+Confirm ordinary players cannot open or submit settings. Save a total of zero, verify active events
+end and XP buffs disappear; restore the desired total and observe eligible events fill vacancies.
+Set a continent or faction-area cap to zero and confirm it is excluded, including queued locations.
+Check a combined cap and verify same-zone exclusion and realm expansion limits still hold.
+
+Change defaults without applying to existing hotspots: existing values must stay unchanged and a
+new draft must inherit them. Explicitly apply defaults and confirm active XP bonuses and end times
+update, disabled records receive the new defaults, and retired entries remain unchanged. Shortening
+duration below elapsed time should end the event. Confirm the apply checkbox clears after success.
+Use two GMs to edit General Settings concurrently: a stale save must fail without changing values;
+Reload should show the current revision's values. Verify both location and general announcement
+controls agree. After a later normal server restart, confirm the saved settings remain in effect.

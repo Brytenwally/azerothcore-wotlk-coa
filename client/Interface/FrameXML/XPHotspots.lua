@@ -226,9 +226,10 @@ local function Button(parent,text,x,y,width,click)
 end
 local fields={}
 local browser
+local generalPanel, generalFields, generalRevision, generalDirty
 function H.DrawBrowser()
     if not browser then return end
-    if not enabled or not gm or not H.catalog then browser:Hide();return end
+    if not enabled or not gm or not H.catalog or generalPanel and generalPanel:IsShown() then browser:Hide();return end
     local rows={}
     for _,r in pairs(H.rows) do rows[#rows+1]=r end
     table.sort(rows,function(a,b) return N(a.id)<N(b.id) end)
@@ -326,6 +327,86 @@ local function ApplyFields()
     if draft.kind=="circle" then Send("radius "..fields["Radius yards"]:GetText()) end
     return true
 end
+local generalLabels={
+    {2,"Total active",20},{6,"Eastern Kingdoms",20},{7,"Kalimdor",20},
+    {8,"Outland",20},{9,"Northrend",20},{10,"Alliance areas",20},
+    {11,"Horde areas",20},{12,"Neutral / contested",20},{3,"Default XP bonus %",1000},
+    {4,"Default duration (min)",1440},{5,"Default cooldown (min)",10080}
+}
+local function PopulateGeneral()
+    if not generalPanel or not H.general or generalDirty then return end
+    for _,entry in ipairs(generalLabels) do
+        local index=entry[1]
+        generalFields[index]:SetText(H.general[index]/((index==4 or index==5) and 60 or 1))
+    end
+    generalFields[1]:SetChecked(H.general[1]==1)
+    generalRevision=H.general[13]
+end
+function H.ShowGeneral()
+    if not gm or not enabled then return end
+    if panel then panel:Hide() end
+    if browser then browser:Hide() end
+    if not generalPanel then
+        generalPanel=CreateFrame("Frame",nil,WorldMapFrame)
+        generalPanel:SetSize(360,580);generalPanel:SetPoint("TOPRIGHT",WorldMapFrame,"TOPRIGHT",-12,-55)
+        generalPanel:SetFrameStrata("DIALOG");generalPanel:EnableMouse(true)
+        generalPanel:SetBackdrop({bgFile="Interface\\Buttons\\WHITE8X8",
+            edgeFile="Interface\\Tooltips\\UI-Tooltip-Border",edgeSize=12})
+        generalPanel:SetBackdropColor(0.03,0.11,0.17,0.97)
+        generalPanel:SetBackdropBorderColor(0.78,0.60,0.27,1)
+        local title=generalPanel:CreateFontString(nil,"OVERLAY","GameFontNormal")
+        title:SetPoint("TOPLEFT",12,-12);title:SetText("XP Hotspots — General Settings")
+        Button(generalPanel,"X",325,-5,25,function() generalPanel:Hide() end)
+        Button(generalPanel,"Locations",12,-35,150,H.ShowPanel)
+        Button(generalPanel,"General Settings",180,-35,165,function() end)
+        generalFields={}
+        for row,entry in ipairs(generalLabels) do
+            local index=entry[1]
+            local label=generalPanel:CreateFontString(nil,"OVERLAY","GameFontNormalSmall")
+            label:SetPoint("TOPLEFT",12,-70-(row-1)*28);label:SetText(entry[2])
+            local edit=CreateFrame("EditBox",nil,generalPanel,"InputBoxTemplate")
+            edit:SetSize(90,20);edit:SetPoint("TOPLEFT",240,-67-(row-1)*28)
+            edit:SetAutoFocus(false);edit:SetMaxLetters(8)
+            edit:SetScript("OnTextChanged",function(_,user) if user then generalDirty=true end end)
+            generalFields[index]=edit
+        end
+        local function Check(text,y)
+            local check=CreateFrame("CheckButton",nil,generalPanel,"UICheckButtonTemplate")
+            check:SetPoint("TOPLEFT",10,y);check:SetSize(24,24)
+            local label=generalPanel:CreateFontString(nil,"OVERLAY","GameFontNormalSmall")
+            label:SetPoint("LEFT",check,"RIGHT",0,0);label:SetText(text)
+            return check
+        end
+        generalFields[1]=Check("Global start announcements",-382)
+        generalFields[1]:SetScript("OnClick",function() generalDirty=true end)
+        generalFields.apply=Check("Apply defaults to all existing hotspots",-409)
+        generalFields.apply:SetChecked(false)
+        local hint=generalPanel:CreateFontString(nil,"OVERLAY","GameFontHighlightSmall")
+        hint:SetPoint("TOPLEFT",12,-440);hint:SetWidth(334)
+        hint:SetText("Counts are maximums (0 excludes, 20 unrestricted). Lower limits stop excess events. "..
+            "Applying defaults overwrites XP, duration and cooldown, including active events; "..
+            "duration is measured from their original start. Realm restrictions still apply.")
+        Button(generalPanel,"Save general settings",12,-535,200,function()
+            if not gm or not generalRevision then return end
+            local values={generalFields[1]:GetChecked() and 1 or 0}
+            for _,entry in ipairs(generalLabels) do
+                local index=entry[1]
+                local value=tonumber(generalFields[index]:GetText())
+                if not value or value<0 or value>entry[3] or value~=math.floor(value) or index==4 and value<1 then
+                    Notify("Invalid value: "..entry[2]);return
+                end
+                values[index]=value*((index==4 or index==5) and 60 or 1)
+            end
+            values[13]=generalRevision;values[14]=generalFields.apply:GetChecked() and 1 or 0
+            Send("general "..table.concat(values," "))
+            H.generalSaving=true
+        end)
+        Button(generalPanel,"Reload",230,-535,110,function()
+            generalDirty=false;Send("general")
+        end)
+    end
+    PopulateGeneral();generalPanel:Show();Send("general")
+end
 function H.Select(row)
     selected=row
     if gm then H.ShowPanel() end
@@ -333,6 +414,7 @@ function H.Select(row)
 end
 function H.ShowPanel()
     if not gm then return end
+    if generalPanel then generalPanel:Hide() end
     if not panel then
         panel=CreateFrame("Frame",nil,WorldMapFrame)
         panel:SetSize(300,530);panel:SetPoint("TOPRIGHT",WorldMapFrame,"TOPRIGHT",-12,-55)
@@ -346,6 +428,8 @@ function H.ShowPanel()
         title:SetTextColor(0.95,0.76,0.39)
         panel.title=title
         Button(panel,"X",265,-5,25,function() panel:Hide();if browser then browser:Hide() end end)
+        Button(panel,"Locations",10,24,130,function() end)
+        Button(panel,"General Settings",155,24,130,H.ShowGeneral)
         Field("Name",-45,"New Hotspot")
         Field("XP bonus %",-75,"150")
         Field("Minutes",-105,"60")
@@ -423,19 +507,32 @@ function H.ShowPanel()
     ShowBrowser()
 end
 local function Receive(text)
+    if text:sub(1,2)=="G|" then
+        local values={}
+        for value in text:gmatch("|(%d+)") do values[#values+1]=tonumber(value) end
+        if #values==13 then
+            H.general=values
+            PopulateGeneral()
+        end
+        return
+    end
     if text:sub(1,6)=="BRAND|" then return end
     if text=="OFF" then
         enabled=false;gm=false;H.rows={};H.queue={};H.refreshPending=false;H.refreshAgain=false
         selected=nil;draft=nil;hovered=nil;snapshot=nil;incoming=nil;chunks=nil
         if panel then panel:Hide() end
         if browser then browser:Hide() end
+        if generalPanel then generalPanel:Hide() end
+        H.general=nil;generalRevision=nil;H.generalSaving=nil;generalDirty=false
         WorldMapTooltip:Hide()
         H.Draw();return
     end
     if text:match("^CHANGED|") then enabled=true;H.Refresh();return end
     local g,isGM,a,now,page,pages=text:match("^B|(%d+)|(%d+)|(%d+)|(%d+)|(%d+)|(%d+)$")
     if g then
-        enabled=true;gm=isGM=="1";announcements=a=="1";clockOffset=N(now)-time()
+        enabled=true;gm=isGM=="1"
+        if not gm and generalPanel then generalPanel:Hide() end
+        announcements=a=="1";clockOffset=N(now)-time()
         if fields.announce then fields.announce:SetText(announcements and "Announce: ON" or "Announce: OFF") end
         snapshot={generation=N(g),page=N(page),pages=N(pages)};incoming={};return
     end
@@ -475,6 +572,12 @@ local function Receive(text)
             local nextPage=H.nextPage;H.nextPage=nil;H.refreshAgain=false;H.Refresh(nextPage)
         end
         return
+    end
+    if text:match("^ERROR|") then H.generalSaving=nil end
+    if text:match("^OK|General settings saved") then
+        H.generalSaving=nil;generalDirty=false
+        if generalFields then generalFields.apply:SetChecked(false) end
+        PopulateGeneral()
     end
     if text:match("^ERROR|") or text:match("^OK|") then Notify(text:sub(text:find("|",1,true)+1)) end
 end

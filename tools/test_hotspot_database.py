@@ -51,6 +51,24 @@ class HotspotDatabaseTests(unittest.TestCase):
         self.assertEqual(self.sql("SELECT JSON_UNQUOTE(JSON_EXTRACT(payload,'$.name')) "
                                  "FROM xp_hotspot_location WHERE id=100052;"), 'Custom GM boundary')
 
+        values = [1, 5, 200, 7200, 1800, 2, 2, 1, 1, 2, 2, 3, 2]
+        assignments = ','.join(f'({index + 1},{value})' for index, value in enumerate(values))
+        self.sql('START TRANSACTION; REPLACE INTO xp_hotspot_setting (id,value) VALUES ' + assignments +
+                 "; UPDATE xp_hotspot_location SET payload=JSON_SET(payload,'$.xp',200,'$.duration',7200,"
+                 "'$.cooldown',1800) WHERE id=1; COMMIT;")
+        self.assertEqual(self.sql('SELECT value FROM xp_hotspot_setting ORDER BY id;'),
+                         '\n'.join(str(value) for value in values))
+        self.assertEqual(self.sql("SELECT JSON_EXTRACT(payload,'$.xp'),JSON_EXTRACT(payload,'$.duration'),"
+                                 "JSON_EXTRACT(payload,'$.cooldown') FROM xp_hotspot_location WHERE id=1;"),
+                         '200\t7200\t1800')
+        self.sql("START TRANSACTION; REPLACE INTO xp_hotspot_setting (id,value) VALUES (2,0),(13,3); "
+                 "UPDATE xp_hotspot_location SET payload=JSON_SET(payload,'$.xp',999) WHERE id=1; ROLLBACK;")
+        self.assertEqual(self.sql('SELECT value FROM xp_hotspot_setting WHERE id IN (2,13) ORDER BY id;'), '5\n2')
+        self.assertEqual(self.sql("SELECT JSON_EXTRACT(payload,'$.xp') FROM xp_hotspot_location WHERE id=1;"), '200')
+        self.sql(migration)
+        self.assertEqual(self.sql('SELECT value FROM xp_hotspot_setting ORDER BY id;'),
+                         '\n'.join(str(value) for value in values))
+
 
 if __name__ == '__main__':
     unittest.main()
