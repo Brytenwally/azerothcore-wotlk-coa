@@ -1,0 +1,746 @@
+{
+  "Creature\\Cat\\Cat.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Creature\\Cat\\Cat.m2"
+  },
+  "Character\\NightElf\\Female\\NightElfFemale.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Character\\NightElf\\Female\\NightElfFemale.m2"
+  },
+  "Creature\\Worgen\\Worgen.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Creature\\Worgen\\Worgen.m2"
+  },
+  "Character\\Draenei\\Female\\DraeneiFemale.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Character\\Draenei\\Female\\DraeneiFemale.m2"
+  },
+  "Creature\\SPELLS\\MonsterLure01.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Creature\\SPELLS\\MonsterLure01.m2"
+  },
+  "Creature\\Etherial\\Etherial.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Creature\\Etherial\\Etherial.m2"
+  },
+  "Creature\\AirElemental\\AirElemental.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Creature\\AirElemental\\AirElemental.m2"
+  },
+  "Creature\\DemonForm\\DemonForm.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Creature\\DemonForm\\DemonForm.m2"
+  },
+  "Character\\Troll\\Male\\TrollMale.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Character\\Troll\\Male\\TrollMale.m2"
+  },
+  "Creature\\GnollCaster\\GnollCaster.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Creature\\GnollCaster\\GnollCaster.m2"
+  },
+  "Character\\Gnome\\Male\\GnomeMale.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Character\\Gnome\\Male\\GnomeMale.m2"
+  },
+  "Creature\\EtherialRobe\\EtherialRobe.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Creature\\EtherialRobe\\EtherialRobe.m2"
+  },
+  "Creature\\giraffe\\Giraffe.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Creature\\giraffe\\Giraffe.m2"
+  },
+  "Creature\\Sheep\\Sheep.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Creature\\Sheep\\Sheep.m2"
+  },
+  "Character\\NightElf\\Male\\NightElfMale.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Character\\NightElf\\Male\\NightElfMale.m2"
+  },
+  "creature\\chicken\\chicken.m2": {
+    "archive": "common-2.MPQ",
+    "path": "creature\\chicken\\chicken.m2"
+  },
+  "Character\\Orc\\Female\\OrcFemale.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Character\\Orc\\Female\\OrcFemale.m2"
+  },
+  "Creature\\Troglodyte\\Troglodyte.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Creature\\Troglodyte\\Troglodyte.m2"
+  },
+  "creature\\invisiblestalker\\invisiblestalker.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "creature\\invisiblestalker\\invisiblestalker.m2"
+  },
+  "Creature\\Ghoul\\Ghoul.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Creature\\Ghoul\\Ghoul.m2"
+  },
+  "Character\\BloodElf\\Female\\BloodElfFemale.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Character\\BloodElf\\Female\\BloodElfFemale.m2"
+  },
+  "Creature\\SeaGiant\\SeaGiant.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Creature\\SeaGiant\\SeaGiant.m2"
+  },
+  "Creature\\Ogre\\Ogre.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Creature\\Ogre\\Ogre.m2"
+  },
+  "creature\\cocoon\\cocoon.m2": {
+    "archive": "common-2.MPQ",
+    "path": "creature\\cocoon\\cocoon.m2"
+  },
+  "Creature\\FelGuard\\FelGuard.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Creature\\FelGuard\\FelGuard.m2"
+  },
+  "Creature\\threshadon\\Threshadon.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Creature\\threshadon\\Threshadon.m2"
+  },
+  "Creature\\MineSpider\\MineSpider.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Creature\\MineSpider\\MineSpider.m2"
+  },
+  "SPELLS\\Meteor_Ball_Missile.m2": {
+    "archive": "common-2.MPQ",
+    "path": "SPELLS\\Meteor_Ball_Missile.m2"
+  },
+  "Creature\\Dreadlord\\DreadLord.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Creature\\Dreadlord\\DreadLord.m2"
+  },
+  "Creature\\Succubus\\Succubus.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Creature\\Succubus\\Succubus.m2"
+  },
+  "Character\\Orc\\Male\\OrcMale.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Character\\Orc\\Male\\OrcMale.m2"
+  },
+  "Creature\\Kobold\\Kobold.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Creature\\Kobold\\Kobold.m2"
+  },
+  "Creature\\SilithidTankBoss\\SilithidTankBoss_Damaged.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Creature\\SilithidTankBoss\\SilithidTankBoss_Damaged.m2"
+  },
+  "Character\\Goblin\\Male\\GoblinMale.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Character\\Goblin\\Male\\GoblinMale.m2"
+  },
+  "Character\\Human\\Female\\HumanFemale.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Character\\Human\\Female\\HumanFemale.m2"
+  },
+  "Creature\\Slime\\SlimeLesser.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Creature\\Slime\\SlimeLesser.m2"
+  },
+  "Creature\\Troll\\TrollMelee.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Creature\\Troll\\TrollMelee.m2"
+  },
+  "CHARACTER\\Skeleton\\Male\\SkeletonMale.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "CHARACTER\\Skeleton\\Male\\SkeletonMale.m2"
+  },
+  "Creature\\Cow\\Cow.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Creature\\Cow\\Cow.m2"
+  },
+  "Creature\\Murloc\\Murloc.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Creature\\Murloc\\Murloc.m2"
+  },
+  "Creature\\ANCIENTPROTECTOR\\AncientProtector.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Creature\\ANCIENTPROTECTOR\\AncientProtector.m2"
+  },
+  "World\\GENERIC\\HUMAN\\PASSIVE DOODADS\\MEAT\\BloodyMeat02.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "World\\GENERIC\\HUMAN\\PASSIVE DOODADS\\MEAT\\BloodyMeat02.m2"
+  },
+  "Character\\Gnome\\Female\\GnomeFemale.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Character\\Gnome\\Female\\GnomeFemale.m2"
+  },
+  "Creature\\NagaMale\\NagaMale.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Creature\\NagaMale\\NagaMale.m2"
+  },
+  "Creature\\MountainGiant\\MountainGiant.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Creature\\MountainGiant\\MountainGiant.m2"
+  },
+  "Character\\Human\\Male\\HumanMale.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Character\\Human\\Male\\HumanMale.m2"
+  },
+  "Creature\\RocketChicken\\RocketChicken.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Creature\\RocketChicken\\RocketChicken.m2"
+  },
+  "Creature\\Spells\\StasisTotem.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Creature\\Spells\\StasisTotem.m2"
+  },
+  "Creature\\ElementalEarth\\ElementalEarth.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Creature\\ElementalEarth\\ElementalEarth.m2"
+  },
+  "Creature\\FireElemental\\FireElemental.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Creature\\FireElemental\\FireElemental.m2"
+  },
+  "Creature\\furbolg\\Furbolg.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Creature\\furbolg\\Furbolg.m2"
+  },
+  "Creature\\Ogre\\OgreMage.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Creature\\Ogre\\OgreMage.m2"
+  },
+  "Creature\\Rabbit\\Rabbit.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Creature\\Rabbit\\Rabbit.m2"
+  },
+  "Creature\\Wight\\Wight.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Creature\\Wight\\Wight.m2"
+  },
+  "Character\\FelOrc\\Male\\FelOrcMale.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Character\\FelOrc\\Male\\FelOrcMale.m2"
+  },
+  "Creature\\GoblinShredderMount\\GoblinShredderMount.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Creature\\GoblinShredderMount\\GoblinShredderMount.m2"
+  },
+  "Creature\\Zombie\\Zombie.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Creature\\Zombie\\Zombie.m2"
+  },
+  "Creature\\DragonWhelp\\DragonWhelp.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Creature\\DragonWhelp\\DragonWhelp.m2"
+  },
+  "Creature\\Horisath\\Horisath.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Creature\\Horisath\\Horisath.m2"
+  },
+  "Character\\Scourge\\Male\\ScourgeMale.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Character\\Scourge\\Male\\ScourgeMale.m2"
+  },
+  "SPELLS\\DeathKnight_DestroyCorpse_Bones_01.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "SPELLS\\DeathKnight_DestroyCorpse_Bones_01.m2"
+  },
+  "Creature\\BoneSpider\\BoneSpider.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Creature\\BoneSpider\\BoneSpider.m2"
+  },
+  "Creature\\Lich\\Lich.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Creature\\Lich\\Lich.m2"
+  },
+  "Creature\\AncientOfWar\\AncientofWar.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Creature\\AncientOfWar\\AncientofWar.m2"
+  },
+  "SPELLS\\Arcane_Missile.m2": {
+    "archive": "common-2.MPQ",
+    "path": "SPELLS\\Arcane_Missile.m2"
+  },
+  "Creature\\DoomGuard\\DoomGuard.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Creature\\DoomGuard\\DoomGuard.m2"
+  },
+  "Creature\\Satyr\\Satyr.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Creature\\Satyr\\Satyr.m2"
+  },
+  "Creature\\Banshee\\Banshee.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Creature\\Banshee\\Banshee.m2"
+  },
+  "Creature\\NagaFemale\\Siren.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Creature\\NagaFemale\\Siren.m2"
+  },
+  "Creature\\NorthrendGhoul\\NorthrendGhoul.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Creature\\NorthrendGhoul\\NorthrendGhoul.m2"
+  },
+  "Character\\Dwarf\\Male\\DwarfMale.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Character\\Dwarf\\Male\\DwarfMale.m2"
+  },
+  "World\\EXPANSION01\\DOODADS\\GENERIC\\Ogre\\Bones\\OM_Bones_03.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "World\\EXPANSION01\\DOODADS\\GENERIC\\Ogre\\Bones\\OM_Bones_03.m2"
+  },
+  "Creature\\Zombie\\ZombieArm.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Creature\\Zombie\\ZombieArm.m2"
+  },
+  "Character\\Goblin\\Female\\GoblinFemale.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Character\\Goblin\\Female\\GoblinFemale.m2"
+  },
+  "Creature\\InvisibleMan\\InvisibleMan.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Creature\\InvisibleMan\\InvisibleMan.m2"
+  },
+  "Creature\\WATERELEMENTAL\\WaterElemental.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Creature\\WATERELEMENTAL\\WaterElemental.m2"
+  },
+  "Creature\\Imp\\Imp.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Creature\\Imp\\Imp.m2"
+  },
+  "Creature\\DragonSpawn\\DragonSpawn.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Creature\\DragonSpawn\\DragonSpawn.m2"
+  },
+  "Creature\\GnollMelee\\GnollMelee.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Creature\\GnollMelee\\GnollMelee.m2"
+  },
+  "World\\GENERIC\\HUMAN\\PASSIVE DOODADS\\MEAT\\BloodyMeat01.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "World\\GENERIC\\HUMAN\\PASSIVE DOODADS\\MEAT\\BloodyMeat01.m2"
+  },
+  "Creature\\CRATECREATURE\\CrateCreatureBasic.mdx": {
+    "archive": "common-2.MPQ",
+    "path": "Creature\\CRATECREATURE\\CrateCreatureBasic.m2"
+  },
+  "Creature\\MountainGiantCrystal\\MountainGiantCrystal.mdx": {
+    "archive": "expansion.MPQ",
+    "path": "Creature\\MountainGiantCrystal\\MountainGiantCrystal.m2"
+  },
+  "Creature\\Nightbane\\NightBane.mdx": {
+    "archive": "expansion.MPQ",
+    "path": "Creature\\Nightbane\\NightBane.m2"
+  },
+  "Creature\\Voidlord\\VoidLord.mdx": {
+    "archive": "expansion.MPQ",
+    "path": "Creature\\Voidlord\\VoidLord.m2"
+  },
+  "Creature\\NetherDrakonid\\NetherDrakonid.mdx": {
+    "archive": "expansion.MPQ",
+    "path": "Creature\\NetherDrakonid\\NetherDrakonid.m2"
+  },
+  "Creature\\PHOENIX\\Phoenix.mdx": {
+    "archive": "expansion.MPQ",
+    "path": "Creature\\PHOENIX\\Phoenix.m2"
+  },
+  "Creature\\medivh\\Medivh.mdx": {
+    "archive": "expansion.MPQ",
+    "path": "Creature\\medivh\\Medivh.m2"
+  },
+  "Creature\\NorthrendWorgen\\NorthrendWorgen.mdx": {
+    "archive": "lichking.MPQ",
+    "path": "Creature\\NorthrendWorgen\\NorthrendWorgen.m2"
+  },
+  "Character\\Tuskarr\\Male\\TuskarrMale.mdx": {
+    "archive": "lichking.MPQ",
+    "path": "Character\\Tuskarr\\Male\\TuskarrMale.m2"
+  },
+  "Creature\\SeaVrykulMale\\SeaVrykulMale.mdx": {
+    "archive": "lichking.MPQ",
+    "path": "Creature\\SeaVrykulMale\\SeaVrykulMale.m2"
+  },
+  "Creature\\IronVrykulMale\\IronVrykulMale.mdx": {
+    "archive": "lichking.MPQ",
+    "path": "Creature\\IronVrykulMale\\IronVrykulMale.m2"
+  },
+  "Creature\\ZombiefiedVrykul\\ZombiefiedVrykul.mdx": {
+    "archive": "lichking.MPQ",
+    "path": "Creature\\ZombiefiedVrykul\\ZombiefiedVrykul.m2"
+  },
+  "Creature\\EarthenDwarf\\EarthenDwarf.mdx": {
+    "archive": "lichking.MPQ",
+    "path": "Creature\\EarthenDwarf\\EarthenDwarf.m2"
+  },
+  "Creature\\FrostVrykulMale\\FrostVrykulMale.mdx": {
+    "archive": "lichking.MPQ",
+    "path": "Creature\\FrostVrykulMale\\FrostVrykulMale.m2"
+  },
+  "Creature\\FacelessOne\\FacelessOne.mdx": {
+    "archive": "patch-2.MPQ",
+    "path": "Creature\\FacelessOne\\FacelessOne.m2"
+  },
+  "Creature\\PandarenMonk\\PandarenMonk.mdx": {
+    "archive": "patch-2.MPQ",
+    "path": "Creature\\PandarenMonk\\PandarenMonk.m2"
+  },
+  "Creature\\Jaina\\Jaina.mdx": {
+    "archive": "patch-2.MPQ",
+    "path": "Creature\\Jaina\\Jaina.m2"
+  },
+  "Creature\\KingVarianWrynn\\KingVarianWrynn.mdx": {
+    "archive": "patch-2.MPQ",
+    "path": "Creature\\KingVarianWrynn\\KingVarianWrynn.m2"
+  },
+  "Creature\\panda\\Jadepandacub.mdx": {
+    "archive": "patch-2.MPQ",
+    "path": "Creature\\panda\\Jadepandacub.m2"
+  },
+  "Creature\\LadySylvanasWindrunner\\LadySylvanasWindrunner.mdx": {
+    "archive": "patch-2.MPQ",
+    "path": "Creature\\LadySylvanasWindrunner\\LadySylvanasWindrunner.m2"
+  },
+  "creature\\anduindisguised\\anduindisguised.mdx": {
+    "archive": "patch-CA.MPQ",
+    "path": "creature\\anduindisguised\\anduindisguised.m2"
+  },
+  "Creature\\alliancemurloc\\alliancemurloc.m2": {
+    "archive": "patch-CA.MPQ",
+    "path": "Creature\\alliancemurloc\\alliancemurloc.m2"
+  },
+  "creature\\airelementalprimal\\airelementalprimal.m2": {
+    "archive": "patch-CA.MPQ",
+    "path": "creature\\airelementalprimal\\airelementalprimal.m2"
+  },
+  "creature\\arcaneanomaly\\arcaneanomaly.mdx": {
+    "archive": "patch-CA.MPQ",
+    "path": "creature\\arcaneanomaly\\arcaneanomaly.m2"
+  },
+  "CREATURE\\AVENGINGANGEL\\AVENGINGANGEL.M2": {
+    "archive": "patch-CA.MPQ",
+    "path": "CREATURE\\AVENGINGANGEL\\AVENGINGANGEL.M2"
+  },
+  "creature\\alleriavoid\\alleriavoid.mdx": {
+    "archive": "patch-CA.MPQ",
+    "path": "creature\\alleriavoid\\alleriavoid.m2"
+  },
+  "CREATURE\\AlglontheObserver\\AlgalontheObserver.mdx": {
+    "archive": "patch-CA.MPQ",
+    "path": "CREATURE\\AlglontheObserver\\AlgalontheObserver.m2"
+  },
+  "creature\\abominationsmall\\abominationsmall.mdx": {
+    "archive": "patch-CA.MPQ",
+    "path": "creature\\abominationsmall\\abominationsmall.m2"
+  },
+  "creature\\attendantoribos\\attendantoribos.mdx": {
+    "archive": "patch-CA.MPQ",
+    "path": "creature\\attendantoribos\\attendantoribos.m2"
+  },
+  "creature\\alleria\\alleria.mdx": {
+    "archive": "patch-CA.MPQ",
+    "path": "creature\\alleria\\alleria.m2"
+  },
+  "creature\\bloodtrollfemale_melee\\bloodtrollfemale_melee.mdx": {
+    "archive": "patch-CB.MPQ",
+    "path": "creature\\bloodtrollfemale_melee\\bloodtrollfemale_melee.m2"
+  },
+  "creature\\bloodtrollfemaledire\\bloodtrollfemaledire.mdx": {
+    "archive": "patch-CB.MPQ",
+    "path": "creature\\bloodtrollfemaledire\\bloodtrollfemaledire.m2"
+  },
+  "creature\\bloodtrollmale_melee\\bloodtrollmale_melee.mdx": {
+    "archive": "patch-CB.MPQ",
+    "path": "creature\\bloodtrollmale_melee\\bloodtrollmale_melee.m2"
+  },
+  "creature\\bwonsamdi\\bwonsamdi.mdx": {
+    "archive": "patch-CB.MPQ",
+    "path": "creature\\bwonsamdi\\bwonsamdi.m2"
+  },
+  "creature\\dragoncostume\\dragoncostume_mid.mdx": {
+    "archive": "patch-CD.MPQ",
+    "path": "creature\\dragoncostume\\dragoncostume_mid.m2"
+  },
+  "creature\\djinn\\djinn.m2": {
+    "archive": "patch-CD.MPQ",
+    "path": "creature\\djinn\\djinn.m2"
+  },
+  "creature\\dragoncostume\\dragoncostume_head.mdx": {
+    "archive": "patch-CD.MPQ",
+    "path": "creature\\dragoncostume\\dragoncostume_head.m2"
+  },
+  "creature\\drogbar\\drogbar.mdx": {
+    "archive": "patch-CD.MPQ",
+    "path": "creature\\drogbar\\drogbar.m2"
+  },
+  "creature\\dhmaletank\\dhmaletank.mdx": {
+    "archive": "patch-CD.MPQ",
+    "path": "creature\\dhmaletank\\dhmaletank.m2"
+  },
+  "creature\\dragoncostume\\dragoncostume_tail.mdx": {
+    "archive": "patch-CD.MPQ",
+    "path": "creature\\dragoncostume\\dragoncostume_tail.m2"
+  },
+  "creature\\ethereal_pvp\\ethereal_pvp.m2": {
+    "archive": "patch-CE.MPQ",
+    "path": "creature\\ethereal_pvp\\ethereal_pvp.m2"
+  },
+  "creature\\facelessone2\\facelessone2.mdx": {
+    "archive": "patch-CF.MPQ",
+    "path": "creature\\facelessone2\\facelessone2.m2"
+  },
+  "creature\\furbolgprimal\\furbolgprimal.m2": {
+    "archive": "patch-CF.MPQ",
+    "path": "creature\\furbolgprimal\\furbolgprimal.m2"
+  },
+  "creature\\fungallasher\\fungallasher.m2": {
+    "archive": "patch-CF.MPQ",
+    "path": "creature\\fungallasher\\fungallasher.m2"
+  },
+  "Creature\\felbat2\\felbat2_smaller.mdx": {
+    "archive": "patch-CF.MPQ",
+    "path": "Creature\\felbat2\\felbat2_smaller.m2"
+  },
+  "creature\\felbroken\\felbroken.mdx": {
+    "archive": "patch-CF.MPQ",
+    "path": "creature\\felbroken\\felbroken.m2"
+  },
+  "creature\\facelessonecaster2\\facelessonecaster2.mdx": {
+    "archive": "patch-CF.MPQ",
+    "path": "creature\\facelessonecaster2\\facelessonecaster2.m2"
+  },
+  "Creature\\fungarian\\fungarian.mdx": {
+    "archive": "patch-CF.MPQ",
+    "path": "Creature\\fungarian\\fungarian.m2"
+  },
+  "CREATURE\\GILGOBLIN\\GILGOBLIN.M2": {
+    "archive": "patch-CG.MPQ",
+    "path": "CREATURE\\GILGOBLIN\\GILGOBLIN.M2"
+  },
+  "creature\\gnoll2caster_corrupted\\gnoll2caster_corrupted.mdx": {
+    "archive": "patch-CG.MPQ",
+    "path": "creature\\gnoll2caster_corrupted\\gnoll2caster_corrupted.m2"
+  },
+  "creature\\gargoyle2_female\\gargoyle2_female.mdx": {
+    "archive": "patch-CG.MPQ",
+    "path": "creature\\gargoyle2_female\\gargoyle2_female.m2"
+  },
+  "creature\\gilgoblin_female\\gilgoblin_female.mdx": {
+    "archive": "patch-CG.MPQ",
+    "path": "creature\\gilgoblin_female\\gilgoblin_female.m2"
+  },
+  "creature\\goblinmale_corrupted\\goblinmale_corrupted_azz.m2": {
+    "archive": "patch-CG.MPQ",
+    "path": "creature\\goblinmale_corrupted\\goblinmale_corrupted_azz.m2"
+  },
+  "creature\\genngreymaneworgen\\genngreymaneworgen_nobelt.mdx": {
+    "archive": "patch-CG.MPQ",
+    "path": "creature\\genngreymaneworgen\\genngreymaneworgen_nobelt.m2"
+  },
+  "creature\\greaterslime\\greaterslime_water.mdx": {
+    "archive": "patch-CG.MPQ",
+    "path": "creature\\greaterslime\\greaterslime_water.m2"
+  },
+  "CREATURE\\GREATERSLIME\\GREATERSLIME.M2": {
+    "archive": "patch-CG.MPQ",
+    "path": "CREATURE\\GREATERSLIME\\GREATERSLIME.M2"
+  },
+  "Creature\\Hots\\Storm_Hero_Chromie_Base\\Storm_Hero_Chromie_lowres.m2": {
+    "archive": "patch-CH.MPQ",
+    "path": "Creature\\Hots\\Storm_Hero_Chromie_Base\\Storm_Hero_Chromie_lowres.m2"
+  },
+  "creature\\hobgoblin\\hobgoblin.m2": {
+    "archive": "patch-CH.MPQ",
+    "path": "creature\\hobgoblin\\hobgoblin.m2"
+  },
+  "creature\\hordemurloc2\\hordemurloc.mdx": {
+    "archive": "patch-CH.MPQ",
+    "path": "creature\\hordemurloc2\\hordemurloc.m2"
+  },
+  "creature\\horsecostume\\horsecostume_head.mdx": {
+    "archive": "patch-CH.MPQ",
+    "path": "creature\\horsecostume\\horsecostume_head.m2"
+  },
+  "creature\\horsecostume\\horsecostume_back.mdx": {
+    "archive": "patch-CH.MPQ",
+    "path": "creature\\horsecostume\\horsecostume_back.m2"
+  },
+  "Character\\Orc2\\Male\\OrcMale2.mdx": {
+    "archive": "patch-CHA.MPQ",
+    "path": "Character\\Orc2\\Male\\OrcMale2.m2"
+  },
+  "Character\\Vrykul\\Male2\\VrykulMale2.mdx": {
+    "archive": "patch-CHA.MPQ",
+    "path": "Character\\Vrykul\\Male2\\VrykulMale2.m2"
+  },
+  "Creature\\illidannew\\illidannew.mdx": {
+    "archive": "patch-CI.MPQ",
+    "path": "Creature\\illidannew\\illidannew.m2"
+  },
+  "creature\\illidandark2\\illidandark2.mdx": {
+    "archive": "patch-CI.MPQ",
+    "path": "creature\\illidandark2\\illidandark2.m2"
+  },
+  "Creature\\kezancrowdpummeler_gallywix\\kezancrowdpummeler_gallywix.mdx": {
+    "archive": "patch-CK.MPQ",
+    "path": "Creature\\kezancrowdpummeler_gallywix\\kezancrowdpummeler_gallywix.m2"
+  },
+  "CREATURE\\KARSHSTEELBENDERMOLTEN\\KARSHSTEELBENDERMOLTEN.M2": {
+    "archive": "patch-CK.MPQ",
+    "path": "CREATURE\\KARSHSTEELBENDERMOLTEN\\KARSHSTEELBENDERMOLTEN.M2"
+  },
+  "Creature\\Lasher2\\Lasher2.mdx": {
+    "archive": "patch-CL.MPQ",
+    "path": "Creature\\Lasher2\\Lasher2.m2"
+  },
+  "Creature\\Lich2\\Lich2.mdx": {
+    "archive": "patch-CL.MPQ",
+    "path": "Creature\\Lich2\\Lich2.m2"
+  },
+  "creature\\mawguard\\mawguard_3.m2": {
+    "archive": "patch-CM.MPQ",
+    "path": "creature\\mawguard\\mawguard_3.m2"
+  },
+  "CREATURE\\MURLOC\\MURLOCDEEPSEA.M2": {
+    "archive": "patch-CM.MPQ",
+    "path": "CREATURE\\MURLOC\\MURLOCDEEPSEA.M2"
+  },
+  "creature\\madscientist2\\madscientist2.mdx": {
+    "archive": "patch-CM.MPQ",
+    "path": "creature\\madscientist2\\madscientist2.m2"
+  },
+  "creature\\mechagonspidertank\\mechagonspidertank.mdx": {
+    "archive": "patch-CM.MPQ",
+    "path": "creature\\mechagonspidertank\\mechagonspidertank.m2"
+  },
+  "creature\\mawguardcaster\\mawguardcaster.mdx": {
+    "archive": "patch-CM.MPQ",
+    "path": "creature\\mawguardcaster\\mawguardcaster.m2"
+  },
+  "creature\\maldraxxusgladiatorfemale\\maldraxxusgladiatorfemale.mdx": {
+    "archive": "patch-CM.MPQ",
+    "path": "creature\\maldraxxusgladiatorfemale\\maldraxxusgladiatorfemale.m2"
+  },
+  "creature\\nathanos\\nathanos.mdx": {
+    "archive": "patch-CN.MPQ",
+    "path": "creature\\nathanos\\nathanos.m2"
+  },
+  "Creature\\NorthrendWorgenform\\NorthrendWorgenform.mdx": {
+    "archive": "patch-CN.MPQ",
+    "path": "Creature\\NorthrendWorgenform\\NorthrendWorgenform.m2"
+  },
+  "creature\\overfiend\\overfiend.mdx": {
+    "archive": "patch-CO.MPQ",
+    "path": "creature\\overfiend\\overfiend.m2"
+  },
+  "creature\\pig2\\pig2.mdx": {
+    "archive": "patch-CP.MPQ",
+    "path": "creature\\pig2\\pig2.m2"
+  },
+  "CREATURE\\PRIMORDIALSAUROK\\PRIMORDIALSAUROK.M2": {
+    "archive": "patch-CP.MPQ",
+    "path": "CREATURE\\PRIMORDIALSAUROK\\PRIMORDIALSAUROK.M2"
+  },
+  "creature\\Parkourman\\Parkourman.m2": {
+    "archive": "patch-CP.MPQ",
+    "path": "creature\\Parkourman\\Parkourman.m2"
+  },
+  "Creature\\ragnaros\\ragnarospet.mdx": {
+    "archive": "patch-CR.MPQ",
+    "path": "Creature\\ragnaros\\ragnarospet.m2"
+  },
+  "creature\\Rionthus\\Rionthus_red.mdx": {
+    "archive": "patch-CR.MPQ",
+    "path": "creature\\Rionthus\\Rionthus_red.m2"
+  },
+  "creature\\slimeskeleton\\slimeskeleton.mdx": {
+    "archive": "patch-CS.MPQ",
+    "path": "creature\\slimeskeleton\\slimeskeleton.m2"
+  },
+  "creature\\skeletaltrollfungal\\skeletaltrollfungal.mdx": {
+    "archive": "patch-CS.MPQ",
+    "path": "creature\\skeletaltrollfungal\\skeletaltrollfungal.m2"
+  },
+  "creature\\sethrak_caster\\sethrak_caster.mdx": {
+    "archive": "patch-CS.MPQ",
+    "path": "creature\\sethrak_caster\\sethrak_caster.m2"
+  },
+  "creature\\stoneconstruct\\stoneconstruct.m2": {
+    "archive": "patch-CS.MPQ",
+    "path": "creature\\stoneconstruct\\stoneconstruct.m2"
+  },
+  "creature\\satyr2nightmare\\satyr2nightmare.mdx": {
+    "archive": "patch-CS.MPQ",
+    "path": "creature\\satyr2nightmare\\satyr2nightmare.m2"
+  },
+  "creature\\tiris_silverscar\\tiris_silverscar_lich.m2": {
+    "archive": "patch-CT.MPQ",
+    "path": "creature\\tiris_silverscar\\tiris_silverscar_lich.m2"
+  },
+  "CREATURE\\TWILLIGHTASCENDANTFIRE\\ASCENDANTFIRE.M2": {
+    "archive": "patch-CT.MPQ",
+    "path": "CREATURE\\TWILLIGHTASCENDANTFIRE\\ASCENDANTFIRE.M2"
+  },
+  "CREATURE\\TWILIGHTASCENDANTWATER\\ASCENDANTWATER.M2": {
+    "archive": "patch-CT.MPQ",
+    "path": "CREATURE\\TWILIGHTASCENDANTWATER\\ASCENDANTWATER.M2"
+  },
+  "CREATURE\\TWILIGHTASCENDANTAIR\\ASCENDANTAIR.M2": {
+    "archive": "patch-CT.MPQ",
+    "path": "CREATURE\\TWILIGHTASCENDANTAIR\\ASCENDANTAIR.M2"
+  },
+  "creature\\wickerman2\\wickerman2.mdx": {
+    "archive": "patch-CW.MPQ",
+    "path": "creature\\wickerman2\\wickerman2.m2"
+  },
+  "creature\\warden\\warden.mdx": {
+    "archive": "patch-CW.MPQ",
+    "path": "creature\\warden\\warden.m2"
+  },
+  "creature\\wonkagof\\wonkagof.m2": {
+    "archive": "patch-CW.MPQ",
+    "path": "creature\\wonkagof\\wonkagof.m2"
+  },
+  "creature\\wonkagom\\wonkagom.m2": {
+    "archive": "patch-CW.MPQ",
+    "path": "creature\\wonkagom\\wonkagom.m2"
+  },
+  "spells\\Druid_Wild_Mushroom_01.M2": {
+    "archive": "patch-N.MPQ",
+    "path": "spells\\Druid_Wild_Mushroom_01.M2"
+  },
+  "SPELLS\\7fx_nightborn_astromancer_blue.m2": {
+    "archive": "patch-N.MPQ",
+    "path": "SPELLS\\7fx_nightborn_astromancer_blue.m2"
+  },
+  "SPELLS\\7fx_nightborn_astromancer_green.m2": {
+    "archive": "patch-N.MPQ",
+    "path": "SPELLS\\7fx_nightborn_astromancer_green.m2"
+  },
+  "SPELLS\\7fx_nightborn_astromancer_yellow.m2": {
+    "archive": "patch-N.MPQ",
+    "path": "SPELLS\\7fx_nightborn_astromancer_yellow.m2"
+  },
+  "world\\expansion06\\doodads\\drogbar\\7db_drogbar_fist.mdx": {
+    "archive": "patch-WC2.MPQ",
+    "path": "world\\expansion06\\doodads\\drogbar\\7db_drogbar_fist.m2"
+  },
+  "world\\expansion05\\doodads\\draenei\\6dr_draenei_rubble_glass01.m2": {
+    "archive": "patch-WC2.MPQ",
+    "path": "world\\expansion05\\doodads\\draenei\\6dr_draenei_rubble_glass01.m2"
+  },
+  "world\\expansion05\\doodads\\human\\doodads\\6hu_storehouse_barrel1.mdx": {
+    "archive": "patch-WC2.MPQ",
+    "path": "world\\expansion05\\doodads\\human\\doodads\\6hu_storehouse_barrel1.m2"
+  },
+  "CREATURE\\FlameLeviathan\\FlameLeviathan_Weapon_Cannon.mdx": {
+    "archive": "patch.MPQ",
+    "path": "CREATURE\\FlameLeviathan\\FlameLeviathan_Weapon_Cannon.m2"
+  },
+  "Character\\NorthrendSkeleton\\Male\\NorthrendSkeletonMale.mdx": {
+    "archive": "patch.MPQ",
+    "path": "Character\\NorthrendSkeleton\\Male\\NorthrendSkeletonMale.m2"
+  },
+  "CREATURE\\TitanOrb\\TitanOrb_02.mdx": {
+    "archive": "patch.MPQ",
+    "path": "CREATURE\\TitanOrb\\TitanOrb_02.m2"
+  }
+}

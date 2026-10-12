@@ -1,0 +1,17 @@
+{
+  "transform_effects": 1836,
+  "statuses": {
+    "mapped": 1466,
+    "name-conflict": 1,
+    "scripted-zero-target": 67,
+    "staged-repair": 292,
+    "unresolved": 7,
+    "model-file-unresolved": 3
+  },
+  "creature_repairs": 218,
+  "model_rows": 321,
+  "incarnations": 59,
+  "incarnation_statuses": {
+    "display-linked": 59
+  }
+}

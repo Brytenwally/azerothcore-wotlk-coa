@@ -1,0 +1,13 @@
+{
+  "runner": "tools/verify_all.py",
+  "source": "passed",
+  "harness": "area52_transform_models",
+  "sqlite": "passed",
+  "mysql": "passed against isolated fixture tables",
+  "checked_mappings": 218,
+  "idempotency": "passed",
+  "existing_models_preserved": "passed",
+  "spawn_exclusion": "passed",
+  "gameplay": "not run; visual acceptance pending",
+  "build": "not required; SQL-only repair"
+}

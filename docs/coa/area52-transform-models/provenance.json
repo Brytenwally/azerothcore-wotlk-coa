@@ -1,0 +1,99 @@
+{
+  "CreatureDisplayInfo": [
+    {
+      "archive": "enUS\\locale-enUS.MPQ",
+      "file": "0-CreatureDisplayInfo.dbc",
+      "sha256": "e0c4d45d21d4ab679a760a3a3bf616647d557f5c160fbf08e90781022591a2d6"
+    },
+    {
+      "archive": "enUS\\patch-enUS-2.MPQ",
+      "file": "1-CreatureDisplayInfo.dbc",
+      "sha256": "53c104a713d267e67fa4896c7f314b0461b5335c0bad3eec4a78bd638fd9bc51"
+    },
+    {
+      "archive": "enUS\\patch-enUS-3.MPQ",
+      "file": "2-CreatureDisplayInfo.dbc",
+      "sha256": "a12109c610ca82af993d7c8562617ad88ab538293649f89ee0e4bed7ce85a37a"
+    },
+    {
+      "archive": "enUS\\patch-enUS.MPQ",
+      "file": "3-CreatureDisplayInfo.dbc",
+      "sha256": "7f269fbb5c601c1083cf508f3ba679f5ec14468ce4aec1999cf20ae238681d4b"
+    },
+    {
+      "archive": "patch-M.MPQ",
+      "file": "4-CreatureDisplayInfo.dbc",
+      "sha256": "0ff00f000dbe8de488681785815bebcf3091208c9235bbc577fe2c4fc9cc2d98"
+    }
+  ],
+  "CreatureModelData": [
+    {
+      "archive": "enUS\\locale-enUS.MPQ",
+      "file": "0-CreatureModelData.dbc",
+      "sha256": "8243e70fcb4524cd78578d51f0d1946a3fa627c7b672e531560af11e55241b61"
+    },
+    {
+      "archive": "enUS\\patch-enUS-2.MPQ",
+      "file": "1-CreatureModelData.dbc",
+      "sha256": "32311935f8ebcbd9fbe9b5ac251cd4eafab170d9a3a866adcd73e1c1c465eaab"
+    },
+    {
+      "archive": "enUS\\patch-enUS-3.MPQ",
+      "file": "2-CreatureModelData.dbc",
+      "sha256": "2ff650f7a1b20a7edb088ffaa88f13b747b63a2a29ee6e3dc3c0d475d5ccdfe2"
+    },
+    {
+      "archive": "enUS\\patch-enUS.MPQ",
+      "file": "3-CreatureModelData.dbc",
+      "sha256": "db4cbb610c55c472ac9afe44439672f5eb69eec2948ded9d1cb3ef3730f474bc"
+    },
+    {
+      "archive": "patch-M.MPQ",
+      "file": "4-CreatureModelData.dbc",
+      "sha256": "2b0c9de931b92c60b029cf50a70d5febe04a7eadb408a8caf1b86c6072f9e24f"
+    }
+  ],
+  "Creature": [
+    {
+      "archive": "patch-M.MPQ",
+      "file": "0-Creature.dbc",
+      "sha256": "a6b1d023ecb44f85be7205cacd7cd5aed5521b9634f5b7146bf1712ed5a66f0d"
+    }
+  ],
+  "SpellShapeshiftForm": [
+    {
+      "archive": "enUS\\locale-enUS.MPQ",
+      "file": "0-SpellShapeshiftForm.dbc",
+      "sha256": "4f931bf7a0b938968c75b1c783ff56a4cbc71301183435d5a3cc8c2545b1210d"
+    },
+    {
+      "archive": "enUS\\patch-enUS-2.MPQ",
+      "file": "1-SpellShapeshiftForm.dbc",
+      "sha256": "834b85bfd5a995ab50609db81cc0578cfb3f80f1b8084db60ac705035c9c6b49"
+    },
+    {
+      "archive": "enUS\\patch-enUS-3.MPQ",
+      "file": "2-SpellShapeshiftForm.dbc",
+      "sha256": "beebbd19d2d3e758496c0e5535fd3f301450b1fd984930841a9f120afcaa1dc5"
+    },
+    {
+      "archive": "enUS\\patch-enUS.MPQ",
+      "file": "3-SpellShapeshiftForm.dbc",
+      "sha256": "23afd294eb723fb62d160edfe7a99cd0678a7e0afb9416569cc085fd75585f61"
+    },
+    {
+      "archive": "patch-S.MPQ",
+      "file": "4-SpellShapeshiftForm.dbc",
+      "sha256": "be842b8f14fce179cb658296ab3ca505f784c1b8830651ad720c150a255f2fd4"
+    }
+  ],
+  "Spell": [
+    {
+      "archive": "area-52\\patch-D.MPQ",
+      "file": "0-Spell.dbc",
+      "sha256": "90a3d0f3328e1f76ce6b39307a13652561dd56d1b05902f67c18959b0ba048dd"
+    }
+  ],
+  "server_spell_sha256": "b66915bfa96240fce9fce87df8331b79deececae5c6b63ef95d807bc2cbbf0db",
+  "server_display_sha256": "0ff00f000dbe8de488681785815bebcf3091208c9235bbc577fe2c4fc9cc2d98"
+}
