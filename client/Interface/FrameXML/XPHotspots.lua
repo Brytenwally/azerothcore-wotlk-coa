@@ -25,10 +25,14 @@ local function View()
     if not map or not top or top == bottom or left == right then return end
     return map, zone, top, bottom, left, right
 end
+local function Overview()
+    local area=GetCurrentMapAreaID()
+    return area==0 or area==14 or area==15 or area==467 or area==486
+end
 local function Position(x, y, sourceMap)
     local map, zone, top, bottom, left, right = View()
     if not map then return end
-    if map==4294967295 then
+    if Overview() then
         if not C_WorldMap.GetMapPosition then return end
         local px,py=C_WorldMap.GetMapPosition(sourceMap,x,y,0)
         if px and py and px~=0 and py~=0 then return px,py end
@@ -213,7 +217,7 @@ function H.Draw()
     if draft then rows[#rows+1]=draft end
     local count=0
     for _,r in ipairs(rows) do
-        if (N(r.map)==map or map==4294967295) and (B(r.icon) or gm and H.catalog or B(r.draft)) then
+        if (N(r.map)==map or Overview()) and (B(r.icon) or gm and H.catalog or B(r.draft)) then
             local x,y=Position(N(r.x),N(r.y),N(r.map))
             if x and x>=0 and x<=1 and y>=0 and y<=1 then
                 count=count+1
@@ -355,15 +359,20 @@ local function ShowBrowser()
     end
     H.DrawBrowser()
 end
-local function Field(label,y,default)
-    local text=panel:CreateFontString(nil,"OVERLAY","GameFontNormalSmall")
-    text:SetPoint("TOPLEFT",10,y);text:SetText(label)
-    local edit=CreateFrame("EditBox",nil,panel)
+local function Input(parent)
+    local edit=CreateFrame("EditBox",nil,parent)
     edit:SetFontObject("GameFontHighlightSmall");edit:SetTextInsets(5,5,2,2)
     edit:SetBackdrop({bgFile="Interface\\Buttons\\WHITE8X8",
         edgeFile="Interface\\Buttons\\WHITE8X8",edgeSize=1})
     edit:SetBackdropColor(0.02,0.06,0.10,1);edit:SetBackdropBorderColor(0.78,0.60,0.27,1)
-    edit:SetSize(160,20);edit:SetPoint("TOPLEFT",115,y+3);edit:SetAutoFocus(false)
+    edit:SetAutoFocus(false)
+    return edit
+end
+local function Field(label,y,default)
+    local text=panel:CreateFontString(nil,"OVERLAY","GameFontNormalSmall")
+    text:SetPoint("TOPLEFT",10,y);text:SetText(label)
+    local edit=Input(panel)
+    edit:SetSize(225,20);edit:SetPoint("TOPLEFT",115,y+3)
     edit:SetText(default);edit:SetMaxLetters(100);fields[label]=edit
     return edit
 end
@@ -401,7 +410,7 @@ function H.ShowGeneral()
     if browser then browser:Hide() end
     if not generalPanel then
         generalPanel=CreateFrame("Frame",nil,WorldMapFrame)
-        generalPanel:SetSize(360,580);generalPanel:SetPoint("TOPRIGHT",WorldMapFrame,"TOPRIGHT",-12,-55)
+        generalPanel:SetSize(360,600);generalPanel:SetPoint("TOPRIGHT",WorldMapFrame,"TOPRIGHT",-12,-55)
         generalPanel:SetFrameStrata("DIALOG");generalPanel:EnableMouse(true)
         generalPanel:SetBackdrop({bgFile="Interface\\Buttons\\WHITE8X8",
             edgeFile="Interface\\Tooltips\\UI-Tooltip-Border",edgeSize=12})
@@ -417,7 +426,7 @@ function H.ShowGeneral()
             local index=entry[1]
             local label=generalPanel:CreateFontString(nil,"OVERLAY","GameFontNormalSmall")
             label:SetPoint("TOPLEFT",12,-70-(row-1)*28);label:SetText(entry[2])
-            local edit=CreateFrame("EditBox",nil,generalPanel,"InputBoxTemplate")
+            local edit=Input(generalPanel)
             edit:SetSize(90,20);edit:SetPoint("TOPLEFT",240,-67-(row-1)*28)
             edit:SetAutoFocus(false);edit:SetMaxLetters(8)
             edit:SetScript("OnTextChanged",function(_,user) if user then generalDirty=true end end)
@@ -468,6 +477,12 @@ end
 StaticPopupDialogs["XP_HOTSPOT_DELETE"]={
     text="Permanently delete hotspot %s?\n\nThis cannot be reversed.",
     button1="Delete",button2=CANCEL or "Cancel",timeout=0,whileDead=true,hideOnEscape=true,
+    OnHide=function(self)
+        if self.hotspotStrata then
+            self:SetFrameStrata(self.hotspotStrata);self:SetFrameLevel(self.hotspotLevel)
+            self.hotspotStrata=nil;self.hotspotLevel=nil
+        end
+    end,
     OnAccept=function(self)
         local r=self.data
         if gm and r then Send("delete "..N(r.id).." "..N(r.revision)) end
@@ -478,7 +493,7 @@ function H.ShowPanel()
     if generalPanel then generalPanel:Hide() end
     if not panel then
         panel=CreateFrame("Frame",nil,WorldMapFrame)
-        panel:SetSize(300,575);panel:SetPoint("TOPRIGHT",WorldMapFrame,"TOPRIGHT",-12,-55)
+        panel:SetSize(360,600);panel:SetPoint("TOPRIGHT",WorldMapFrame,"TOPRIGHT",-12,-55)
         panel:SetFrameStrata("DIALOG");panel:EnableMouse(true)
         panel:SetBackdrop({bgFile="Interface\\Buttons\\WHITE8X8",
             edgeFile="Interface\\Tooltips\\UI-Tooltip-Border",edgeSize=12})
@@ -488,79 +503,81 @@ function H.ShowPanel()
         title:SetPoint("TOPLEFT",10,-12);title:SetText("XP Hotspot Manager")
         title:SetTextColor(0.95,0.76,0.39)
         panel.title=title
-        Button(panel,"X",265,-5,25,function() panel:Hide();if browser then browser:Hide() end end)
-        Button(panel,"Locations",10,24,130,function() end)
-        Button(panel,"General Settings",155,24,130,H.ShowGeneral)
-        Field("Name",-45,"New Hotspot")
-        Field("XP bonus %",-75,"150")
-        Field("Minutes",-105,"60")
-        Field("Weight",-135,"1")
-        Field("Cooldown min",-165,"60")
-        Field("Radius yards",-195,"150")
+        Button(panel,"X",325,-5,25,function() panel:Hide();if browser then browser:Hide() end end)
+        Button(panel,"Locations",12,-35,150,function() end)
+        Button(panel,"General Settings",180,-35,165,H.ShowGeneral)
+        Field("Name",-100,"New Hotspot")
+        Field("XP bonus %",-125,"150")
+        Field("Minutes",-150,"60")
+        Field("Weight",-175,"1")
+        Field("Cooldown min",-200,"60")
+        Field("Radius yards",-225,"150")
         local icon=CreateFrame("CheckButton",nil,panel,"UICheckButtonTemplate")
-        icon:SetPoint("TOPLEFT",10,-495);icon:SetSize(24,24);icon:SetChecked(true)
+        icon:SetPoint("TOPLEFT",12,-525);icon:SetSize(24,24);icon:SetChecked(true)
         local iconText=panel:CreateFontString(nil,"OVERLAY","GameFontNormalSmall")
         iconText:SetPoint("LEFT",icon,"RIGHT",0,0);iconText:SetText("Show XP icon")
         local fill=CreateFrame("CheckButton",nil,panel,"UICheckButtonTemplate")
-        fill:SetPoint("TOPLEFT",155,-495);fill:SetSize(24,24);fill:SetChecked(true)
+        fill:SetPoint("TOPLEFT",180,-525);fill:SetSize(24,24);fill:SetChecked(true)
         local fillText=panel:CreateFontString(nil,"OVERLAY","GameFontNormalSmall")
         fillText:SetPoint("LEFT",fill,"RIGHT",0,0);fillText:SetText("Show highlight")
         fields.icon,fields.fill=icon,fill
-        Button(panel,"New circle",10,-225,90,function()
-            H.newKind="circle";Notify("CTRL-click the map to place the center.")
-        end)
-        Button(panel,"Whole zone",105,-225,90,function()
-            H.newKind="zone";Notify("CTRL-click the zone map to create its hotspot.")
-        end)
-        Button(panel,"Polygon",200,-225,90,function()
-            H.newKind="polygon";Notify("CTRL-click the map to start the boundary, then add vertices.")
-        end)
-        Button(panel,"Edit selected",10,-255,130,function()
+        Button(panel,"New Draft",12,-65,150,function() H.NewDraft() end)
+        Button(panel,"Circle",12,-255,102,function() H.StartShape("circle") end)
+        Button(panel,"Whole zone",126,-255,102,function() H.StartShape("zone") end)
+        Button(panel,"Polygon",240,-255,102,function() H.StartShape("polygon") end)
+        Button(panel,"Edit selected",12,-285,150,function()
             H.vertex=nil;H.newKind=nil
             if selected then Send("edit "..N(selected.id)) end
         end)
-        Button(panel,"Merge selection",155,-255,130,function()
+        Button(panel,"Merge selection",180,-285,165,function()
             local ids={};for id in pairs(H.merge) do ids[#ids+1]=id end;table.sort(ids)
             if #ids<2 or #ids>8 then Notify("SHIFT-click 2 to 8 area markers or browser rows to merge.");return end
             local command="merge"
             for _,id in ipairs(ids) do command=command.." "..id.." "..H.merge[id] end
             Send(command);H.newKind=nil;H.vertex=nil
         end)
-        Button(panel,"Apply settings",10,-285,130,ApplyFields)
-        Button(panel,"Save draft",155,-285,130,function()
+        Button(panel,"Apply settings",12,-315,150,ApplyFields)
+        Button(panel,"Save draft",180,-65,165,function()
             if not draft or selected and N(selected.id)~=N(draft.id) then Notify("Click Edit selected first.");return end
             Send("save "..fields["XP bonus %"]:GetText().." "..N(fields.Minutes:GetText())*60 .." "..
                 fields.Weight:GetText().." "..N(fields["Cooldown min"]:GetText())*60 .." "..
                 (fields.icon:GetChecked() and "1" or "0").." "..(fields.fill:GetChecked() and "1" or "0")..
                 " "..fields["Radius yards"]:GetText().." "..fields.Name:GetText())
         end)
-        Button(panel,"Enable selected",10,-315,130,function() SelectedCommand("enable") end)
-        Button(panel,"Disable selected",155,-315,130,function() SelectedCommand("disable") end)
-        Button(panel,"Move to next",10,-345,130,function() SelectedCommand("next") end)
-        Button(panel,"Stop selected",155,-345,130,function() SelectedCommand("stop") end)
-        Button(panel,"Teleport to center",10,-375,130,function() SelectedCommand("teleport") end)
-        Button(panel,"Delete selected",155,-375,130,function()
+        Button(panel,"Enable selected",12,-345,150,function() SelectedCommand("enable") end)
+        Button(panel,"Disable selected",180,-345,165,function() SelectedCommand("disable") end)
+        Button(panel,"Move to next",12,-375,150,function() SelectedCommand("next") end)
+        Button(panel,"Stop selected",180,-375,165,function() SelectedCommand("stop") end)
+        Button(panel,"Teleport to center",12,-465,333,function() SelectedCommand("teleport") end)
+        Button(panel,"Delete selected",180,-405,165,function()
             if not selected or B(selected.draft) or N(selected.id)==0 then
                 Notify("Select a saved hotspot first.");return
             end
             local popup=StaticPopup_Show("XP_HOTSPOT_DELETE",selected.name or N(selected.id))
-            if popup then popup.data={id=N(selected.id),revision=N(selected.revision)} end
+            if popup then
+                popup.data={id=N(selected.id),revision=N(selected.revision)}
+                popup.hotspotStrata=popup:GetFrameStrata();popup.hotspotLevel=popup:GetFrameLevel()
+                popup:SetFrameStrata("TOOLTIP")
+                popup:SetFrameLevel(math.max(WorldMapFrame:GetFrameLevel(),panel:GetFrameLevel())+20)
+                popup:Raise()
+            end
         end)
-        Button(panel,"Browse / active",10,-465,275,function()
+        Button(panel,"Browse / active",12,-495,333,function()
             H.catalog=not H.catalog;ShowBrowser();H.Refresh(1)
         end)
-        fields.announce=Button(panel,"Announcements",10,-435,275,function()
+        fields.announce=Button(panel,"Announcements",12,-405,150,function()
             Send("announce "..(announcements and "0" or "1"))
         end)
-        Button(panel,"Cancel draft",10,-405,130,function()
+        Button(panel,"Cancel draft",180,-315,165,function()
             if selected then selected=H.rows[N(selected.id)] end
-            draft=nil;H.newKind=nil;H.vertex=nil;H.merge={};Send("cancel");H.Draw();H.DrawBrowser()
+            draft=nil;H.newKind=nil;H.newCenter=nil;H.vertex=nil;H.merge={};Send("cancel");H.Draw();H.DrawBrowser()
         end)
-        Button(panel,"Refresh",155,-405,130,H.Refresh)
+        Button(panel,"Refresh",12,-435,333,H.Refresh)
         local hint=panel:CreateFontString(nil,"OVERLAY","GameFontHighlightSmall")
-        hint:SetPoint("TOPLEFT",10,-530);hint:SetWidth(280)
-        hint:SetText("CTRL-click map: place center/add vertex. ALT-click: select nearest vertex; "..
-            "CTRL-click: move it. CTRL-right: undo. SHIFT-click markers or rows to merge. Save, then Enable.")
+        hint:SetPoint("TOPLEFT",12,-555);hint:SetWidth(333)
+        panel.hint=hint
+        hint:SetText("CTRL-click starts a circle. Choose Polygon to map its boundary. Editing: CTRL-click moves center/adds vertex; "..
+            "ALT-click selects vertex; CTRL-right undoes. SHIFT-click to merge. Save, then Enable.")
     end
     local r=selected or draft
     panel.title:SetText(r and ("Selected Hotspot #"..N(r.id)) or "XP Hotspot Manager")
@@ -575,10 +592,37 @@ function H.ShowPanel()
     fields.announce:SetText(announcements and "Announce: ON" or "Announce: OFF")
     ShowBrowser()
 end
+function H.NewDraft()
+    selected=nil;draft=nil;H.newKind=nil;H.newCenter=nil;H.vertex=nil;H.merge={}
+    H.ShowPanel()
+    fields.Name:SetText("New Hotspot")
+    fields["XP bonus %"]:SetText(H.general and H.general[3] or 150)
+    fields.Minutes:SetText((H.general and H.general[4] or 3600)/60)
+    fields["Cooldown min"]:SetText((H.general and H.general[5] or 3600)/60)
+    fields.Weight:SetText(1);fields["Radius yards"]:SetText(150)
+    fields.icon:SetChecked(true);fields.fill:SetChecked(true)
+    H.Draw();Notify("CTRL-click a zone map to start a circular draft. Choose Polygon to map a boundary.")
+end
+function H.StartShape(kind)
+    if draft then
+        if N(draft.id)~=0 then Notify("Click New Draft before creating a different shape.");return end
+        H.newCenter={map=N(draft.map),zone=N(draft.zone),x=N(draft.x),y=N(draft.y)}
+        draft=nil;selected=nil
+    elseif selected then
+        H.NewDraft()
+    end
+    H.newKind=kind
+    local c=H.newCenter
+    if not c then Notify("CTRL-click a zone map to set the new center.");return end
+    H.newKind=nil;H.newCenter=nil;H.vertex=nil
+    Send("newmap "..kind.." "..c.map.." "..c.zone.." "..c.x.." "..c.y.." "..fields.Name:GetText())
+    if kind=="polygon" then Send("point "..c.x.." "..c.y)
+    elseif kind=="circle" then Send("radius "..fields["Radius yards"]:GetText()) end
+end
 local function Receive(text)
     if text:sub(1,13)=="DRAFTCLEARED|" then
         if selected and B(selected.draft) then selected=nil end
-        draft=nil;H.merge={};H.newKind=nil;H.vertex=nil
+        draft=nil;H.merge={};H.newKind=nil;H.newCenter=nil;H.vertex=nil
         Notify(text:sub(14));H.Draw();return
     end
     local deleted=text:match("^DELETED|(%d+)$")
@@ -690,13 +734,12 @@ frame:SetScript("OnEvent",function(_,event,prefix,text,channel,sender)
         end
         local priorMouseUp=WorldMapButton:GetScript("OnMouseUp")
         WorldMapButton:SetScript("OnMouseUp",function(self,button,...)
-            if gm and H.newKind and IsControlKeyDown() and button=="LeftButton" then
+            if gm and not draft and IsControlKeyDown() and button=="LeftButton" then
                 local map,zone=View();local x,y=AtCursor()
-                if not x or not zone or zone==0 then Notify("Open a zone map first.");return end
-                local kind=H.newKind;H.newKind=nil;H.vertex=nil
-                Send("newmap "..kind.." "..map.." "..zone.." "..x.." "..y.." "..fields.Name:GetText())
-                if kind=="polygon" then Send("point "..x.." "..y)
-                elseif kind=="circle" then Send("radius "..fields["Radius yards"]:GetText()) end
+                if not x or not zone or zone==0 or Overview() then Notify("Open a zone map first.");return end
+                if selected then H.NewDraft() else H.ShowPanel() end
+                H.newCenter={map=map,zone=zone,x=x,y=y};H.vertex=nil
+                H.StartShape(H.newKind or "circle")
                 return
             end
             if gm and draft and draft.kind=="polygon" and IsAltKeyDown() and button=="LeftButton" then

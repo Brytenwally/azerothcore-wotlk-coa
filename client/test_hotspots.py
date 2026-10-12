@@ -9,7 +9,7 @@ MOCK = r'''
 frames={};messages={};clock=1000;oldClicks=0;control=false
 StaticPopupDialogs={}
 function StaticPopup_Show(which,name)
- popup={which=which,name=name};return popup
+ popup=CreateFrame("Frame");popup.which=which;popup.name=name;return popup
 end
 local methods={}
 function methods:SetScript(k,v) self.scripts[k]=v end
@@ -31,13 +31,17 @@ function methods:GetLeft() return 0 end
 function methods:GetTop() return 100 end
 function methods:GetWidth() return self.width or 100 end
 function methods:GetHeight() return self.height or 100 end
-function methods:GetFrameLevel() return 1 end
+function methods:GetFrameLevel() return self.level or 1 end
+function methods:SetFrameLevel(v) self.level=v end
+function methods:GetFrameStrata() return self.strata or "DIALOG" end
+function methods:SetFrameStrata(v) self.strata=v end
+function methods:SetBackdrop(v) self.backdrop=v end
 function methods:SetSize(w,h) self.width=w;self.height=h end
 function methods:SetPoint(...) self.point={...} end
 function methods:CreateTexture() return CreateFrame("Texture") end
 function methods:CreateFontString() return CreateFrame("Font") end
 function CreateFrame(kind,name,parent,template)
- local f={scripts={},shown=true,kind=kind,parent=parent,width=100,height=100,text="",checked=false}
+ local f={scripts={},shown=true,kind=kind,parent=parent,template=template,width=100,height=100,text="",checked=false}
  setmetatable(f,{__index=function(_,k) return methods[k] or (k:match("^[A-Z]") and function() end) end})
  frames[#frames+1]=f;return f
 end
@@ -315,7 +319,7 @@ XPHotspots.Select(XPHotspots.rows[1]);XPHotspots.queue={}
 local b=ButtonNamed("Teleport to center");b.scripts.OnClick(b)
 ''')
         self.assertEqual(self.lua.eval('XPHotspots.queue[1]'), 'teleport 1 1')
-        self.assertEqual(self.lua.eval('ButtonNamed("Browse / active").width'), 275)
+        self.assertEqual(self.lua.eval('ButtonNamed("Browse / active").width'), 333)
         self.assertLess(self.lua.eval('ButtonNamed("Browse / active").point[3]'),
                         self.lua.eval('ButtonNamed("Cancel draft").point[3]'))
 
@@ -367,6 +371,70 @@ b.scripts.OnClick(b)
         self.lua.execute('b=ButtonNamed("Reload");b.scripts.OnClick(b)')
         self.receive('G|1|7|150|3600|3600|20|20|20|20|20|20|20|5')
         self.assertEqual(self.lua.eval('edit:GetText()'), '7')
+
+    def test_continent_projects_expansion_islands_and_rejects_absent_projection(self):
+        self.lua.execute('''
+GetCurrentMapAreaID=function() return 14 end
+C_WorldMap.GetMapIDByAreaID=function() return 1 end
+C_WorldMap.GetZoneIDByAreaID=function() return 0 end
+C_WorldMap.GetMapPosition=function(map,x,y,z)
+ projected={map,x,y,z};return 0.2,0.3
+end
+''')
+        self.snapshot(map=530, zone=3525, x=-2000, y=-11000)
+        self.assertEqual(self.lua.eval('XPHotspots.pins[1].point[4]'), 20)
+        self.assertEqual(self.lua.eval('projected[1]'), 530)
+        self.lua.execute('C_WorldMap.GetMapPosition=function() return 0,0 end;XPHotspots.Draw()')
+        self.assertFalse(self.lua.eval('XPHotspots.pins[1].shown'))
+
+    def test_ctrl_click_creates_circle_then_new_draft_can_change_to_polygon(self):
+        self.snapshot()
+        self.lua.execute('''
+XPHotspots.queue={};control=true
+WorldMapButton.scripts.OnMouseUp(WorldMapButton,"LeftButton")
+''')
+        self.assertEqual(self.lua.eval('XPHotspots.queue[1]'), 'newmap circle 0 44 75 75 New Hotspot')
+        self.row(id=0, draft=True, x=75, y=75, name='New Hotspot')
+        self.lua.execute('XPHotspots.queue={};b=ButtonNamed("Polygon");b.scripts.OnClick(b)')
+        self.assertEqual(self.lua.eval('XPHotspots.queue[1]'), 'newmap polygon 0 44 75 75 New Hotspot')
+        self.assertEqual(self.lua.eval('XPHotspots.queue[2]'), 'point 75 75')
+
+    def test_manager_layout_inputs_and_popup_above_map(self):
+        self.snapshot()
+        self.lua.execute('''
+XPHotspots.Select(XPHotspots.rows[1]);manager=ButtonNamed("New Draft").parent
+local b=ButtonNamed("Delete selected");b.scripts.OnClick(b)
+''')
+        self.assertEqual(self.lua.eval('popup.strata'), 'TOOLTIP')
+        self.assertGreater(self.lua.eval('popup.level'), self.lua.eval('WorldMapFrame:GetFrameLevel()'))
+        self.lua.execute('StaticPopupDialogs[popup.which].OnHide(popup)')
+        self.assertEqual(self.lua.eval('popup.strata'), 'DIALOG')
+        self.assertEqual(self.lua.eval('ButtonNamed("New Draft").point[3]'), -65)
+        self.assertEqual(self.lua.eval('ButtonNamed("Save draft").point[3]'), -65)
+        self.assertEqual(self.lua.eval('ButtonNamed("Teleport to center").point[3]'), -465)
+        self.assertEqual(self.lua.eval('ButtonNamed("Announce: ON").point[3]'), -405)
+        self.lua.execute('''
+XPHotspots.ShowGeneral();general=ButtonNamed("Save general settings").parent
+continuous=0
+for _,f in ipairs(frames) do
+ if f.kind=="EditBox" and f.parent==general and f.backdrop and not f.template then continuous=continuous+1 end
+end
+''')
+        self.assertEqual(self.lua.eval('continuous'), 11)
+        self.assertEqual(self.lua.eval('manager.width'), self.lua.eval('general.width'))
+        self.assertEqual(self.lua.eval('manager.height'), self.lua.eval('general.height'))
+
+    def test_new_draft_leaves_existing_hotspot_untouched_and_uses_defaults(self):
+        self.snapshot()
+        self.receive('G|1|3|175|7200|3600|20|20|20|20|20|20|20|4')
+        self.lua.execute('''
+XPHotspots.Select(XPHotspots.rows[1]);XPHotspots.queue={}
+local b=ButtonNamed("New Draft");b.scripts.OnClick(b)
+control=true;WorldMapButton.scripts.OnMouseUp(WorldMapButton,"LeftButton")
+''')
+        self.assertEqual(self.lua.eval('XPHotspots.rows[1].name'), 'Redridge')
+        self.assertEqual(self.lua.eval('XPHotspots.queue[1]'), 'newmap circle 0 44 75 75 New Hotspot')
+        self.assertTrue(self.lua.eval('ButtonNamed("175")~=nil'))
 
     def test_new_polygon_starts_at_map_cursor(self):
         self.snapshot()

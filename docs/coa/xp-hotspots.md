@@ -102,8 +102,11 @@ For a Game Master:
 2. Select a marker or catalog row, then **Edit selected**. Change the name, bonus, duration, rotation
    weight, cooldown, icon visibility or highlight visibility. **Save draft** submits the settings
    together. A stale edit is rejected rather than overwriting another GM's work.
-3. **New circle**, **Whole zone** and **Polygon** arm placement on the viewed zone map. CTRL-click
-   creates the disabled draft there, without requiring the character to travel. Additional CTRL-clicks
+3. With no draft open, CTRL-click a zone map to create a circular draft at that point. **New Draft**
+   and **Save draft** sit together at the top. **New Draft** leaves saved locations unchanged and starts
+   fresh with the server defaults. Choose **Polygon** to turn a new circle into a polygon starting at
+   its center, or **Whole zone** for zone coverage. A shape can also be chosen before placing the center.
+   Existing saved shapes are edited through **Edit selected**. Additional CTRL-clicks
    set a circle center or add polygon vertices. ALT-click selects the nearest existing vertex;
    CTRL-click moves that vertex. CTRL-right-click undoes the last vertex. Use the radius field for circles.
    Edit an existing boundary through **Edit selected**, then the same map controls.
@@ -298,3 +301,8 @@ container. Set `XPHOT_DISPOSABLE_MYSQL=1` only in that fixture and select it thr
 `tools/verify_all.py --stages harness --harness test_hotspot_database`. It imports the migration,
 checks every JSON payload, edits a record and the announcement setting, then reapplies the migration
 to verify that existing state survives. It refuses a nonempty database and never uses realm credentials.
+
+Continent and world overview markers use the client map projection, including expansion-map starting
+islands such as Bloodmyst on Kalimdor. Locations and General Settings share the same panel dimensions
+and continuous input borders. Delete confirmations appear above the map and restore their original
+frame layer when dismissed.
