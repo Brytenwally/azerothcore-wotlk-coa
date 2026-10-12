@@ -7,6 +7,10 @@ from lupa.lua51 import LuaRuntime
 ROOT = Path(__file__).resolve().parents[1]
 MOCK = r'''
 frames={};messages={};clock=1000;oldClicks=0;control=false
+StaticPopupDialogs={}
+function StaticPopup_Show(which,name)
+ popup={which=which,name=name};return popup
+end
 local methods={}
 function methods:SetScript(k,v) self.scripts[k]=v end
 function methods:GetScript(k) return self.scripts[k] end
@@ -215,15 +219,114 @@ clock=1000.7;driver.scripts.OnUpdate(driver,0.3)
         self.receive('OFF')
         self.lua.execute('XPHotspots.ShowPanel=function() error("unauthorized") end;savedEntry.func()')
 
-    def test_marker_click_opens_selected_details_and_marks_pin(self):
+    def test_marker_click_opens_details_and_outlines_area_instead_of_pin(self):
         self.snapshot()
         self.lua.execute('p=XPHotspots.pins[1];p.scripts.OnClick(p)')
         self.assertTrue(self.lua.eval('ButtonNamed("Selected Hotspot #1")~=nil'))
         self.assertTrue(self.lua.eval('ButtonNamed("Redridge")~=nil'))
-        self.assertTrue(self.lua.eval('p.selection.shown'))
-        self.assertEqual(self.lua.eval('p.width'), 32)
+        self.assertFalse(self.lua.eval('p.selection.shown'))
+        self.assertEqual(self.lua.eval('p.width'), 24)
+        self.assertGreater(self.lua.eval('XPHotspots.outlineCount'), 0)
         self.lua.execute('p.scripts.OnLeave(p)')
+        self.assertFalse(self.lua.eval('p.selection.shown'))
+        self.assertTrue(self.lua.eval('XPHotspots.outlines[1].shown'))
+
+    def test_whole_zone_selection_has_padded_icon_border(self):
+        self.snapshot(kind='zone')
+        self.lua.execute('p=XPHotspots.pins[1];p.scripts.OnClick(p)')
         self.assertTrue(self.lua.eval('p.selection.shown'))
+        self.assertEqual(self.lua.eval('p.width'), 24)
+        self.assertEqual(self.lua.eval('p.selection.width'), 64)
+        self.assertEqual(self.lua.eval('XPHotspots.outlineCount'), 0)
+
+    def test_shift_marker_selection_toggles_merge_outline(self):
+        self.snapshot()
+        self.lua.execute('p=XPHotspots.pins[1];shift=true;p.scripts.OnClick(p)')
+        self.assertEqual(self.lua.eval('XPHotspots.merge[1]'), 1)
+        self.assertGreater(self.lua.eval('XPHotspots.outlineCount'), 0)
+        self.assertFalse(self.lua.eval('p.selection.shown'))
+        self.lua.execute('p.scripts.OnClick(p)')
+        self.assertTrue(self.lua.eval('XPHotspots.merge[1]==nil'))
+        self.assertEqual(self.lua.eval('XPHotspots.outlineCount'), 0)
+        self.assertFalse(self.lua.eval('XPHotspots.outlines[1].shown'))
+
+    def test_selection_visible_when_player_highlight_disabled_and_clears_on_other_map(self):
+        self.snapshot(highlight=False)
+        self.lua.execute('p=XPHotspots.pins[1];p.scripts.OnClick(p)')
+        self.assertGreater(self.lua.eval('XPHotspots.outlineCount'), 0)
+        self.lua.execute('C_WorldMap.GetMapIDByAreaID=function() return 1 end;XPHotspots.Draw()')
+        self.assertEqual(self.lua.eval('XPHotspots.outlineCount'), 0)
+        self.assertFalse(self.lua.eval('XPHotspots.outlines[1].shown'))
+
+    def test_world_map_reprojects_pins_and_clears_zone_boundary(self):
+        self.snapshot()
+        self.lua.execute('''
+p=XPHotspots.pins[1];p.scripts.OnClick(p)
+GetCurrentMapAreaID=function() return 0 end
+C_WorldMap.GetMapPosition=function(map,x,y,z)
+ projected={map,x,y,z};return 0.2,0.3
+end
+driver.scripts.OnEvent(driver,"WORLD_MAP_UPDATE")
+''')
+        self.assertEqual(self.lua.eval('p.point[4]'), 20)
+        self.assertEqual(self.lua.eval('p.point[5]'), -30)
+        self.assertEqual(self.lua.eval('projected[1]'), 0)
+        self.assertEqual(self.lua.eval('XPHotspots.outlineCount'), 0)
+        self.assertFalse(self.lua.eval('XPHotspots.outlines[1].shown'))
+        self.lua.execute('C_WorldMap.GetMapPosition=function() return 0,0 end;XPHotspots.Draw()')
+        self.assertFalse(self.lua.eval('p.shown'))
+
+    def test_perimeter_does_not_box_union_interior(self):
+        self.snapshot()
+        self.lua.execute('''
+XPHotspots.outlineCount=0
+XPHotspots.Outline({kind="union",map=0,parts={
+ {kind="circle",x=50,y=40,radius=20},
+ {kind="circle",x=50,y=60,radius=20}}})
+interiorEdges=0
+for i=1,XPHotspots.outlineCount do
+ local t=XPHotspots.outlines[i]
+ if math.abs(t.point[4]-50)<5 and math.abs(t.point[5]+50)<5 then interiorEdges=interiorEdges+1 end
+end
+''')
+        self.assertGreater(self.lua.eval('XPHotspots.outlineCount'), 0)
+        self.assertEqual(self.lua.eval('interiorEdges'), 0)
+
+    def test_delete_requires_confirmation_and_keeps_original_id_revision(self):
+        self.snapshot()
+        self.lua.execute('''
+XPHotspots.Select(XPHotspots.rows[1]);XPHotspots.queue={}
+local b=ButtonNamed("Delete selected");b.scripts.OnClick(b)
+''')
+        self.assertEqual(self.lua.eval('#XPHotspots.queue'), 0)
+        self.assertIn('cannot be reversed', self.lua.eval('StaticPopupDialogs[popup.which].text'))
+        self.lua.execute('''
+XPHotspots.Select({id=2,revision=9,name="Other"})
+StaticPopupDialogs[popup.which].OnAccept(popup)
+''')
+        self.assertEqual(self.lua.eval('XPHotspots.queue[1]'), 'delete 1 1')
+        self.receive('DELETED|1')
+        self.assertTrue(self.lua.eval('XPHotspots.rows[1]==nil'))
+
+    def test_teleport_uses_selected_revision_and_browser_button_is_full_width_bottom(self):
+        self.snapshot()
+        self.lua.execute('''
+XPHotspots.Select(XPHotspots.rows[1]);XPHotspots.queue={}
+local b=ButtonNamed("Teleport to center");b.scripts.OnClick(b)
+''')
+        self.assertEqual(self.lua.eval('XPHotspots.queue[1]'), 'teleport 1 1')
+        self.assertEqual(self.lua.eval('ButtonNamed("Browse / active").width'), 275)
+        self.assertLess(self.lua.eval('ButtonNamed("Browse / active").point[3]'),
+                        self.lua.eval('ButtonNamed("Cancel draft").point[3]'))
+
+    def test_server_invalidated_draft_cannot_be_resubmitted(self):
+        self.snapshot()
+        self.row(draft=True)
+        self.lua.execute('XPHotspots.merge[1]=1;XPHotspots.queue={}')
+        self.receive('DRAFTCLEARED|A hotspot used by this draft was permanently deleted.')
+        self.lua.execute('local b=ButtonNamed("Save draft");b.scripts.OnClick(b)')
+        self.assertEqual(self.lua.eval('#XPHotspots.queue'), 0)
+        self.assertTrue(self.lua.eval('next(XPHotspots.merge)==nil'))
 
     def test_general_settings_save_units_and_explicit_bulk_option(self):
         self.snapshot()

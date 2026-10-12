@@ -125,6 +125,7 @@ void WorldDatabaseConnection::DoPrepareStatements()
     PrepareStatement(WORLD_SEL_COA_DUNGEON_HEALTH, "SELECT map_id, difficulty, creature_entry, max_health FROM coa_dungeon_health", CONNECTION_SYNCH);
     PrepareStatement(WORLD_SEL_XP_HOTSPOTS, "SELECT id, payload FROM xp_hotspot_location", CONNECTION_SYNCH);
     PrepareStatement(WORLD_REP_XP_HOTSPOT, "REPLACE INTO xp_hotspot_location (id, payload) VALUES (?, ?)", CONNECTION_BOTH);
+    PrepareStatement(WORLD_DEL_XP_HOTSPOT, "DELETE FROM xp_hotspot_location WHERE id = ?", CONNECTION_BOTH);
     PrepareStatement(WORLD_SEL_XP_HOTSPOT_SETTING, "SELECT id, value FROM xp_hotspot_setting", CONNECTION_SYNCH);
     PrepareStatement(WORLD_UPD_XP_HOTSPOT_SETTING, "REPLACE INTO xp_hotspot_setting (id, value) VALUES (?, ?)", CONNECTION_BOTH);
 }

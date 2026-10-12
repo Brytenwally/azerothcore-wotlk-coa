@@ -257,6 +257,28 @@ The client and server must be updated together for compound geometry and direct-
 
 ## Qualification
 
+GM area selection uses a gold perimeter for circles, polygons and merged areas. Whole-zone selections
+use a padded border around the XP icon instead. SHIFT-click either map markers or browser rows to
+toggle merge candidates. Player hover coverage remains separate from GM selection, including when
+the player-facing highlight is disabled. World-map markers use the client's native world-to-map
+projection and clear old boundary overlays when the viewed map changes.
+
+The manager includes Teleport to center and Delete selected. Teleport preserves the GM recall point,
+requires valid terrain and an allowed outdoor map, and rejects combat, taxi flight, vehicle use,
+death and an existing teleport. A hotspot center can lie outside a concave or merged boundary.
+Permanent deletion requires an explicit irreversible-action confirmation and a current revision.
+The server removes the saved location and active/queued state, invalidates related edit/merge drafts,
+and retains an ID allocation floor so a deleted ID cannot be reused. Existing periodic XP checks
+remove a deleted location's bonus. General settings and other hotspots are unaffected.
+
+Browse / active occupies the full bottom button row. These changes require matching native client
+UI and server updates; a source push does not activate them or publish launcher assets.
+
+The October 12 manager update reviewed upstream `main` at
+`b8e4f26165334d77264e0ab041c804f16a5976c9`. Its changes since this package's pinned base
+`231b9958f1a33cc256078fcdcb635c36b29b3580` do not change the hotspot module, world database
+interfaces or map interfaces used here. Keep the standalone PR on hold for in-game acceptance.
+
 Install Lua test dependencies with `python -m pip install -r client/requirements-test.txt`. Run checks
 through the repository verifier:
 

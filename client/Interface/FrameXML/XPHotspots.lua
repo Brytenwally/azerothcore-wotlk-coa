@@ -1,4 +1,4 @@
-local H = { rows = {}, pins = {}, fills = {}, queue = {}, page = 1, merge = {} }
+local H = { rows = {}, pins = {}, fills = {}, outlines = {}, queue = {}, page = 1, merge = {} }
 XPHotspots = H
 local frame = CreateFrame("Frame")
 local selected, draft, hovered, panel, enabled, gm, announcements
@@ -17,6 +17,7 @@ local function Now() return time() + clockOffset end
 local function View()
     local area = GetCurrentMapAreaID()
     if not C_WorldMap or not area then return end
+    if area==0 then return 4294967295,0 end
     local map = C_WorldMap.GetMapIDByAreaID(area)
     local zone = C_WorldMap.GetZoneIDByAreaID(area) or 0
     local top, left = C_WorldMap.GetWorldPosition(area, 0, 0)
@@ -24,14 +25,20 @@ local function View()
     if not map or not top or top == bottom or left == right then return end
     return map, zone, top, bottom, left, right
 end
-local function Position(x, y)
+local function Position(x, y, sourceMap)
     local map, zone, top, bottom, left, right = View()
     if not map then return end
+    if map==4294967295 then
+        if not C_WorldMap.GetMapPosition then return end
+        local px,py=C_WorldMap.GetMapPosition(sourceMap,x,y,0)
+        if px and py and px~=0 and py~=0 then return px,py end
+        return
+    end
     return (y - left) / (right - left), (x - top) / (bottom - top)
 end
 local function AtCursor()
     local map, zone, top, bottom, left, right = View()
-    if not map then return end
+    if not top then return end
     local x, y = GetCursorPosition()
     local scale = WorldMapButton:GetEffectiveScale()
     x = (x / scale - WorldMapButton:GetLeft()) / WorldMapButton:GetWidth()
@@ -67,6 +74,7 @@ local function Inside(r, x, y)
 end
 function H.Refresh(page)
     if not enabled or not WorldMapFrame:IsShown() then return end
+    H.Draw()
     if H.refreshPending then
         H.refreshAgain=true
         if type(page)=="number" then H.nextPage=page end
@@ -153,9 +161,48 @@ function H.Highlight(r)
         end
     end
 end
+function H.Outline(r)
+    local map,zone,top,bottom,left,right=View()
+    if not r or r.kind=="zone" or map~=N(r.map) then return end
+    local w,h=WorldMapButton:GetWidth(),WorldMapButton:GetHeight()
+    local cols,rows=192,128
+    local grid={}
+    for row=-1,rows do
+        grid[row]={}
+        for col=-1,cols do
+            grid[row][col]=Inside(r,top+(row+0.5)/rows*(bottom-top),left+(col+0.5)/cols*(right-left))
+        end
+    end
+    local function Edge(x,y,width,height)
+        H.outlineCount=(H.outlineCount or 0)+1
+        local t=H.outlines[H.outlineCount]
+        if not t then t=WorldMapButton:CreateTexture(nil,"OVERLAY");H.outlines[H.outlineCount]=t end
+        t:SetTexture(1,0.8,0.2,1);t:ClearAllPoints()
+        t:SetPoint("TOPLEFT",WorldMapButton,"TOPLEFT",x,y)
+        t:SetSize(width,height);t:Show()
+    end
+    for row=0,rows-1 do
+        for col=0,cols-1 do
+            if grid[row][col] then
+                if not grid[row-1][col] then Edge(col*w/cols,-row*h/rows,w/cols,1.5) end
+                if not grid[row+1][col] then Edge(col*w/cols,-(row+1)*h/rows,w/cols,1.5) end
+                if not grid[row][col-1] then Edge(col*w/cols,-row*h/rows,1.5,h/rows) end
+                if not grid[row][col+1] then Edge((col+1)*w/cols,-row*h/rows,1.5,h/rows) end
+            end
+        end
+    end
+end
+function H.ToggleMerge(r)
+    if not gm or not r or r.kind=="zone" or N(r.id)==0 or B(r.draft) then return end
+    local id=N(r.id)
+    H.merge[id]=not H.merge[id] and N(r.revision) or nil
+    H.Draw()
+end
 function H.Draw()
     for _,p in ipairs(H.pins) do p:Hide() end
     for _,t in ipairs(H.fills) do t:Hide() end
+    for _,t in ipairs(H.outlines) do t:Hide() end
+    H.outlineCount=0
     if not enabled or not WorldMapFrame:IsShown() then return end
     local map,zone=View()
     if not map then return end
@@ -166,8 +213,8 @@ function H.Draw()
     if draft then rows[#rows+1]=draft end
     local count=0
     for _,r in ipairs(rows) do
-        if N(r.map)==map and (B(r.icon) or gm and H.catalog or B(r.draft)) then
-            local x,y=Position(N(r.x),N(r.y))
+        if (N(r.map)==map or map==4294967295) and (B(r.icon) or gm and H.catalog or B(r.draft)) then
+            local x,y=Position(N(r.x),N(r.y),N(r.map))
             if x and x>=0 and x<=1 and y>=0 and y<=1 then
                 count=count+1
                 local p=H.pins[count]
@@ -187,21 +234,23 @@ function H.Draw()
                         hovered=nil;H.hoverOwner=nil;WorldMapTooltip:Hide();H.Highlight(selected or draft)
                     end)
                     p:SetScript("OnClick",function(self)
+                        if gm and IsShiftKeyDown() then H.ToggleMerge(self.row);return end
                         H.Select(self.row)
                     end)
                     H.pins[count]=p
                 end
                 p.row=r
                 local chosen=selected and N(selected.id)==N(r.id)
-                p:SetSize(chosen and 32 or 24,chosen and 32 or 24)
+                p:SetSize(24,24)
                 if not p.selection then
                     p.selection=p:CreateTexture(nil,"OVERLAY")
-                    p.selection:SetAllPoints()
+                    p.selection:SetPoint("CENTER",p,"CENTER",0,0)
+                    p.selection:SetSize(64,64)
                     p.selection:SetTexture("Interface\\Buttons\\UI-ActionButton-Border")
                     p.selection:SetBlendMode("ADD")
                     p.selection:SetVertexColor(1,0.8,0.2,1)
                 end
-                if chosen then p.selection:Show() else p.selection:Hide() end
+                if chosen and r.kind=="zone" then p.selection:Show() else p.selection:Hide() end
                 p:ClearAllPoints()
                 p:SetPoint("CENTER",WorldMapButton,"TOPLEFT",x*WorldMapButton:GetWidth(),-y*WorldMapButton:GetHeight())
                 p:SetAlpha(N(r.ends)>Now() and 1 or 0.5)
@@ -210,6 +259,12 @@ function H.Draw()
         end
     end
     H.Highlight(hovered or selected or draft)
+    if gm then
+        H.Outline(selected or draft)
+        for id in pairs(H.merge) do
+            if not selected or id~=N(selected.id) then H.Outline(H.rows[id]) end
+        end
+    end
     if H.DrawBrowser then H.DrawBrowser() end
 end
 local function Button(parent,text,x,y,width,click)
@@ -278,9 +333,7 @@ local function ShowBrowser()
         for i=1,12 do
             local b=Button(browser,"",10,-64-(i-1)*27,240,function(self)
                 if IsShiftKeyDown() and self.row and self.row.kind~="zone" then
-                    local id=N(self.row.id)
-                    H.merge[id]=not H.merge[id] and N(self.row.revision) or nil
-                    H.DrawBrowser();return
+                    H.ToggleMerge(self.row);return
                 end
                 H.Select(self.row)
             end)
@@ -412,12 +465,20 @@ function H.Select(row)
     if gm then H.ShowPanel() end
     H.Draw()
 end
+StaticPopupDialogs["XP_HOTSPOT_DELETE"]={
+    text="Permanently delete hotspot %s?\n\nThis cannot be reversed.",
+    button1="Delete",button2=CANCEL or "Cancel",timeout=0,whileDead=true,hideOnEscape=true,
+    OnAccept=function(self)
+        local r=self.data
+        if gm and r then Send("delete "..N(r.id).." "..N(r.revision)) end
+    end,
+}
 function H.ShowPanel()
     if not gm then return end
     if generalPanel then generalPanel:Hide() end
     if not panel then
         panel=CreateFrame("Frame",nil,WorldMapFrame)
-        panel:SetSize(300,530);panel:SetPoint("TOPRIGHT",WorldMapFrame,"TOPRIGHT",-12,-55)
+        panel:SetSize(300,575);panel:SetPoint("TOPRIGHT",WorldMapFrame,"TOPRIGHT",-12,-55)
         panel:SetFrameStrata("DIALOG");panel:EnableMouse(true)
         panel:SetBackdrop({bgFile="Interface\\Buttons\\WHITE8X8",
             edgeFile="Interface\\Tooltips\\UI-Tooltip-Border",edgeSize=12})
@@ -437,11 +498,11 @@ function H.ShowPanel()
         Field("Cooldown min",-165,"60")
         Field("Radius yards",-195,"150")
         local icon=CreateFrame("CheckButton",nil,panel,"UICheckButtonTemplate")
-        icon:SetPoint("TOPLEFT",10,-445);icon:SetSize(24,24);icon:SetChecked(true)
+        icon:SetPoint("TOPLEFT",10,-495);icon:SetSize(24,24);icon:SetChecked(true)
         local iconText=panel:CreateFontString(nil,"OVERLAY","GameFontNormalSmall")
         iconText:SetPoint("LEFT",icon,"RIGHT",0,0);iconText:SetText("Show XP icon")
         local fill=CreateFrame("CheckButton",nil,panel,"UICheckButtonTemplate")
-        fill:SetPoint("TOPLEFT",155,-445);fill:SetSize(24,24);fill:SetChecked(true)
+        fill:SetPoint("TOPLEFT",155,-495);fill:SetSize(24,24);fill:SetChecked(true)
         local fillText=panel:CreateFontString(nil,"OVERLAY","GameFontNormalSmall")
         fillText:SetPoint("LEFT",fill,"RIGHT",0,0);fillText:SetText("Show highlight")
         fields.icon,fields.fill=icon,fill
@@ -460,7 +521,7 @@ function H.ShowPanel()
         end)
         Button(panel,"Merge selection",155,-255,130,function()
             local ids={};for id in pairs(H.merge) do ids[#ids+1]=id end;table.sort(ids)
-            if #ids<2 or #ids>8 then Notify("SHIFT-click 2 to 8 non-zone browser rows to merge.");return end
+            if #ids<2 or #ids>8 then Notify("SHIFT-click 2 to 8 area markers or browser rows to merge.");return end
             local command="merge"
             for _,id in ipairs(ids) do command=command.." "..id.." "..H.merge[id] end
             Send(command);H.newKind=nil;H.vertex=nil
@@ -477,10 +538,18 @@ function H.ShowPanel()
         Button(panel,"Disable selected",155,-315,130,function() SelectedCommand("disable") end)
         Button(panel,"Move to next",10,-345,130,function() SelectedCommand("next") end)
         Button(panel,"Stop selected",155,-345,130,function() SelectedCommand("stop") end)
-        Button(panel,"Browse / active",10,-375,130,function()
+        Button(panel,"Teleport to center",10,-375,130,function() SelectedCommand("teleport") end)
+        Button(panel,"Delete selected",155,-375,130,function()
+            if not selected or B(selected.draft) or N(selected.id)==0 then
+                Notify("Select a saved hotspot first.");return
+            end
+            local popup=StaticPopup_Show("XP_HOTSPOT_DELETE",selected.name or N(selected.id))
+            if popup then popup.data={id=N(selected.id),revision=N(selected.revision)} end
+        end)
+        Button(panel,"Browse / active",10,-465,275,function()
             H.catalog=not H.catalog;ShowBrowser();H.Refresh(1)
         end)
-        fields.announce=Button(panel,"Announcements",155,-375,130,function()
+        fields.announce=Button(panel,"Announcements",10,-435,275,function()
             Send("announce "..(announcements and "0" or "1"))
         end)
         Button(panel,"Cancel draft",10,-405,130,function()
@@ -489,9 +558,9 @@ function H.ShowPanel()
         end)
         Button(panel,"Refresh",155,-405,130,H.Refresh)
         local hint=panel:CreateFontString(nil,"OVERLAY","GameFontHighlightSmall")
-        hint:SetPoint("TOPLEFT",10,-488);hint:SetWidth(280)
+        hint:SetPoint("TOPLEFT",10,-530);hint:SetWidth(280)
         hint:SetText("CTRL-click map: place center/add vertex. ALT-click: select nearest vertex; "..
-            "CTRL-click: move it. CTRL-right: undo. SHIFT-click browser rows to merge. Save, then Enable.")
+            "CTRL-click: move it. CTRL-right: undo. SHIFT-click markers or rows to merge. Save, then Enable.")
     end
     local r=selected or draft
     panel.title:SetText(r and ("Selected Hotspot #"..N(r.id)) or "XP Hotspot Manager")
@@ -507,6 +576,20 @@ function H.ShowPanel()
     ShowBrowser()
 end
 local function Receive(text)
+    if text:sub(1,13)=="DRAFTCLEARED|" then
+        if selected and B(selected.draft) then selected=nil end
+        draft=nil;H.merge={};H.newKind=nil;H.vertex=nil
+        Notify(text:sub(14));H.Draw();return
+    end
+    local deleted=text:match("^DELETED|(%d+)$")
+    if deleted then
+        deleted=N(deleted);H.rows[deleted]=nil;H.merge[deleted]=nil
+        if selected and N(selected.id)==deleted then selected=nil end
+        if draft and N(draft.id)==deleted then draft=nil end
+        if hovered and N(hovered.id)==deleted then hovered=nil;WorldMapTooltip:Hide() end
+        H.Draw();if panel and panel:IsShown() then H.ShowPanel() end
+        H.Refresh();return
+    end
     if text:sub(1,2)=="G|" then
         local values={}
         for value in text:gmatch("|(%d+)") do values[#values+1]=tonumber(value) end
@@ -562,7 +645,7 @@ local function Receive(text)
     end
     if text=="E" and snapshot then
         H.rows=incoming
-        if selected and H.rows[N(selected.id)] then selected=H.rows[N(selected.id)] end
+        if selected and not B(selected.draft) then selected=H.rows[N(selected.id)] end
         if hovered and H.rows[N(hovered.id)] then hovered=H.rows[N(hovered.id)] end
         local s=snapshot;snapshot=nil;incoming=nil
         H.page,H.pages=s.page,s.pages

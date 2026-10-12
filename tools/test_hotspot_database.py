@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+import re
 import subprocess
 import unittest
 
@@ -68,6 +69,18 @@ class HotspotDatabaseTests(unittest.TestCase):
         self.sql(migration)
         self.assertEqual(self.sql('SELECT value FROM xp_hotspot_setting ORDER BY id;'),
                          '\n'.join(str(value) for value in values))
+        source = (ROOT / 'src/server/database/Database/Implementation/WorldDatabase.cpp').read_text()
+        delete = re.search(r'PrepareStatement\(WORLD_DEL_XP_HOTSPOT, "([^"]+)"', source).group(1)
+        remove = delete.replace('?', '1')
+        self.sql('START TRANSACTION; ' + remove + '; '
+                 'REPLACE INTO xp_hotspot_setting (id,value) VALUES (1000,1000001); ROLLBACK;')
+        self.assertEqual(self.sql('SELECT COUNT(*) FROM xp_hotspot_location WHERE id=1;'), '1')
+        self.assertEqual(self.sql('SELECT COUNT(*) FROM xp_hotspot_setting WHERE id=1000;'), '0')
+        self.sql('START TRANSACTION; ' + remove + '; '
+                 'REPLACE INTO xp_hotspot_setting (id,value) VALUES (1000,1000001); COMMIT;')
+        self.assertEqual(self.sql('SELECT COUNT(*) FROM xp_hotspot_location WHERE id=1;'), '0')
+        self.assertEqual(self.sql('SELECT value FROM xp_hotspot_setting WHERE id=1000;'), '1000001')
+        self.assertEqual(self.sql('SELECT COUNT(*) FROM xp_hotspot_location;'), str(int(count) - 1))
 
 
 if __name__ == '__main__':

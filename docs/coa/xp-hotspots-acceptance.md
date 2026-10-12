@@ -53,6 +53,19 @@ include unrelated Area 52 client fixes, progression changes, launcher assets or 
 
 ## General settings acceptance
 
+Selection and management checks: select a circle, polygon and merged area; verify a gold perimeter
+without an icon box. Select a whole-zone entry and verify the icon box has visible padding. Test
+SHIFT-clicking markers and browser rows together, including toggling candidates off. Change from
+zone to continent to world map while a refresh is outstanding: old outlines must disappear and
+world-map icons must be projected onto the corresponding continent. Check this with both factions'
+starting regions on map 530 and verify that Outland is not projected onto Azeroth.
+
+Teleport to a saved hotspot center, verify recall, and check rejection during combat and flight.
+Create a disposable GM hotspot for deletion testing. Cancel the confirmation first, then confirm:
+the entry, its running XP bonus and queued activation must disappear. With a second GM holding an
+old edit or merge draft, saving must not resurrect it. Restart normally and create another hotspot
+to confirm deletion persists and the old ID is not reused. Never delete seed locations for this test.
+
 Open the magnifying-glass menu as a GM, choose XP Hotspot Menu, then General Settings.
 Confirm ordinary players cannot open or submit settings. Save a total of zero, verify active events
 end and XP buffs disappear; restore the desired total and observe eligible events fill vacancies.

@@ -48,6 +48,8 @@ bool Enabled = false;
 GeneralSettings General;
 std::string Brand;
 uint32 Generation = 1;
+uint32 LocationIdFloor = 1000000;
+constexpr uint32 LocationIdFloorSetting = 1000;
 uint32 MaxContinent = 2;
 uint32 Buff = 993945;
 uint32 WorldTimer = 0;
@@ -679,7 +681,10 @@ void Execute(Player* player, std::string const& command)
     else if (action == "save")
     {
         if (!Drafts.contains(owner))
+        {
+            Send(player, "ERROR|No current draft. Select and edit a hotspot first.");
             return;
+        }
         auto r = Drafts.at(owner);
         input >> std::ws;
         if (!input.eof())
@@ -691,13 +696,13 @@ void Execute(Player* player, std::string const& command)
             }
             std::getline(input >> std::ws, r.Name);
         }
-        if (!Valid(r) || (r.Id && Locations.at(r.Id).Revision != r.Revision))
+        if (!Valid(r) || (r.Id && (!Locations.contains(r.Id) || Locations.at(r.Id).Revision != r.Revision)))
         {
             Send(player, "ERROR|Invalid boundary or stale edit. Reload the location and try again.");
             return;
         }
         if (!r.Id)
-            r.Id = std::max(1000000u, Locations.empty() ? 1u : Locations.rbegin()->first + 1);
+            r.Id = std::max(LocationIdFloor, Locations.empty() ? 1u : Locations.rbegin()->first + 1);
         else
         {
             auto const& current = Locations.at(r.Id);
@@ -736,6 +741,83 @@ void Execute(Player* player, std::string const& command)
         Drafts[owner] = r;
         MergeSources.erase(owner);
         LOG_INFO("commands.gm", "XPHotspots account {} saved location {} revision {}", account, r.Id, r.Revision);
+    }
+    else if (action == "teleport" || action == "delete")
+    {
+        uint32 id = 0, revision = 0;
+        if (!(input >> id >> revision) || !revision || !Locations.contains(id) ||
+            Locations.at(id).Revision != revision)
+        {
+            Send(player, "ERROR|Location changed or no longer exists. Refresh first.");
+            return;
+        }
+        auto const r = Locations.at(id);
+        if (action == "teleport")
+        {
+            if (!Allowed(r) || !Valid(r) || player->IsInCombat() || player->IsInFlight() ||
+                player->IsBeingTeleported() || player->GetVehicle() || !player->IsAlive())
+            {
+                Send(player, "ERROR|Cannot teleport to this hotspot in the current state.");
+                return;
+            }
+            auto entry = sMapStore.LookupEntry(r.Map);
+            if (!entry || entry->Instanceable() || !MapMgr::IsValidMapCoord(r.Map, r.Center.X, r.Center.Y))
+            {
+                Send(player, "ERROR|Hotspot center is not on a valid outdoor map.");
+                return;
+            }
+            auto map = sMapMgr->CreateBaseMap(r.Map);
+            float x = r.Center.X, y = r.Center.Y;
+            float z = map->GetHeight(x, y, MAX_HEIGHT);
+            if (!std::isfinite(z) || z <= INVALID_HEIGHT || !MapMgr::IsValidMapCoord(r.Map, x, y, z))
+            {
+                Send(player, "ERROR|Safe terrain height is unavailable at this hotspot center.");
+                return;
+            }
+            player->SaveRecallPosition();
+            if (player->TeleportTo(r.Map, x, y, z, player->GetOrientation()))
+                LOG_INFO("commands.gm", "XPHotspots account {} teleported to location {}", account, id);
+            return;
+        }
+        uint32 floor = std::max(LocationIdFloor, Locations.rbegin()->first + 1);
+        auto transaction = WorldDatabase.BeginTransaction();
+        auto remove = WorldDatabase.GetPreparedStatement(WORLD_DEL_XP_HOTSPOT);
+        remove->SetData(0, id);
+        transaction->Append(remove);
+        auto counter = WorldDatabase.GetPreparedStatement(WORLD_UPD_XP_HOTSPOT_SETTING);
+        counter->SetData(0, LocationIdFloorSetting);
+        counter->SetData(1, floor);
+        transaction->Append(counter);
+        if (!WorldDatabase.AsyncCommitTransaction(transaction).m_future.get())
+        {
+            Send(player, "ERROR|Database delete failed. Location was retained.");
+            return;
+        }
+        LocationIdFloor = floor;
+        Locations.erase(id);
+        Records.erase(id);
+        ActiveIds.erase(id);
+        for (auto it = Drafts.begin(); it != Drafts.end();)
+        {
+            bool affected = it->second.Id == id;
+            if (auto sources = MergeSources.find(it->first); sources != MergeSources.end())
+                affected = affected || std::any_of(sources->second.begin(), sources->second.end(),
+                    [id](auto const& source) { return source.first == id; });
+            if (affected)
+            {
+                if (auto editor = ObjectAccessor::FindPlayer(it->first))
+                    Send(editor, "DRAFTCLEARED|A hotspot used by this draft was permanently deleted.");
+                MergeSources.erase(it->first);
+                it = Drafts.erase(it);
+            }
+            else
+                ++it;
+        }
+        ++Generation;
+        LOG_INFO("commands.gm", "XPHotspots account {} permanently deleted location {}", account, id);
+        Send(player, "DELETED|" + std::to_string(id));
+        Send(player, "OK|Hotspot permanently deleted.");
+        return;
     }
     else if (action == "enable" || action == "disable" || action == "next" || action == "stop")
     {
@@ -874,6 +956,8 @@ public:
                 uint32 id = settings->Fetch()[0].Get<uint32>();
                 if (id >= 1 && id <= SettingCount)
                     loaded.Values[id - 1] = settings->Fetch()[1].Get<uint32>();
+                else if (id == LocationIdFloorSetting)
+                    LocationIdFloor = std::max(LocationIdFloor, settings->Fetch()[1].Get<uint32>());
             } while (settings->NextRow());
             if (ValidSettings(loaded))
                 General = loaded;
