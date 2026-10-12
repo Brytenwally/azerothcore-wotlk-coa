@@ -2,7 +2,6 @@ local H = { rows = {}, pins = {}, fills = {}, queue = {}, page = 1, merge = {} }
 XPHotspots = H
 local frame = CreateFrame("Frame")
 local selected, draft, hovered, panel, enabled, gm, announcements
-local brand=""
 local clockOffset = 0
 local chunks, chunkNext, chunkCount
 local snapshot, incoming
@@ -185,14 +184,24 @@ function H.Draw()
                         end
                     end)
                     p:SetScript("OnLeave",function()
-                        hovered=nil;H.hoverOwner=nil;WorldMapTooltip:Hide();H.Highlight(draft or selected)
+                        hovered=nil;H.hoverOwner=nil;WorldMapTooltip:Hide();H.Highlight(selected or draft)
                     end)
                     p:SetScript("OnClick",function(self)
-                        selected=self.row;if gm then H.ShowPanel() end;H.Highlight(selected)
+                        H.Select(self.row)
                     end)
                     H.pins[count]=p
                 end
                 p.row=r
+                local chosen=selected and N(selected.id)==N(r.id)
+                p:SetSize(chosen and 32 or 24,chosen and 32 or 24)
+                if not p.selection then
+                    p.selection=p:CreateTexture(nil,"OVERLAY")
+                    p.selection:SetAllPoints()
+                    p.selection:SetTexture("Interface\\Buttons\\UI-ActionButton-Border")
+                    p.selection:SetBlendMode("ADD")
+                    p.selection:SetVertexColor(1,0.8,0.2,1)
+                end
+                if chosen then p.selection:Show() else p.selection:Hide() end
                 p:ClearAllPoints()
                 p:SetPoint("CENTER",WorldMapButton,"TOPLEFT",x*WorldMapButton:GetWidth(),-y*WorldMapButton:GetHeight())
                 p:SetAlpha(N(r.ends)>Now() and 1 or 0.5)
@@ -200,7 +209,7 @@ function H.Draw()
             end
         end
     end
-    H.Highlight(hovered or draft or selected)
+    H.Highlight(hovered or selected or draft)
     if H.DrawBrowser then H.DrawBrowser() end
 end
 local function Button(parent,text,x,y,width,click)
@@ -228,6 +237,7 @@ function H.DrawBrowser()
         b.row=r
         if r then
             b:SetText((N(r.ends)>Now() and "|cff80ff80" or B(r.enabled) and "|cffffffff" or "|cff888888") ..
+                (selected and N(selected.id)==N(r.id) and "[SELECTED] " or "")..
                 (H.merge[N(r.id)] and "[+] " or "")..N(r.id).." "..(r.name or "").."|r")
             b:Show()
         else b:Hide() end
@@ -245,7 +255,7 @@ local function ShowBrowser()
         browser:SetBackdropColor(0.03,0.11,0.17,0.97)
         browser:SetBackdropBorderColor(0.78,0.60,0.27,1)
         local title=browser:CreateFontString(nil,"OVERLAY","GameFontNormal")
-        title:SetPoint("TOPLEFT",12,-12);title:SetText((brand~="" and brand or "XP").." Hotspots")
+        title:SetPoint("TOPLEFT",12,-12);title:SetText("XP Hotspots")
         title:SetTextColor(0.95,0.76,0.39)
         browser.title=title
         local search=CreateFrame("EditBox",nil,browser)
@@ -271,7 +281,7 @@ local function ShowBrowser()
                     H.merge[id]=not H.merge[id] and N(self.row.revision) or nil
                     H.DrawBrowser();return
                 end
-                selected=self.row;H.ShowPanel();H.Highlight(selected)
+                H.Select(self.row)
             end)
             b:SetScript("OnEnter",function(self)
                 if not self.row then return end
@@ -279,7 +289,7 @@ local function ShowBrowser()
                 if self.row.kind=="zone" and not self.row.mask then Send("outline "..N(self.row.id)) end
             end)
             b:SetScript("OnLeave",function()
-                hovered=nil;H.hoverOwner=nil;WorldMapTooltip:Hide();H.Highlight(draft or selected)
+                hovered=nil;H.hoverOwner=nil;WorldMapTooltip:Hide();H.Highlight(selected or draft)
             end)
             browser.rows[i]=b
         end
@@ -308,13 +318,18 @@ local function SelectedCommand(action)
     Send(action .. " " .. N(selected.id) .. " " .. N(selected.revision))
 end
 local function ApplyFields()
-    if not draft then Notify("Create or edit a draft first.");return false end
+    if not draft or selected and N(selected.id)~=N(draft.id) then Notify("Click Edit selected first.");return false end
     Send("name "..fields.Name:GetText())
     Send("settings "..fields["XP bonus %"]:GetText().." "..N(fields.Minutes:GetText())*60 .." "..
         fields.Weight:GetText().." "..N(fields["Cooldown min"]:GetText())*60 .." "..
         (fields.icon:GetChecked() and "1" or "0").." "..(fields.fill:GetChecked() and "1" or "0"))
     if draft.kind=="circle" then Send("radius "..fields["Radius yards"]:GetText()) end
     return true
+end
+function H.Select(row)
+    selected=row
+    if gm then H.ShowPanel() end
+    H.Draw()
 end
 function H.ShowPanel()
     if not gm then return end
@@ -327,7 +342,7 @@ function H.ShowPanel()
         panel:SetBackdropColor(0.03,0.11,0.17,0.97)
         panel:SetBackdropBorderColor(0.78,0.60,0.27,1)
         local title=panel:CreateFontString(nil,"OVERLAY","GameFontNormal")
-        title:SetPoint("TOPLEFT",10,-12);title:SetText((brand~="" and brand.." " or "").."Hotspot Manager")
+        title:SetPoint("TOPLEFT",10,-12);title:SetText("XP Hotspot Manager")
         title:SetTextColor(0.95,0.76,0.39)
         panel.title=title
         Button(panel,"X",265,-5,25,function() panel:Hide();if browser then browser:Hide() end end)
@@ -368,7 +383,7 @@ function H.ShowPanel()
         end)
         Button(panel,"Apply settings",10,-285,130,ApplyFields)
         Button(panel,"Save draft",155,-285,130,function()
-            if not draft then Notify("Create or edit a draft first.");return end
+            if not draft or selected and N(selected.id)~=N(draft.id) then Notify("Click Edit selected first.");return end
             Send("save "..fields["XP bonus %"]:GetText().." "..N(fields.Minutes:GetText())*60 .." "..
                 fields.Weight:GetText().." "..N(fields["Cooldown min"]:GetText())*60 .." "..
                 (fields.icon:GetChecked() and "1" or "0").." "..(fields.fill:GetChecked() and "1" or "0")..
@@ -394,7 +409,8 @@ function H.ShowPanel()
         hint:SetText("CTRL-click map: place center/add vertex. ALT-click: select nearest vertex; "..
             "CTRL-click: move it. CTRL-right: undo. SHIFT-click browser rows to merge. Save, then Enable.")
     end
-    local r=draft or selected
+    local r=selected or draft
+    panel.title:SetText(r and ("Selected Hotspot #"..N(r.id)) or "XP Hotspot Manager")
     if r then
         fields.Name:SetText(r.name or "")
         fields["XP bonus %"]:SetText(N(r.xp));fields.Minutes:SetText(N(r.duration)/60)
@@ -407,18 +423,12 @@ function H.ShowPanel()
     ShowBrowser()
 end
 local function Receive(text)
-    if text:sub(1,6)=="BRAND|" then
-        brand=text:sub(7,38)
-        if browser then browser.title:SetText((brand~="" and brand or "XP").." Hotspots") end
-        if panel then panel.title:SetText((brand~="" and brand.." " or "").."Hotspot Manager") end
-        return
-    end
+    if text:sub(1,6)=="BRAND|" then return end
     if text=="OFF" then
         enabled=false;gm=false;H.rows={};H.queue={};H.refreshPending=false;H.refreshAgain=false
         selected=nil;draft=nil;hovered=nil;snapshot=nil;incoming=nil;chunks=nil
         if panel then panel:Hide() end
         if browser then browser:Hide() end
-        if H.open then H.open:Hide() end
         WorldMapTooltip:Hide()
         H.Draw();return
     end
@@ -427,7 +437,6 @@ local function Receive(text)
     if g then
         enabled=true;gm=isGM=="1";announcements=a=="1";clockOffset=N(now)-time()
         if fields.announce then fields.announce:SetText(announcements and "Announce: ON" or "Announce: OFF") end
-        if H.open then H.open:Show() end
         snapshot={generation=N(g),page=N(page),pages=N(pages)};incoming={};return
     end
     local index,total,data=text:match("^R|(%d+)|(%d+)|(.*)$")
@@ -476,14 +485,23 @@ frame:SetScript("OnEvent",function(_,event,prefix,text,channel,sender)
     elseif event=="PLAYER_LOGIN" then
         Send("sync")
         WorldMapFrame:HookScript("OnShow",H.Refresh)
-        local open=Button(WorldMapFrame,"Hotspots",150,-35,95,function()
-            if gm then H.ShowPanel() else H.Refresh() end
-        end)
-        H.open=open;open:Hide()
-        open:SetScript("OnEnter",function(self)
-            GameTooltip:SetOwner(self,"ANCHOR_RIGHT");GameTooltip:SetText("XP Hotspots");GameTooltip:Show()
-        end)
-        open:SetScript("OnLeave",function() GameTooltip:Hide() end)
+        local filters=WorldMapButton.Filters
+        if filters and filters.DropDown and not H.filterInstalled then
+            local dropdown=filters.DropDown
+            local initialize=dropdown.initialize
+            if type(initialize)=="function" then
+                UIDropDownMenu_Initialize(dropdown,function(self,level,menuList)
+                    initialize(self,level,menuList)
+                    if enabled and gm and filters:IsVisible() and (not level or level==1) then
+                        local info=UIDropDownMenu_CreateInfo()
+                        info.text="XP Hotspot Menu";info.notCheckable=true
+                        info.func=function() if enabled and gm then H.ShowPanel() end end
+                        UIDropDownMenu_AddButton(info,level)
+                    end
+                end,"MENU")
+                H.filterInstalled=true
+            end
+        end
         local priorMouseUp=WorldMapButton:GetScript("OnMouseUp")
         WorldMapButton:SetScript("OnMouseUp",function(self,button,...)
             if gm and H.newKind and IsControlKeyDown() and button=="LeftButton" then

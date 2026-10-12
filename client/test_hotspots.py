@@ -21,6 +21,7 @@ function methods:GetChecked() return self.checked end
 function methods:Show() self.shown=true end
 function methods:Hide() self.shown=false end
 function methods:IsShown() return self.shown end
+function methods:IsVisible() return self.shown end
 function methods:GetEffectiveScale() return 1 end
 function methods:GetLeft() return 0 end
 function methods:GetTop() return 100 end
@@ -33,13 +34,23 @@ function methods:CreateTexture() return CreateFrame("Texture") end
 function methods:CreateFontString() return CreateFrame("Font") end
 function CreateFrame(kind,name,parent,template)
  local f={scripts={},shown=true,kind=kind,parent=parent,width=100,height=100,text="",checked=false}
- setmetatable(f,{__index=function(_,k) return methods[k] or function() end end})
+ setmetatable(f,{__index=function(_,k) return methods[k] or (k:match("^[A-Z]") and function() end) end})
  frames[#frames+1]=f;return f
 end
 WorldMapFrame=CreateFrame("Frame");WorldMapButton=CreateFrame("Button")
 WorldMapButton:SetScript("OnMouseUp",function() oldClicks=oldClicks+1 end)
 WorldMapTooltip=CreateFrame("Tooltip");GameTooltip=CreateFrame("Tooltip")
 DEFAULT_CHAT_FRAME=CreateFrame("Chat")
+menuEntries={}
+WorldMapButton.Filters={IsVisible=function() return true end,DropDown={initialize=function(self,level,menuList)
+ menuEntries[#menuEntries+1]={text=menuList or "Existing filters",level=level}
+end}}
+function UIDropDownMenu_Initialize(frame,initialize) frame.initialize=initialize end
+function UIDropDownMenu_CreateInfo() return {} end
+function UIDropDownMenu_AddButton(info,level) menuEntries[#menuEntries+1]=info end
+function OpenFilters(level,menuList)
+ menuEntries={};WorldMapButton.Filters.DropDown:initialize(level,menuList)
+end
 function GetCurrentMapAreaID() return 37 end
 C_WorldMap={GetMapIDByAreaID=function() return 0 end,GetZoneIDByAreaID=function() return 44 end,
  GetWorldPosition=function(area,x,y) return 100-y*100,100-x*100 end}
@@ -93,14 +104,16 @@ class HotspotClientTests(unittest.TestCase):
 
     def test_foreign_sender_cannot_enable_feature(self):
         self.receive('B|1|1|1|1000|1|1', 'AnotherPlayer')
-        self.assertFalse(self.lua.eval('XPHotspots.open.shown'))
+        self.lua.execute('OpenFilters(1)')
+        self.assertEqual(self.lua.eval('#menuEntries'), 1)
 
     def test_disable_clears_rows_editor_and_highlight(self):
         self.snapshot()
         self.lua.execute('XPHotspots.ShowPanel();p=XPHotspots.pins[1];p.scripts.OnEnter(p)')
         self.receive('OFF')
         self.assertTrue(self.lua.eval('next(XPHotspots.rows)==nil'))
-        self.assertFalse(self.lua.eval('XPHotspots.open.shown'))
+        self.lua.execute('OpenFilters(1)')
+        self.assertEqual(self.lua.eval('#menuEntries'), 1)
         self.assertFalse(self.lua.eval('XPHotspots.fills[1].shown'))
         self.assertEqual(self.lua.eval('#XPHotspots.queue'), 0)
 
@@ -173,14 +186,44 @@ clock=1000.7;driver.scripts.OnUpdate(driver,0.3)
 ''')
         self.assertEqual(self.lua.eval('messages[#messages][2]'), 'list 0 44 1 Barrens')
 
-    def test_realm_brand_updates_both_panels(self):
+    def test_realm_brand_does_not_change_neutral_titles(self):
         self.snapshot()
         self.lua.execute('XPHotspots.ShowPanel();b=ButtonNamed("Browse / active");b.scripts.OnClick(b)')
         self.receive('BRAND|Bear Cave')
-        self.assertTrue(self.lua.eval('ButtonNamed("Bear Cave Hotspots")~=nil'))
-        self.assertTrue(self.lua.eval('ButtonNamed("Bear Cave Hotspot Manager")~=nil'))
+        self.assertTrue(self.lua.eval('ButtonNamed("Bear Cave Hotspots")==nil'))
+        self.assertTrue(self.lua.eval('ButtonNamed("XP Hotspot Manager")~=nil'))
         self.receive('BRAND|')
         self.assertTrue(self.lua.eval('ButtonNamed("XP Hotspots")~=nil'))
+
+    def test_filter_menu_preserves_filters_and_limits_entry_to_gms(self):
+        self.lua.execute('OpenFilters(1)')
+        self.assertEqual(self.lua.eval('#menuEntries'), 1)
+        self.snapshot(gm=0)
+        self.lua.execute('OpenFilters(1)')
+        self.assertEqual(self.lua.eval('#menuEntries'), 1)
+        self.snapshot()
+        self.lua.execute('OpenFilters(1);savedEntry=menuEntries[2]')
+        self.assertEqual(self.lua.eval('menuEntries[1].text'), 'Existing filters')
+        self.assertEqual(self.lua.eval('savedEntry.text'), 'XP Hotspot Menu')
+        self.lua.execute('savedEntry.func()')
+        self.assertTrue(self.lua.eval('ButtonNamed("XP Hotspot Manager")~=nil'))
+        self.lua.execute('OpenFilters(2,"teleport")')
+        self.assertEqual(self.lua.eval('#menuEntries'), 1)
+        self.assertEqual(self.lua.eval('menuEntries[1].text'), 'teleport')
+        self.lua.execute('OpenFilters(1)')
+        self.assertEqual(self.lua.eval('#menuEntries'), 2)
+        self.receive('OFF')
+        self.lua.execute('XPHotspots.ShowPanel=function() error("unauthorized") end;savedEntry.func()')
+
+    def test_marker_click_opens_selected_details_and_marks_pin(self):
+        self.snapshot()
+        self.lua.execute('p=XPHotspots.pins[1];p.scripts.OnClick(p)')
+        self.assertTrue(self.lua.eval('ButtonNamed("Selected Hotspot #1")~=nil'))
+        self.assertTrue(self.lua.eval('ButtonNamed("Redridge")~=nil'))
+        self.assertTrue(self.lua.eval('p.selection.shown'))
+        self.assertEqual(self.lua.eval('p.width'), 32)
+        self.lua.execute('p.scripts.OnLeave(p)')
+        self.assertTrue(self.lua.eval('p.selection.shown'))
 
     def test_new_polygon_starts_at_map_cursor(self):
         self.snapshot()

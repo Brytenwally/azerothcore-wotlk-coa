@@ -27,8 +27,10 @@ ceiling cannot exceed the core `Expansion` setting. An Azeroth-only progression 
 expansion-2 client should explicitly set this option to 0. Blood elf and draenei starting zones on
 physical map 530 count as Azeroth. Instances, battlegrounds and unsupported physical maps are
 excluded. Changing these options requires a restart; the GM announcement toggle is immediate.
-Both map panels use a dark-blue/gold theme. Set `XPHotspots.Brand = "Bear Cave"` for Bear Cave
-headings; the shared default remains neutral. The server supplies this label to the same client code.
+Both map panels use a dark-blue/gold theme with neutral XP Hotspot titles. The client ignores the
+legacy server brand label. GMs open the manager from **XP Hotspot Menu** in the world map
+magnifying-glass filter menu. Clicking a hotspot opens its details, labels its ID in the manager,
+and marks the selected pin and browser row. Existing map filters remain available.
 
 The original buff 993945 must exist with a monster-kill-only XP aura. Startup refuses to enable the
 service when the configured spell is incompatible. While enabled, that spell is reserved for hotspot
