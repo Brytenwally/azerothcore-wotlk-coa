@@ -99,7 +99,7 @@ strings = result[20 + 3 * 936:]
 text = strings[pointer:strings.index(0, pointer)].decode()
 assert 'own 20-second cooldown' in text and text.endswith('\n\n@ext:|cffffff00VERIFIED|r:ext@')
 replacement = struct.unpack_from('<234I', result, 20 + 2 * 936)
-assert (replacement[0], replacement[1], replacement[24], replacement[29], replacement[30]) == (9901766, 0, 84445, 20000, 0)
+assert (replacement[0], replacement[1], replacement[24], replacement[29], replacement[30]) == (9901766, 0, 0, 20000, 0)
 assert struct.unpack_from('<234I', result, 20 + 936) == tuple(kick)
 print('PASS: production eligibility, all stances, non-Kick/friendly rejection, single binding, cooldown and tooltip preservation')
 

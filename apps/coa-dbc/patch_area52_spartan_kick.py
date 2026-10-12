@@ -32,7 +32,7 @@ def patch(raw):
         raise ValueError('Unexpected Spartan Kick tooltip')
     set_description(rows[84445], text[:start] + new + text[end:])
     replacement = bytearray(rows[1766])
-    for field, value in {0: 9901766, 1: 0, 24: 84445, 29: 20000, 30: 0}.items():
+    for field, value in {0: 9901766, 1: 0, 24: 0, 29: 20000, 30: 0}.items():
         struct.pack_into('<I', replacement, field * 4, value)
     set_description(replacement, 'A quick kick that interrupts spellcasting and prevents any spell in that school from being cast for $d. |cffFFFFFFThis spell cannot miss.|r\n\n@ext:Spartan Kick: independent 20-second cooldown. Requires Spartan Kick to remain equipped. Knockback requires Battle, Defensive or Phalanx Stance.\n\n|cffffff00VERIFIED|r:ext@')
     rows[9901766] = replacement
