@@ -1,0 +1,17 @@
+{
+  "status": "staged_not_active",
+  "guid": 9890212,
+  "entry": 9780200,
+  "map": 1,
+  "zone": 1637,
+  "area": 10228,
+  "phase": 1,
+  "equipment_id": 1,
+  "x": 1536.4967,
+  "y": -4445.093,
+  "z": 13.88309,
+  "orientation": 1.0648832,
+  "source": "Owner reassigned cleared AoE position from codex-clipboard-1caa53af-8323-40fb-80fa-1484e209fe54.png to the Boss Simulator.",
+  "clearance": "No creature or gameobject spawn origins within the checked 21-by-22-yard region in any phase, including inactive event spawns.",
+  "limitation": "O'mrogg model scale, ground contact and static scenery require in-game acceptance. Projector platform remains pending."
+}
