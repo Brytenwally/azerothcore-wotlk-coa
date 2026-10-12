@@ -1,0 +1,107 @@
+#include <cassert>
+#include <chrono>
+#include <map>
+#include <set>
+#include <string>
+#include <vector>
+using namespace std::chrono_literals;
+using uint32 = unsigned;
+using int32 = int;
+enum { EVENT_BOSS_SPELL=2, EVENT_BOSS_WARNING, EVENT_BOSS_HEAVY_HIT,
+    DYNAMIC_CONFIGURABLE, MECHANIC_STUN, MECHANIC_DISARM, IMMUNITY_MECHANIC,
+    SPELL_AURA_MOD_STUN, SPELL_AURA_MOD_DISARM, LANG_UNIVERSAL,
+    SPELL_SCHOOL_MASK_SHADOW, SPELL_PRACTICE_SHADOW_BOLT, SPELLVALUE_BASE_POINT0,
+    BASE_ATTACK, MAXDAMAGE, TRIGGERED_IGNORE_POWER_AND_REAGENT_COST,
+    UNIT_MOD_DAMAGE_MAINHAND, TOTAL_PCT };
+constexpr unsigned UNIT_STATE_CASTING=1, UNIT_STATE_STUNNED=2;
+struct Guid { bool IsEmpty() const { return false; } };
+struct Player { bool alive=true; bool IsAlive() const { return alive; } };
+struct Creature {
+    bool near=true, melee=true, locked=false, stopped=false;
+    unsigned state=0, casts=0, hits=0;
+    float multiplier=1.25f, hitMultiplier=0;
+    std::set<unsigned> auras, immunities;
+    std::vector<std::string> warnings;
+    bool IsWithinDistInMap(Player*, float) { return near; }
+    bool IsWithinMeleeRange(Player*) { return melee; }
+    bool HasAuraType(unsigned id) { return auras.contains(id); }
+    bool HasUnitState(unsigned flags) { return state & flags; }
+    bool IsSpellProhibited(unsigned) { return locked; }
+    void ApplySpellImmune(unsigned, unsigned, unsigned id, bool enabled) {
+        if(enabled) immunities.insert(id); else immunities.erase(id);
+    }
+    void Whisper(char const* text, unsigned, Player*, bool = false) { warnings.emplace_back(text); }
+    void InterruptNonMeleeSpells(bool) { state=0; }
+    void CombatStop(bool) { stopped=true; }
+    void RemoveAllAuras() { auras.clear(); }
+    float GetWeaponDamageRange(unsigned, unsigned) { return 100; }
+    void CastCustomSpell(unsigned, unsigned, int32 damage, Player*, unsigned flags) {
+        assert(damage==200 && flags==TRIGGERED_IGNORE_POWER_AND_REAGENT_COST); ++casts;
+    }
+    float GetPctModifierValue(unsigned, unsigned) { return multiplier; }
+    void SetStatPctModifier(unsigned, unsigned, float value) { multiplier=value; }
+    void AttackerStateUpdate(Player*, unsigned) { ++hits; hitMultiplier=multiplier; }
+    void resetAttackTimer(unsigned) {}
+};
+namespace ObjectAccessor {
+    Player player;
+    bool present=true;
+    Player* GetPlayer(Creature&, Guid) { return present ? &player : nullptr; }
+}
+struct Events {
+    std::map<unsigned,long long> scheduled;
+    template<class T> void ScheduleEvent(unsigned id, T delay) {
+        scheduled[id]=std::chrono::duration_cast<std::chrono::milliseconds>(delay).count();
+    }
+    void CancelEvent(unsigned id) { scheduled.erase(id); }
+};
+struct AI {
+    Creature* me;
+    Guid _owner;
+    std::vector<int> _activity{1};
+    bool _heavyPending=false, reset=false;
+    Events events;
+    bool IsBoss() { return true; }
+    void Reset() { reset=true; _heavyPending=false; events.scheduled.clear(); }
+ACTUAL_METHODS
+};
+int main() {
+    Creature creature;
+    AI ai{&creature};
+    ai.HandleBossEvent(EVENT_BOSS_WARNING);
+    assert(ai._heavyPending && ai.events.scheduled[EVENT_BOSS_HEAVY_HIT]==3000);
+    assert(!creature.immunities.contains(MECHANIC_STUN));
+    assert(!creature.immunities.contains(MECHANIC_DISARM));
+    ai.HandleBossEvent(EVENT_BOSS_SPELL);
+    assert(creature.casts==0);
+    ai.HandleBossEvent(EVENT_BOSS_HEAVY_HIT);
+    assert(creature.hits==1 && creature.hitMultiplier==3.75f && creature.multiplier==1.25f);
+    assert(!ai._heavyPending && creature.immunities.contains(MECHANIC_STUN));
+    for (unsigned counter : {SPELL_AURA_MOD_STUN, SPELL_AURA_MOD_DISARM}) {
+        ai.HandleBossEvent(EVENT_BOSS_WARNING);
+        creature.auras.insert(counter);
+        assert(ai.UpdateBossSession());
+        assert(!ai._heavyPending && !ai.events.scheduled.contains(EVENT_BOSS_HEAVY_HIT));
+        ai.HandleBossEvent(EVENT_BOSS_HEAVY_HIT);
+        assert(creature.hits==1);
+        creature.auras.clear();
+    }
+    creature.locked=true;
+    ai.HandleBossEvent(EVENT_BOSS_SPELL);
+    assert(creature.casts==0 && ai.events.scheduled[EVENT_BOSS_SPELL]==1000);
+    creature.locked=false;
+    ai.HandleBossEvent(EVENT_BOSS_SPELL);
+    assert(creature.casts==1 && ai.events.scheduled[EVENT_BOSS_SPELL]==18000);
+    creature.melee=false;
+    ai.HandleBossEvent(EVENT_BOSS_WARNING);
+    ai.HandleBossEvent(EVENT_BOSS_HEAVY_HIT);
+    assert(creature.hits==1);
+    ai.HandleBossEvent(EVENT_BOSS_WARNING);
+    ObjectAccessor::present=false;
+    assert(!ai.UpdateBossSession() && ai.reset && creature.stopped && !ai._heavyPending);
+    assert(ai.events.scheduled.empty());
+    ObjectAccessor::present=true;
+    creature.near=false;
+    ai.reset=false;
+    assert(!ai.UpdateBossSession() && ai.reset);
+}

@@ -34,8 +34,8 @@ No city spawns or existing training dummy bindings are replaced by this package.
 - Tank simulated-death/overkill and on-death procs are **not implemented**. Calling the normal death path
   would kill players and can trigger resurrection, durability, achievement and encounter side effects.
   The safety cap must not be presented as equivalent to the historical simulated-death behavior.
-- Only five templates are installed. Their expansion stat tier follows the acquired level; no fixed
-  Azeroth/Outland/Northrend copies are installed. Default level matches the player, without a boss offset.
+- The five original templates match the player level. The additional Boss prototype described below
+  acquires player level +3. Expansion stat tiers follow the acquired level; no fixed expansion copies are installed.
 - Stat magnitudes use the reconstruction's creature base-stat tables, not a recovered original damage
   formula. Tank intensity, armor, healing behavior and simultaneous-user behavior require owner acceptance.
 - Healing dummies remain targetable for `/poke`; disabled healing is rejected. This is not a full client
@@ -53,3 +53,47 @@ Repeat dynamic tests at different levels and with pets. Check independent users,
 stopping, aura cleanup, level reset, tank rage/slows/nonlethal stop, and healing activation/meters.
 No permanent placement SQL is included. Do not enable automated city replacement until behavior and
 the separate surveyed placement plan have been accepted.
+
+## Boss prototype (9780200)
+
+Staged October 11, 2026; not activated or placed. The existing tank and other roles remain available.
+The owner requested either a stun or a disarm as the heavy-strike counter.
+
+- Uses the tank session, stationary attacks, owner-only `/poke` stop, and nonlethal outgoing damage.
+- Acquires the engaging player's level +3, using creature class/level health, armor, attack power and
+  base damage. The supported player range is 1–80 (dummy levels 4–83).
+- At six seconds, begins Shadow Bolt (686), a normal cast with its existing client cast bar. Subsequent
+  attempts are 18 seconds apart. The prototype supplies twice its maximum melee damage as the spell's
+  base damage. It bypasses resource cost only; casting, interrupts and school lockout remain native.
+- At twelve seconds, sends the owner a boss whisper: heavy strike in three seconds, stun or disarm.
+  This repeats every 18 seconds. Auto-attacks pause during the wind-up. The warning waits for an
+  existing cast or stun to end; the spell similarly waits for the heavy-strike window to finish.
+- Stun and disarm immunity open only during the warning. Either aura cancels that pending strike;
+  a normal spell interrupt does not cancel it. Other configured crowd-control immunities stay enabled.
+- If not countered, executes one melee swing at triple its normal damage modifier. Native melee hit,
+  dodge/parry/block, armor and absorb processing remain in use. Leaving melee range avoids the hit.
+  The modifier and attack timer are restored immediately, so the next ordinary swing is not empowered.
+- Spell-school lockout delays the next spell attempt; reset cancels pending actions. Leaving range,
+  logout, death and reaching the nonlethal safety limit stop the Boss session.
+
+### Scaling provenance and limitations
+
+Reviewed independent CoA upstream `main` at `4b25cd5d56d353061075916ee6c6f071b57d0465`.
+`Creature::getLevelForTarget` supports a configurable world-boss level difference. That supplies
+combat level, not a universal boss health or damage curve. `CoACreatureScalingPolicy.h` provides
+context multipliers; Destiny Weaver separately provides per-viewer level/stat scaling and excludes
+world bosses, raids and non-normal dungeon difficulties. Dungeon-specific authored health and
+Mythic modifiers are different systems. These are independent reconstruction code, not Ascension's
+original server implementation.
+
+The effective local Area 52 patch-D SHA256 was
+`86598748c5f2ed16ac4034afc29d82c64edd6e3407fc743619dc9ba3d238d1d4`.
+Its client definitions include Tank Dummy Auto Attack (2180272), triggering 2180273, and Fierce Blow
+(975011). The captured MobSpells data records these attacks on historical tank dummies, but does not
+establish a complete original level-to-boss-damage formula. The current test prototype therefore uses
+explicit alpha tuning, not claimed original Ascension parity. No client asset changes are required.
+
+Build and the `boss_dummy` focused extracted-handler harness passed. The harness checks rotation,
+stun/disarm cancellation, lockout deferral, range, reset and restoring the melee damage modifier.
+Visual warning/cast-bar presentation, first-hit scaling, actual player mitigation and nonlethal behavior
+still require in-game acceptance. This prototype does not introduce death/overkill proc simulation.

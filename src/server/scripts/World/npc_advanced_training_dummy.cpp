@@ -13,7 +13,10 @@ namespace
 {
 enum DummyEvents
 {
-    EVENT_MAINTENANCE = 1
+    EVENT_MAINTENANCE = 1,
+    EVENT_BOSS_SPELL,
+    EVENT_BOSS_WARNING,
+    EVENT_BOSS_HEAVY_HIT
 };
 
 enum DummyEntries
@@ -22,7 +25,13 @@ enum DummyEntries
     DYNAMIC_HEALING = 666935,
     DYNAMIC_CONFIGURABLE = 967171,
     DYNAMIC_TANK = 967182,
-    DYNAMIC_TARGET = 967254
+    DYNAMIC_TARGET = 967254,
+    DYNAMIC_BOSS = 9780200
+};
+
+enum DummySpells
+{
+    SPELL_PRACTICE_SHADOW_BOLT = 686
 };
 }
 
@@ -39,7 +48,8 @@ struct npc_advanced_training_dummy : ScriptedAI
         return true;
     }
 
-    bool IsTank() const { return me->GetEntry() == DYNAMIC_TANK; }
+    bool IsBoss() const { return me->GetEntry() == DYNAMIC_BOSS; }
+    bool IsTank() const { return me->GetEntry() == DYNAMIC_TANK || IsBoss(); }
     bool IsHealing() const { return me->GetEntry() == DYNAMIC_HEALING; }
     bool IsExecute() const { return me->GetEntry() == DYNAMIC_EXECUTE; }
 
@@ -82,8 +92,11 @@ struct npc_advanced_training_dummy : ScriptedAI
         _owner.Clear();
         _healingEnabled = false;
         _vulnerable = true;
-        if (me->GetEntry() == DYNAMIC_CONFIGURABLE)
+        _heavyPending = false;
+        if (me->GetEntry() == DYNAMIC_CONFIGURABLE || IsBoss())
             SetCrowdControlImmunity(true);
+        if (IsBoss())
+            SetBossCounterImmunity(true);
         me->SetImmuneToPC(false);
         me->SetRegeneratingHealth(!IsExecute());
         SetTrainingLevel(IsDynamic() ? 1 : me->GetCreatureTemplate()->minlevel);
@@ -112,7 +125,12 @@ struct npc_advanced_training_dummy : ScriptedAI
             if (target->_owner.IsEmpty())
             {
                 target->_owner = player->GetGUID();
-                target->SetTrainingLevel(player->GetLevel());
+                target->SetTrainingLevel(target->IsBoss() ? player->GetLevel() + 3 : player->GetLevel());
+                if (target->IsBoss())
+                {
+                    target->events.ScheduleEvent(EVENT_BOSS_SPELL, 6s);
+                    target->events.ScheduleEvent(EVENT_BOSS_WARNING, 12s);
+                }
             }
             target->_activity[player->GetGUID()] = getMSTime();
         }
@@ -231,57 +249,148 @@ struct npc_advanced_training_dummy : ScriptedAI
 
     void UpdateAI(uint32 diff) override
     {
+        if (!UpdateBossSession())
+            return;
         events.Update(diff);
-        if (events.ExecuteEvent() == EVENT_MAINTENANCE)
+        uint32 const event = events.ExecuteEvent();
+        if (event == EVENT_MAINTENANCE)
         {
-            std::vector<ObjectGuid> untracked;
-            for (auto const& [guid, reference] : me->GetCombatManager().GetPvECombatRefs())
-                if (_activity.find(guid) == _activity.end())
-                    untracked.push_back(guid);
-            for (ObjectGuid const& guid : untracked)
-            {
-                auto const& refs = me->GetCombatManager().GetPvECombatRefs();
-                if (auto ref = refs.find(guid); ref != refs.end())
-                    ref->second->EndCombat();
-            }
-            for (auto itr = _activity.begin(); itr != _activity.end();)
-            {
-                Unit* unit = ObjectAccessor::GetUnit(*me, itr->first);
-                if (!unit || !unit->IsAlive() || !me->IsWithinDistInMap(unit, 60.0f)
-                    || (!(IsTank() && itr->first == _owner)
-                        && getMSTimeDiff(itr->second, getMSTime()) >= 5000))
-                {
-                    auto const& refs = me->GetCombatManager().GetPvECombatRefs();
-                    if (auto ref = refs.find(itr->first); ref != refs.end())
-                        ref->second->EndCombat();
-                    itr = _activity.erase(itr);
-                }
-                else
-                    ++itr;
-            }
-            if (_activity.empty() && (me->IsInCombat() || !_owner.IsEmpty() || me->GetHealth() != me->GetMaxHealth()))
-            {
-                me->CombatStop(true);
-                me->RemoveAllAuras();
-                _owner.Clear();
-                if (me->GetEntry() == DYNAMIC_CONFIGURABLE)
-                    SetCrowdControlImmunity(true);
-                SetTrainingLevel(IsDynamic() ? 1 : me->GetCreatureTemplate()->minlevel);
-                if (IsHealing() && _healingEnabled)
-                    me->SetHealth(me->CountPctFromMaxHealth(50));
-            }
+            MaintainSession();
             events.ScheduleEvent(EVENT_MAINTENANCE, 1s);
         }
-        if (IsTank() && !_owner.IsEmpty() && !_activity.empty())
+        else if (IsBoss() && event)
+            HandleBossEvent(event);
+        if (IsTank() && !_owner.IsEmpty() && !_activity.empty() && !_heavyPending)
             DoMeleeAttackIfReady();
     }
 
 private:
+    bool UpdateBossSession()
+    {
+        if (IsBoss() && !_owner.IsEmpty())
+        {
+            Player* owner = ObjectAccessor::GetPlayer(*me, _owner);
+            if (!owner || !owner->IsAlive() || !me->IsWithinDistInMap(owner, 60.0f) || _activity.empty())
+            {
+                me->InterruptNonMeleeSpells(true);
+                me->CombatStop(true);
+                me->RemoveAllAuras();
+                Reset();
+                return false;
+            }
+            if (_heavyPending && (me->HasAuraType(SPELL_AURA_MOD_STUN)
+                || me->HasAuraType(SPELL_AURA_MOD_DISARM)))
+            {
+                _heavyPending = false;
+                events.CancelEvent(EVENT_BOSS_HEAVY_HIT);
+                SetBossCounterImmunity(true);
+                me->Whisper("Heavy strike stopped!", LANG_UNIVERSAL, owner);
+            }
+        }
+        return true;
+    }
+
+    void MaintainSession()
+    {
+        std::vector<ObjectGuid> untracked;
+        for (auto const& [guid, reference] : me->GetCombatManager().GetPvECombatRefs())
+            if (_activity.find(guid) == _activity.end())
+                untracked.push_back(guid);
+        for (ObjectGuid const& guid : untracked)
+        {
+            auto const& refs = me->GetCombatManager().GetPvECombatRefs();
+            if (auto ref = refs.find(guid); ref != refs.end())
+                ref->second->EndCombat();
+        }
+        for (auto itr = _activity.begin(); itr != _activity.end();)
+        {
+            Unit* unit = ObjectAccessor::GetUnit(*me, itr->first);
+            if (!unit || !unit->IsAlive() || !me->IsWithinDistInMap(unit, 60.0f)
+                || (!(IsTank() && itr->first == _owner)
+                    && getMSTimeDiff(itr->second, getMSTime()) >= 5000))
+            {
+                auto const& refs = me->GetCombatManager().GetPvECombatRefs();
+                if (auto ref = refs.find(itr->first); ref != refs.end())
+                    ref->second->EndCombat();
+                itr = _activity.erase(itr);
+            }
+            else
+                ++itr;
+        }
+        if (_activity.empty() && (me->IsInCombat() || !_owner.IsEmpty() || me->GetHealth() != me->GetMaxHealth()))
+        {
+            me->CombatStop(true);
+            me->RemoveAllAuras();
+            _owner.Clear();
+            if (me->GetEntry() == DYNAMIC_CONFIGURABLE)
+                SetCrowdControlImmunity(true);
+            SetTrainingLevel(IsDynamic() ? 1 : me->GetCreatureTemplate()->minlevel);
+            if (IsHealing() && _healingEnabled)
+                me->SetHealth(me->CountPctFromMaxHealth(50));
+        }
+    }
+
+    void SetBossCounterImmunity(bool enabled)
+    {
+        for (uint32 mechanic : {MECHANIC_STUN, MECHANIC_DISARM})
+            me->ApplySpellImmune(DYNAMIC_CONFIGURABLE, IMMUNITY_MECHANIC, mechanic, enabled);
+    }
+
+    void HandleBossEvent(uint32 event)
+    {
+        Player* owner = ObjectAccessor::GetPlayer(*me, _owner);
+        if (!owner)
+            return;
+        switch (event)
+        {
+            case EVENT_BOSS_SPELL:
+                if (_heavyPending || me->HasUnitState(UNIT_STATE_CASTING | UNIT_STATE_STUNNED)
+                    || me->IsSpellProhibited(SPELL_SCHOOL_MASK_SHADOW))
+                {
+                    events.ScheduleEvent(EVENT_BOSS_SPELL, 1s);
+                    break;
+                }
+                me->CastCustomSpell(SPELL_PRACTICE_SHADOW_BOLT, SPELLVALUE_BASE_POINT0,
+                    int32(me->GetWeaponDamageRange(BASE_ATTACK, MAXDAMAGE) * 2.0f), owner,
+                    TRIGGERED_IGNORE_POWER_AND_REAGENT_COST);
+                events.ScheduleEvent(EVENT_BOSS_SPELL, 18s);
+                break;
+            case EVENT_BOSS_WARNING:
+                if (me->HasUnitState(UNIT_STATE_CASTING | UNIT_STATE_STUNNED))
+                {
+                    events.ScheduleEvent(EVENT_BOSS_WARNING, 1s);
+                    break;
+                }
+                _heavyPending = true;
+                SetBossCounterImmunity(false);
+                me->Whisper("Heavy strike in 3 seconds! STUN or DISARM to stop it!", LANG_UNIVERSAL, owner, true);
+                events.ScheduleEvent(EVENT_BOSS_HEAVY_HIT, 3s);
+                events.ScheduleEvent(EVENT_BOSS_WARNING, 18s);
+                break;
+            case EVENT_BOSS_HEAVY_HIT:
+                if (_heavyPending && me->IsWithinMeleeRange(owner)
+                    && !me->HasAuraType(SPELL_AURA_MOD_STUN) && !me->HasAuraType(SPELL_AURA_MOD_DISARM))
+                {
+                    float const multiplier = me->GetPctModifierValue(UNIT_MOD_DAMAGE_MAINHAND, TOTAL_PCT);
+                    me->SetStatPctModifier(UNIT_MOD_DAMAGE_MAINHAND, TOTAL_PCT, multiplier * 3.0f);
+                    me->AttackerStateUpdate(owner, BASE_ATTACK);
+                    me->SetStatPctModifier(UNIT_MOD_DAMAGE_MAINHAND, TOTAL_PCT, multiplier);
+                    me->resetAttackTimer(BASE_ATTACK);
+                }
+                _heavyPending = false;
+                SetBossCounterImmunity(true);
+                break;
+            default:
+                break;
+        }
+    }
+
     std::unordered_map<ObjectGuid, uint32> _activity;
     ObjectGuid _owner;
     bool _healingEnabled = false;
     bool _vulnerable = true;
     bool _ccImmune = true;
+    bool _heavyPending = false;
 };
 
 void AddSC_advanced_training_dummy()
