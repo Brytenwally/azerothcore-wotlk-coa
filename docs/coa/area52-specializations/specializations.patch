@@ -1,0 +1,779 @@
+--- a/apps/coa-tests/area52_free_resets/run.py
++++ b/apps/coa-tests/area52_free_resets/run.py
+@@ -97,10 +97,10 @@
+  AscensionMysticEnchant::SpellGrants={{1,10}};
+  a.aura.caster=1;p.auras={{10,&a},{12,&c}};
+  RemoveSelectionBuffs(&p,{10},{});assert(p.auras.size()==2);
+- assert(std::string_view(Apply(&p,{},false).Status)=="OK");
+- p.combat=true;assert(std::string_view(Apply(&p,{},false).Learn)=="CA_LEARN_NOT_IN_COMBAT");p.combat=false;
+- p.bg=true;assert(std::string_view(Apply(&p,{},false).Learn)=="CA_LEARN_NOT_IN_BATTLEGROUNDS");p.bg=false;
+- p.arena=true;assert(std::string_view(Apply(&p,{},false).Learn)=="CA_LEARN_NOT_IN_BATTLEGROUNDS");
++ assert(std::string_view(Apply(&p,{},false,false).Status)=="OK");
++ p.combat=true;assert(std::string_view(Apply(&p,{},false,false).Learn)=="CA_LEARN_NOT_IN_COMBAT");p.combat=false;
++ p.bg=true;assert(std::string_view(Apply(&p,{},false,false).Learn)=="CA_LEARN_NOT_IN_BATTLEGROUNDS");p.bg=false;
++ p.arena=true;assert(std::string_view(Apply(&p,{},false,false).Learn)=="CA_LEARN_NOT_IN_BATTLEGROUNDS");
+ }
+ """
+     code = '#include <string_view>\n' + code
+--- /dev/null
++++ b/apps/coa-tests/area52_specializations/fixture.cpp
+@@ -0,0 +1,225 @@
++#include <algorithm>
++#include <any>
++#include <chrono>
++#include <array>
++#include <cassert>
++#include <cstdint>
++#include <map>
++#include <set>
++#include <string>
++#include <vector>
++
++using uint32 = std::uint32_t;
++constexpr unsigned MAX_ACTION_BUTTONS = 144;
++constexpr unsigned PET_SAVE_NOT_IN_SLOT = 0;
++constexpr unsigned ACTION_BUTTON_SPELL = 0;
++constexpr char PendingBarsKey[] = "area52.specialization.pending_bars";
++constexpr char SelectionSetting[] = "core.ascension_freepick_entries";
++constexpr char ActiveSlotSetting[] = "core.area52.spec.active";
++constexpr char ActiveBuildSetting[] = "core.area52.active_build";
++constexpr std::array<uint32, 3> SpecializationSpells{979993, 979994, 979995};
++constexpr uint32 ACTION_BUTTON_ACTION(uint32 packed) { return packed & 0xffffff; }
++constexpr uint32 ACTION_BUTTON_TYPE(uint32 packed) { return packed >> 24; }
++struct Pet { };
++struct Field { uint32 value = 0; };
++struct Action { uint32 packedData = 0; };
++struct KnownEntry { uint32 EntryId, Rank, MaxRank; bool Automatic; uint32 Order; };
++namespace DataMap { struct Base { }; }
++struct Custom
++{
++    std::map<std::string, std::any> Values;
++    template<class T> T* Get(std::string const& key)
++    {
++        auto it = Values.find(key);
++        return it == Values.end() ? nullptr : std::any_cast<T>(&it->second);
++    }
++    template<class T> T* GetDefault(std::string const& key)
++    {
++        if (!Values.contains(key)) Values[key] = T{};
++        return Get<T>(key);
++    }
++};
++struct Player
++{
++    Custom CustomData;
++    bool world = true, alive = true, combat = false, bg = false, arena = false;
++    bool teleport = false, moving = false, eligible = true, busy = false, map = true;
++    unsigned level = 80, saves = 0, refresh = 0, activeRestore = 0;
++    std::map<std::string, std::vector<Field>> settings;
++    std::map<unsigned, Action> bars;
++    std::set<uint32> spells{979993,979994};
++    std::map<std::string, std::vector<Field>> disk;
++    auto FindPlayerSettings(std::string const& key) const
++    {
++        auto const it = settings.find(key);
++        return it == settings.end() ? nullptr : &it->second;
++    }
++    void UpdatePlayerSetting(std::string const& key, uint32 index, uint32 value)
++    {
++        auto& fields = settings[key];
++        if (fields.size() <= index) fields.resize(index + 1);
++        fields[index].value = value;
++    }
++    auto GetActionButton(unsigned button) const { return bars.contains(button) ? &bars.at(button) : nullptr; }
++    bool HasSpell(uint32 spell) const { return spells.contains(spell); }
++    bool IsInWorld() const { return world; }
++    bool FindMap() const { return map; }
++    bool IsAlive() const { return alive; }
++    bool IsInCombat() const { return combat; }
++    bool InBattleground() const { return bg; }
++    bool InArena() const { return arena; }
++    bool IsBeingTeleported() const { return teleport; }
++    bool isMoving() const { return moving; }
++    unsigned GetLevel() const { return level; }
++    Pet* GetPet() { return nullptr; }
++    void RemovePet(Pet*, unsigned) { }
++    void ClearAllReactives() { }
++    void UnsummonAllTotems() { }
++    void RemoveAllControlled() { }
++    void learnSpell(uint32 spell) { spells.insert(spell); }
++    void removeActionButton(unsigned button) { bars.erase(button); }
++    void addActionButton(unsigned button, uint32 spell, std::uint8_t type)
++    {
++        if (type || HasSpell(spell)) bars[button] = {spell | (uint32(type) << 24)};
++    }
++    void SaveToDB(bool, bool) { ++saves; disk = settings; }
++    void SendActionButtons(unsigned) { ++refresh; }
++};
++bool Applies(Player* player) { return player && player->eligible; }
++namespace Area52Build
++{
++bool CanSwitchSpecialization(Player* player) { return !player->busy; }
++void RestoreSpecialization(Player* player) { ++player->activeRestore; }
++}
++struct SpellInfo { unsigned SpellLevel = 1; };
++struct Manager { SpellInfo info; SpellInfo const* GetSpellInfo(uint32 spell) { return spell ? &info : nullptr; } } manager;
++auto* sSpellMgr = &manager;
++struct SpellLearningScope { SpellLearningScope(Player*, std::set<uint32> const&) { } };
++int Data = 0;
++bool failApply = false;
++bool Validate(int, unsigned level, std::vector<KnownEntry> const& wanted, std::vector<KnownEntry> const&)
++{
++    for (auto const& entry : wanted)
++        if (entry.EntryId > 3 || entry.Rank > 3 || !entry.Rank || (entry.EntryId == 3 && level < 80))
++            return false;
++    return true;
++}
++std::vector<KnownEntry> KnownEntries(Player const* player)
++{
++    std::vector<KnownEntry> entries;
++    if (auto const* fields = player->FindPlayerSettings(SelectionSetting))
++        for (auto field : *fields)
++            if (field.value) entries.push_back({field.value / 10, field.value % 10, 0, false, 0});
++    return entries;
++}
++std::set<uint32> SelectedSpells(std::vector<KnownEntry> const& entries)
++{
++    std::set<uint32> spells;
++    for (auto entry : entries) spells.insert(entry.EntryId * 100);
++    return spells;
++}
++void ExpandGrantedSpells(std::set<uint32>& spells, bool)
++{
++    auto copy = spells;
++    for (auto spell : copy) spells.insert(spell + 1);
++}
++bool Apply(Player* player, std::vector<KnownEntry> const& wanted, bool, bool)
++{
++    if (failApply) return false;
++    for (uint32 spell = 100; spell <= 301; ++spell) player->spells.erase(spell);
++    auto& fields = player->settings[SelectionSetting];
++    fields.clear();
++    for (auto entry : wanted)
++    {
++        fields.push_back({entry.EntryId * 10 + entry.Rank});
++        player->spells.insert(entry.EntryId * 100);
++    }
++    return true;
++}
++void SendArea52Specialization(Player*) { }
++PRODUCTION_METHODS
++int main()
++{
++    Player p;
++    std::string error;
++    p.settings[SelectionSetting] = {{11},{22}};
++    p.settings[ActiveBuildSetting] = {{42},{0},{7},{1}};
++    p.spells.insert({100,101,200,201,999});
++    p.bars[0] = {101};
++    p.bars[143] = {1234 | (64u << 24)};
++    assert(SwitchSpecialization(&p,1,error));
++    assert(ActiveSpecialization(&p) == 1 && KnownEntries(&p).empty() && p.bars.empty());
++    assert(p.spells.contains(999));
++    assert(p.settings[ActiveBuildSetting][0].value == 0);
++    assert(p.settings["core.area52.spec.0.active_build"][0].value == 42);
++    p.settings[SelectionSetting] = {{31}};
++    p.settings[ActiveBuildSetting] = {{84},{1},{9},{0}};
++    p.spells.insert({300,301});
++    p.bars[3] = {301};
++    for (int repeat = 0; repeat < 3; ++repeat)
++    {
++        assert(SwitchSpecialization(&p,0,error));
++        assert(p.spells.contains(101) && !p.spells.contains(300));
++        assert(p.bars.at(0).packedData == 101 && p.bars.contains(143) && !p.bars.contains(3));
++        assert(p.settings[ActiveBuildSetting][0].value == 42 && p.settings[ActiveBuildSetting][3].value == 1);
++        assert(SwitchSpecialization(&p,1,error));
++        assert(p.bars.size() == 1 && p.bars.at(3).packedData == 301);
++        assert(p.settings[ActiveBuildSetting][0].value == 84 && p.settings[ActiveBuildSetting][1].value == 1);
++    }
++    auto const saves = p.saves;
++    assert(SwitchSpecialization(&p,1,error) && p.saves == saves);
++    Player reconnect = p;
++    reconnect.settings = p.disk;
++    assert(ActiveSpecialization(&reconnect) == 1);
++    assert(SwitchSpecialization(&reconnect,0,error) && reconnect.bars.at(0).packedData == 101);
++    assert(!SwitchSpecialization(&p,2,error) && !SwitchSpecialization(&p,20,error));
++    for (auto field : {&p.combat,&p.bg,&p.arena,&p.teleport,&p.moving,&p.busy})
++    {
++        *field = true;
++        assert(!SwitchSpecialization(&p,0,error));
++        *field = false;
++    }
++    for (auto field : {&p.world,&p.map,&p.alive,&p.eligible})
++    {
++        *field = false;
++        assert(!SwitchSpecialization(&p,0,error));
++        *field = true;
++    }
++    assert(p.saves == saves && ActiveSpecialization(&p) == 1);
++    p.settings["core.area52.spec.0.entries"] = {{9991}};
++    assert(!SwitchSpecialization(&p,0,error) && p.saves == saves);
++    p.settings["core.area52.spec.0.entries"] = {{31}};
++    p.level = 1;
++    assert(!SwitchSpecialization(&p,0,error) && p.saves == saves);
++    p.level = 80;
++    failApply = true;
++    assert(!SwitchSpecialization(&p,0,error) && p.saves == saves && ActiveSpecialization(&p) == 1);
++    failApply = false;
++    StoreValues(&p,"shrinking",{1,2,3});
++    StoreValues(&p,"shrinking",{4});
++    assert((ReadValues(&p,"shrinking") == std::vector<uint32>{4,0,0}));
++    p.settings["core.area52.spec.0.entries"] = {{11}};
++    p.settings["core.area52.spec.0.bars"] = {{700},{701},{702},{703}};
++    assert(SwitchSpecialization(&p,0,error));
++    assert(p.bars.empty());
++    p.spells.insert(700);
++    RestoreDelayedAction(&p,700);
++    assert(p.bars.at(0).packedData == 700);
++    p.bars[1] = {999};
++    p.spells.insert(701);
++    RestoreDelayedAction(&p,701);
++    assert(p.bars.at(1).packedData == 999);
++    p.removeActionButton(0);
++    RestoreDelayedAction(&p,700);
++    assert(!p.bars.contains(0));
++    auto* pending = p.CustomData.Get<PendingBars>(PendingBarsKey);
++    pending->Slot = 1;
++    p.spells.insert(702);
++    RestoreDelayedAction(&p,702);
++    assert(!p.bars.contains(2));
++    pending->Slot = 0;
++    pending->Expires = std::chrono::steady_clock::now() - std::chrono::seconds(1);
++    p.spells.insert(703);
++    RestoreDelayedAction(&p,703);
++    assert(!p.bars.contains(3) && pending->Buttons.empty());
++}
+--- /dev/null
++++ b/apps/coa-tests/area52_specializations/run.py
+@@ -0,0 +1,65 @@
++import os
++import re
++from pathlib import Path
++import shutil
++import subprocess
++import tempfile
++
++ROOT = Path(__file__).resolve().parents[3]
++HERE = Path(__file__).resolve().parent
++
++
++def method(source, signature):
++    start = source.index(signature)
++    end = source.index('{', start) + 1
++    depth = 1
++    while depth:
++        depth += (source[end] == '{') - (source[end] == '}')
++        end += 1
++    return source[start:end]
++
++
++def main():
++    source_root = Path(os.environ.get('AREA52_SPEC_SOURCE', ROOT))
++    source = (source_root / 'src/server/coa/AscensionFreePick.cpp').read_text()
++    active = (source_root / 'src/server/coa/Area52ActiveBuild.cpp').read_text()
++    header = (source_root / 'src/server/coa/AscensionFreePick.h').read_text()
++    match = re.search(r'SpecializationSpells = \{([^}]+)\}', header)
++    assert match, 'Specialization slots must be declared'
++    spells = [int(value) for value in re.findall(r'\d+', match[1])]
++    sql = (HERE.parents[2] / 'data/sql/updates/pending_db_world/rev_20261012_00_area52_specializations.sql')
++    if not sql.exists():
++        sql = ROOT / 'data/sql/updates/pending_db_world/rev_20261012_00_area52_specializations.sql'
++    bindings = [int(value) for value in re.findall(r"\((\d+), 'spell_area52_specialization_swap'\)", sql.read_text())]
++    assert len(spells) == 20 and bindings == spells
++    assert 'SPELL_EFFECT_TALENT_SPEC_SELECT' in source
++    assert 'PreventHitDefaultEffect(effect)' in source
++    assert 'state->Generation = NextGeneration.fetch_add(1)' in active
++    restore = method(active, 'void RestoreSpecialization(')
++    assert '*state = State{}' in restore and 'Inboxes[player->GetSession()].clear()' in restore
++    assert 'Fetch(player, id' in restore
++    send = method(active, 'void SendState(')
++    assert 'GetActiveSpec()' not in send and 'GetSpecsCount()' not in send
++    assert 'AscensionFreePick::ActiveSpecialization(player)' in send
++    assert 'AscensionFreePick::SpecializationSpells.size()' in send
++    code = (HERE / 'fixture.cpp').read_text()
++    methods = method(source, 'struct PendingBars :') + ';\n'
++    methods += '\n'.join(method(source, signature) for signature in (
++        'std::string SlotSetting(', 'void StoreValues(', 'std::vector<std::uint32_t> ReadValues(',
++        'void StoreSlot(', 'std::uint32_t ActiveSpecialization(', 'void RestoreDelayedAction(',
++        'bool SwitchSpecialization('))
++    code = code.replace('PRODUCTION_METHODS', methods)
++    compiler = os.environ.get('CXX') or shutil.which('c++')
++    if not compiler:
++        raise RuntimeError('A C++20 compiler is required')
++    with tempfile.TemporaryDirectory(prefix='area52-spec-') as directory:
++        path = Path(directory)
++        (path / 'test.cpp').write_text(code)
++        subprocess.run([compiler, '-std=c++20', '-Wall', '-Wextra', '-Werror',
++                        str(path / 'test.cpp'), '-o', str(path / 'test')], check=True)
++        subprocess.run([str(path / 'test')], check=True)
++    print('PASS: production slot save/restore, repeated round trips, restart snapshot, ownership and refusal guards')
++
++
++if __name__ == '__main__':
++    main()
+--- /dev/null
++++ b/data/sql/updates/pending_db_world/rev_20261012_00_area52_specializations.sql
+@@ -0,0 +1,22 @@
++DELETE FROM `spell_script_names` WHERE `ScriptName` = 'spell_area52_specialization_swap';
++INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`) VALUES
++(979993, 'spell_area52_specialization_swap'),
++(979994, 'spell_area52_specialization_swap'),
++(979995, 'spell_area52_specialization_swap'),
++(979996, 'spell_area52_specialization_swap'),
++(979997, 'spell_area52_specialization_swap'),
++(979986, 'spell_area52_specialization_swap'),
++(979987, 'spell_area52_specialization_swap'),
++(979988, 'spell_area52_specialization_swap'),
++(84874, 'spell_area52_specialization_swap'),
++(84876, 'spell_area52_specialization_swap'),
++(84878, 'spell_area52_specialization_swap'),
++(84880, 'spell_area52_specialization_swap'),
++(84882, 'spell_area52_specialization_swap'),
++(84884, 'spell_area52_specialization_swap'),
++(84886, 'spell_area52_specialization_swap'),
++(84888, 'spell_area52_specialization_swap'),
++(84890, 'spell_area52_specialization_swap'),
++(84892, 'spell_area52_specialization_swap'),
++(84894, 'spell_area52_specialization_swap'),
++(84896, 'spell_area52_specialization_swap');
+--- a/src/server/coa/Area52ActiveBuild.cpp
++++ b/src/server/coa/Area52ActiveBuild.cpp
+@@ -81,12 +81,21 @@
+ void SendState(Player* player, State const& state)
+ {
+     WorldPacket packet(0x633, 64);
+-    packet << std::uint32_t(player->GetSpecsCount());
+-    for (std::uint8_t spec = 0; spec < player->GetSpecsCount(); ++spec)
+-        packet << state.Plan.Id << std::uint8_t(state.Automatic) << std::uint8_t(state.Automatic);
++    auto const active = AscensionFreePick::ActiveSpecialization(player);
++    packet << std::uint32_t(AscensionFreePick::SpecializationSpells.size());
++    for (std::uint32_t spec = 0; spec < AscensionFreePick::SpecializationSpells.size(); ++spec)
++    {
++        auto const key = "core.area52.spec." + std::to_string(spec) + ".active_build";
++        auto const* saved = player->FindPlayerSettings(key);
++        std::uint64_t const id = saved && saved->size() >= 4 ?
++            std::uint64_t((*saved)[0].value) | (std::uint64_t((*saved)[1].value) << 32) : 0;
++        bool const automatic = spec == active ? state.Automatic : id && (*saved)[3].value;
++        packet << (spec == active ? state.Plan.Id : id ? std::to_string(id) : std::string{})
++            << std::uint8_t(automatic) << std::uint8_t(automatic);
++    }
+     player->GetSession()->SendPacket(&packet);
+     WorldPacket changed(0x632, 64);
+-    changed << std::uint32_t(player->GetActiveSpec()) << state.Plan.Id
++    changed << active << state.Plan.Id
+         << std::uint8_t(state.Automatic) << std::uint8_t(state.Automatic);
+     player->GetSession()->SendPacket(&changed);
+ }
+@@ -375,6 +384,34 @@
+     return AscensionFreePick::SameSelection(before, AscensionFreePick::KnownEntries(player)) ? 0 : 1;
+ }
+ 
++bool CanSwitchSpecialization(Player* player)
++{
++    auto const* state = player->CustomData.Get<State>(StateKey);
++    return !Applies(player) || (state && state->Loaded && !state->Busy);
++}
++
++void RestoreSpecialization(Player* player)
++{
++    if (!Applies(player))
++        return;
++    {
++        std::lock_guard lock(InboxLock);
++        Inboxes[player->GetSession()].clear();
++    }
++    auto* state = player->CustomData.GetDefault<State>(StateKey);
++    *state = State{};
++    std::uint64_t const id = std::uint64_t(player->GetPlayerSetting(Setting, 0).value)
++        | (std::uint64_t(player->GetPlayerSetting(Setting, 1).value) << 32);
++    if (id)
++        Fetch(player, id, player->GetPlayerSetting(Setting, 2).value,
++            player->GetPlayerSetting(Setting, 3).value != 0, true);
++    else
++    {
++        state->Loaded = true;
++        SendState(player, *state);
++    }
++}
++
+ void PauseAutoLearnForReset(Player* player)
+ {
+     if (!Applies(player))
+--- a/src/server/coa/Area52ActiveBuild.h
++++ b/src/server/coa/Area52ActiveBuild.h
+@@ -8,7 +8,10 @@
+ {
+ struct Entry;
+ void PauseAutoLearnForReset(Player* player);
++bool CanSwitchSpecialization(Player* player);
++void RestoreSpecialization(Player* player);
+ std::uint32_t Train(Player* player, Creature* trainer, std::uint32_t maximumLevel = 80);
+ }
+ void SendArea52Advancement(Player* player);
++void SendArea52Specialization(Player* player);
+ #endif
+--- a/src/server/coa/AscensionCompat.cpp
++++ b/src/server/coa/AscensionCompat.cpp
+@@ -1425,8 +1425,11 @@
+   {
+     WorldPacket packet(SMSG_CHARACTER_ADVANCEMENT_ACTIVE_SPEC, sizeof(uint32) * 2);
+     bool const wildcard = AscensionWildcard::IsWildcardHero(player);
+-    packet << (wildcard ? AscensionWildcard::ActiveSpec(player) : uint32(0))
+-           << uint32(wildcard ? AscensionWildcard::SPECIALIZATION_COUNT : 1);
++    bool const freepick = AscensionFreePick::Applies(player);
++    packet << (wildcard ? AscensionWildcard::ActiveSpec(player) :
++        freepick ? AscensionFreePick::ActiveSpecialization(player) : uint32(0))
++        << uint32(wildcard ? AscensionWildcard::SPECIALIZATION_COUNT :
++            freepick ? AscensionFreePick::SpecializationSpells.size() : 1);
+     player->GetSession()->SendPacket(&packet);
+ 
+     uint32 const sent = SendKnownTalentEntries(player);
+@@ -1783,6 +1786,12 @@
+   void QueueAbilityReset(uint32 accountId)
+   {
+     QueueTalentRequest(accountId, { true, {}, true });
++  }
++
++  void ClearArea52TalentRequests(Player* player)
++  {
++    std::lock_guard<std::mutex> lock(_stateLock);
++    _pendingTalentRequests.erase(player->GetSession()->GetAccountId());
+   }
+ 
+   void ProcessTalentRequests(Player* player)
+@@ -7248,6 +7257,12 @@
+   AscensionFreePick::AppendClientConfig(config);
+ }
+ 
++void SendArea52Specialization(Player* player)
++{
++    AscensionClassService::Instance().ClearArea52TalentRequests(player);
++    AscensionClassService::Instance().SendCharacterAdvancementState(player);
++}
++
+ void SendArea52Advancement(Player* player)
+ {
+     AscensionClassService::Instance().SendCharacterAdvancementKnownEntries(player);
+@@ -7259,6 +7274,7 @@
+ }
+ 
+ void AddAscensionCompatScripts() {
++  AscensionFreePick::RegisterSpecializations();
+   new AscensionRemovedSpellActionBars::Script(AscensionFreePick::Applies);
+   RegisterAscensionClientConfig([](AscensionClientConfig& config) {
+     config.Booleans.emplace_back("CONFIG_CHARACTER_ADVANCEMENT_BUILD_INSPECT_ENABLED", true);
+--- a/src/server/coa/AscensionFreePick.cpp
++++ b/src/server/coa/AscensionFreePick.cpp
+@@ -15,10 +15,15 @@
+ #include "Player.h"
+ #include "ScriptMgr.h"
+ #include "SpellInfo.h"
++#include "SpellScript.h"
++#include "Chat.h"
++#include "Pet.h"
++#include "WorldPacket.h"
+ #include "SpellAuras.h"
+ #include "SpellMgr.h"
+ #include "WorldSession.h"
+ #include <algorithm>
++#include <chrono>
+ #include <set>
+ 
+ namespace AscensionFreePick
+@@ -187,6 +192,7 @@
+                 std::find(group.Children.begin(), group.Children.end(), spell) != group.Children.end();
+         });
+     return !Applies(player) || alreadyOwned || RacialSpell(player, spell) ||
++        std::find(SpecializationSpells.begin(), SpecializationSpells.end(), spell) != SpecializationSpells.end() ||
+         (!ClassSpells.contains(spell) && !companion) ||
+         SpellLearningScope::Allows(player, spell) ||
+         (temporary && SelectedSpells(KnownEntries(player)).contains(spell));
+@@ -334,7 +340,7 @@
+     return Area52Build::Select(Data, plan, player->GetLevel(), wanted, KnownEntries(player), retainExisting, maximumLevel, learnSpells);
+ }
+ 
+-Result Apply(Player* player, std::vector<KnownEntry> const& wanted, bool)
++Result Apply(Player* player, std::vector<KnownEntry> const& wanted, bool, bool specializationChange)
+ {
+     if (!Applies(player) || !player->IsInWorld())
+         return { "CA_UPDATE_ENTRIES_UNKNOWN" };
+@@ -345,7 +351,7 @@
+     if (player->InBattleground() || player->InArena())
+         return { "CA_UPDATE_ENTRIES_NOT_TRAVERSIBLE", "CA_LEARN_NOT_IN_BATTLEGROUNDS" };
+     auto const before = KnownEntries(player);
+-    Result const validated = Validate(Data, player->GetLevel(), wanted, before);
++    Result const validated = Validate(Data, player->GetLevel(), wanted, specializationChange ? wanted : before);
+     if (!validated)
+         return validated;
+     auto const oldSpells = SelectedSpells(before);
+@@ -384,7 +390,8 @@
+     SynchronizeLinkedSpells(player);
+     AscensionMysticEnchant::RefreshEquipped(player);
+     AscensionRemovedSpellActionBars::Reconcile(player, actionSpells);
+-    player->SaveToDB(false, false);
++    if (!specializationChange)
++        player->SaveToDB(false, false);
+     return {};
+ }
+ 
+@@ -489,4 +496,234 @@
+         player->SaveToDB(false, false);
+     return learned;
+ }
+-}
++
++namespace
++{
++constexpr char ActiveSlotSetting[] = "core.area52.spec.active";
++constexpr char ActiveBuildSetting[] = "core.area52.active_build";
++constexpr char PendingBarsKey[] = "area52.specialization.pending_bars";
++
++struct PendingBars : DataMap::Base
++{
++    std::uint32_t Slot = 0;
++    std::map<std::uint8_t, std::uint32_t> Buttons;
++    std::chrono::steady_clock::time_point Expires;
++};
++
++void RestoreDelayedAction(Player* player, std::uint32_t spell)
++{
++    auto* pending = player->CustomData.Get<PendingBars>(PendingBarsKey);
++    if (!pending || pending->Slot != ActiveSpecialization(player))
++        return;
++    if (std::chrono::steady_clock::now() >= pending->Expires)
++    {
++        pending->Buttons.clear();
++        return;
++    }
++    bool changed = false;
++    std::erase_if(pending->Buttons, [&](auto const& button)
++    {
++        if (button.second != spell)
++            return false;
++        if (!player->GetActionButton(button.first) && player->HasSpell(spell))
++        {
++            player->addActionButton(button.first, spell, ACTION_BUTTON_SPELL);
++            changed = true;
++        }
++        return true;
++    });
++    if (changed)
++        player->SendActionButtons(1);
++}
++
++std::string SlotSetting(std::uint32_t slot, char const* suffix)
++{
++    return "core.area52.spec." + std::to_string(slot) + suffix;
++}
++
++void StoreValues(Player* player, std::string const& key, std::vector<std::uint32_t> const& values)
++{
++    auto const* old = player->FindPlayerSettings(key);
++    std::size_t const count = std::max(values.size(), old ? old->size() : 0);
++    for (std::size_t i = 0; i < count; ++i)
++        player->UpdatePlayerSetting(key, std::uint32_t(i), i < values.size() ? values[i] : 0);
++}
++
++std::vector<std::uint32_t> ReadValues(Player const* player, std::string const& key)
++{
++    std::vector<std::uint32_t> values;
++    if (auto const* saved = player->FindPlayerSettings(key))
++        for (auto const& field : *saved)
++            values.push_back(field.value);
++    return values;
++}
++
++void StoreSlot(Player* player, std::uint32_t index)
++{
++    StoreValues(player, SlotSetting(index, ".entries"), ReadValues(player, SelectionSetting));
++    StoreValues(player, SlotSetting(index, ".active_build"), ReadValues(player, ActiveBuildSetting));
++    std::vector<std::uint32_t> bars;
++    for (std::uint8_t button = 0; button < MAX_ACTION_BUTTONS; ++button)
++    {
++        auto const* action = player->GetActionButton(button);
++        bars.push_back(action ? action->packedData : 0);
++    }
++    StoreValues(player, SlotSetting(index, ".bars"), bars);
++    auto roots = SelectedSpells(KnownEntries(player));
++    ExpandGrantedSpells(roots, true);
++    std::vector<std::uint32_t> ranks;
++    for (auto spell : roots)
++        if (player->HasSpell(spell))
++            ranks.push_back(spell);
++    StoreValues(player, SlotSetting(index, ".ranks"), ranks);
++}
++
++class SpecializationSwap final : public SpellScript
++{
++    PrepareSpellScript(SpecializationSwap);
++    std::uint32_t Index = 0;
++
++    bool Load() override
++    {
++        auto const found = std::find(SpecializationSpells.begin(), SpecializationSpells.end(), GetSpellInfo()->Id);
++        if (!Applies(GetCaster()->ToPlayer()) || found == SpecializationSpells.end())
++            return false;
++        Index = std::uint32_t(found - SpecializationSpells.begin());
++        return true;
++    }
++
++    SpellCastResult Check()
++    {
++        Player* player = GetCaster()->ToPlayer();
++        if (!player->HasSpell(SpecializationSpells[Index]))
++            return SPELL_FAILED_NOT_KNOWN;
++        if (player->IsInCombat())
++            return SPELL_FAILED_AFFECTING_COMBAT;
++        if (player->InBattleground() || player->InArena() || !Area52Build::CanSwitchSpecialization(player))
++            return SPELL_FAILED_NOT_HERE;
++        return SPELL_CAST_OK;
++    }
++
++    void Switch(SpellEffIndex effect)
++    {
++        PreventHitDefaultEffect(effect);
++        std::string error;
++        Player* player = GetCaster()->ToPlayer();
++        if (!SwitchSpecialization(player, Index, error))
++            ChatHandler(player->GetSession()).SendSysMessage(error);
++    }
++
++    void Register() override
++    {
++        OnCheckCast += SpellCheckCastFn(SpecializationSwap::Check);
++        OnEffectHitTarget += SpellEffectFn(SpecializationSwap::Switch, EFFECT_0, SPELL_EFFECT_TALENT_SPEC_SELECT);
++    }
++};
++
++class SpecializationPlayer final : public PlayerScript
++{
++public:
++    SpecializationPlayer() : PlayerScript("Area52SpecializationPlayer",
++        { PLAYERHOOK_ON_LOGIN, PLAYERHOOK_ON_LEARN_SPELL }) { }
++    void OnPlayerLearnSpell(Player* player, std::uint32_t spell) override
++    {
++        if (Applies(player))
++            RestoreDelayedAction(player, spell);
++    }
++    void OnPlayerLogin(Player* player) override
++    {
++        if (Applies(player) && !player->HasSpell(SpecializationSpells[0]))
++        {
++            std::set<std::uint32_t> const spells{SpecializationSpells[0]};
++            SpellLearningScope learning(player, spells);
++            player->learnSpell(SpecializationSpells[0]);
++        }
++    }
++};
++}
++
++std::uint32_t ActiveSpecialization(Player const* player)
++{
++    auto const* stored = player->FindPlayerSettings(ActiveSlotSetting);
++    auto const slot = stored && !stored->empty() ? (*stored)[0].value : 0;
++    return slot < SpecializationSpells.size() ? slot : 0;
++}
++
++bool SwitchSpecialization(Player* player, std::uint32_t index, std::string& error)
++{
++    if (!Applies(player) || index >= SpecializationSpells.size() || !player->HasSpell(SpecializationSpells[index]))
++    {
++        error = "That specialization is not unlocked.";
++        return false;
++    }
++    if (!player->IsInWorld() || !player->FindMap() || !player->IsAlive() || player->IsInCombat()
++        || player->InBattleground() || player->InArena() || player->IsBeingTeleported()
++        || player->isMoving() || !Area52Build::CanSwitchSpecialization(player))
++    {
++        error = "You cannot change specializations right now.";
++        return false;
++    }
++    auto const previous = ActiveSpecialization(player);
++    if (index == previous)
++        return true;
++    std::vector<KnownEntry> wanted;
++    for (auto value : ReadValues(player, SlotSetting(index, ".entries")))
++        if (value)
++            wanted.push_back({value / 10, value % 10, value % 10, false, std::uint32_t(wanted.size())});
++    auto result = Validate(Data, player->GetLevel(), wanted, wanted);
++    if (!result)
++    {
++        error = "The saved specialization is not eligible at your current level or with the current rules.";
++        return false;
++    }
++    StoreSlot(player, previous);
++    result = Apply(player, wanted, false, true);
++    if (!result)
++    {
++        error = "The saved specialization could not be restored.";
++        return false;
++    }
++    if (Pet* pet = player->GetPet())
++        player->RemovePet(pet, PET_SAVE_NOT_IN_SLOT);
++    player->ClearAllReactives();
++    player->UnsummonAllTotems();
++    player->RemoveAllControlled();
++    player->UpdatePlayerSetting(ActiveSlotSetting, 0, index);
++    StoreValues(player, ActiveBuildSetting, ReadValues(player, SlotSetting(index, ".active_build")));
++    auto ranks = SelectedSpells(wanted);
++    ExpandGrantedSpells(ranks, true);
++    SpellLearningScope learning(player, ranks);
++    for (auto spell : ReadValues(player, SlotSetting(index, ".ranks")))
++        if (ranks.contains(spell))
++            if (auto const* info = sSpellMgr->GetSpellInfo(spell); info && info->SpellLevel <= player->GetLevel())
++                player->learnSpell(spell);
++    auto const bars = ReadValues(player, SlotSetting(index, ".bars"));
++    auto* pending = player->CustomData.GetDefault<PendingBars>(PendingBarsKey);
++    pending->Slot = index;
++    pending->Buttons.clear();
++    pending->Expires = std::chrono::steady_clock::now() + std::chrono::seconds(10);
++    for (std::uint8_t button = 0; button < MAX_ACTION_BUTTONS; ++button)
++    {
++        player->removeActionButton(button);
++        if (button < bars.size() && bars[button])
++        {
++            player->addActionButton(button, ACTION_BUTTON_ACTION(bars[button]),
++                std::uint8_t(ACTION_BUTTON_TYPE(bars[button])));
++            if (ACTION_BUTTON_TYPE(bars[button]) == ACTION_BUTTON_SPELL &&
++                !player->HasSpell(ACTION_BUTTON_ACTION(bars[button])))
++                pending->Buttons[button] = ACTION_BUTTON_ACTION(bars[button]);
++        }
++    }
++    player->SaveToDB(false, false);
++    SendArea52Specialization(player);
++    Area52Build::RestoreSpecialization(player);
++    player->SendActionButtons(1);
++    return true;
++}
++
++void RegisterSpecializations()
++{
++    RegisterSpellScriptWithArgs(SpecializationSwap, "spell_area52_specialization_swap");
++    new SpecializationPlayer();
++}
++}
+--- a/src/server/coa/AscensionFreePick.h
++++ b/src/server/coa/AscensionFreePick.h
+@@ -67,6 +67,12 @@
+ bool SameSelection(std::vector<KnownEntry> const& left, std::vector<KnownEntry> const& right);
+ void Initialize(bool enabled);
+ bool Enabled();
++inline constexpr std::array<std::uint32_t, 20> SpecializationSpells = { 979993, 979994, 979995,
++    979996, 979997, 979986, 979987, 979988, 84874, 84876, 84878, 84880, 84882, 84884, 84886, 84888,
++    84890, 84892, 84894, 84896 };
++std::uint32_t ActiveSpecialization(Player const* player);
++bool SwitchSpecialization(Player* player, std::uint32_t index, std::string& error);
++void RegisterSpecializations();
+ std::uint32_t Investment(Player const* player, std::uint32_t classId, std::uint32_t tabId, bool talents);
+ bool Applies(Player const* player);
+ class SpellLearningScope
+@@ -98,7 +104,8 @@
+ std::uint32_t LearnAvailableRanks(Player* player);
+ void AppendClientConfig(AscensionClientConfig& config);
+ std::vector<KnownEntry> KnownEntries(Player const* player);
+-Result Apply(Player* player, std::vector<KnownEntry> const& wanted, bool chargeIndividualRemoval = true);
++Result Apply(Player* player, std::vector<KnownEntry> const& wanted, bool chargeIndividualRemoval = true,
++    bool specializationChange = false);
+ Result Purge(Player* player, bool talents);
+ Result PlanSelection(Player const* player, Area52Build::Entry const& plan, std::vector<KnownEntry>& wanted,
+     bool retainExisting = false, std::uint32_t maximumLevel = 80, bool learnSpells = true);
