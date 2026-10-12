@@ -1,0 +1,56 @@
+{
+  "status": "staged_not_active",
+  "map": 1,
+  "zone": 1637,
+  "area": 10228,
+  "phase": 1,
+  "leader_guid": 9890206,
+  "back_center_guid": 9890210,
+  "positions": [
+    {
+      "guid": 9890206,
+      "x": 1429.6925267956021,
+      "y": -4355.927445795832,
+      "z": 25.46259,
+      "orientation": 4.9220023
+    },
+    {
+      "guid": 9890207,
+      "x": 1428.2982519488432,
+      "y": -4354.179304596817,
+      "z": 25.46259,
+      "orientation": 4.9220023
+    },
+    {
+      "guid": 9890208,
+      "x": 1430.254474846759,
+      "y": -4353.763141199015,
+      "z": 25.46259,
+      "orientation": 4.9220023
+    },
+    {
+      "guid": 9890209,
+      "x": 1426.9039771020841,
+      "y": -4352.431163397801,
+      "z": 25.46259,
+      "orientation": 4.9220023
+    },
+    {
+      "guid": 9890210,
+      "x": 1428.8602,
+      "y": -4352.015,
+      "z": 25.46259,
+      "orientation": 4.9220023
+    },
+    {
+      "guid": 9890211,
+      "x": 1430.816422897916,
+      "y": -4351.598836602199,
+      "z": 25.46259,
+      "orientation": 4.9220023
+    }
+  ],
+  "source": "Owner original GPS screenshot codex-clipboard-45fb910b-c5de-4b72-bf29-e36806277817.png",
+  "clearance": "No phase-1 holiday object origin overlaps the formation; nearby hanging decorations are elevated. In-game static model clearance remains to be accepted.",
+  "accepted_overlap": "Owner approved overlap with refugee NPCs/tents in phases 64/128; dummies remain phase 1."
+}

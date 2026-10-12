@@ -4,51 +4,53 @@
   "zone": 1637,
   "area": 10228,
   "phase": 1,
+  "leader_guid": 9890200,
   "back_center_guid": 9890204,
   "positions": [
     {
       "guid": 9890200,
-      "x": 1538.435125535105,
-      "y": -4441.594070671641,
-      "z": 13.88309,
-      "orientation": 1.0648832
+      "x": 1438.670597494164,
+      "y": -4429.493140842822,
+      "z": 25.46259,
+      "orientation": 1.6743821
     },
     {
       "guid": 9890201,
-      "x": 1538.3406450996422,
-      "y": -4443.828141719596,
-      "z": 13.88309,
-      "orientation": 1.0648832
+      "x": 1439.8720385363765,
+      "y": -4431.379019794952,
+      "z": 25.46259,
+      "orientation": 1.6743821
     },
     {
       "guid": 9890202,
-      "x": 1536.5911804354628,
-      "y": -4442.858928952044,
-      "z": 13.88309,
-      "orientation": 1.0648832
+      "x": 1437.8827589577875,
+      "y": -4431.58582104787,
+      "z": 25.46259,
+      "orientation": 1.6743821
     },
     {
       "guid": 9890203,
-      "x": 1538.2461646641796,
-      "y": -4446.062212767552,
-      "z": 13.88309,
-      "orientation": 1.0648832
+      "x": 1441.073479578589,
+      "y": -4433.264898747082,
+      "z": 25.46259,
+      "orientation": 1.6743821
     },
     {
       "guid": 9890204,
-      "x": 1536.4967,
-      "y": -4445.093,
-      "z": 13.88309,
-      "orientation": 1.0648832
+      "x": 1439.0842,
+      "y": -4433.4717,
+      "z": 25.46259,
+      "orientation": 1.6743821
     },
     {
       "guid": 9890205,
-      "x": 1534.7472353358203,
-      "y": -4444.123787232447,
-      "z": 13.88309,
-      "orientation": 1.0648832
+      "x": 1437.094920421411,
+      "y": -4433.678501252918,
+      "z": 25.46259,
+      "orientation": 1.6743821
     }
   ],
-  "source": "Owner GPS screenshot codex-clipboard-1caa53af-8323-40fb-80fa-1484e209fe54.png",
-  "limitation": "All-phase spawn clearance checked; terrain and static scenery need in-game acceptance."
+  "source": "Owner original GPS screenshot codex-clipboard-aec71517-5ce6-4ac8-a9fb-2a531431ad3f.png",
+  "clearance": "No phase-1 holiday object origin overlaps the formation; nearby hanging decorations are elevated. In-game static model clearance remains to be accepted.",
+  "accepted_overlap": "Owner approved overlap with refugee NPCs/tents in phases 64/128; dummies remain phase 1."
 }
