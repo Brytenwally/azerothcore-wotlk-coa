@@ -3,6 +3,7 @@
 
 #include "XPHotspotRules.h"
 #include <boost/geometry.hpp>
+#include <sstream>
 
 namespace XPHotspots
 {
@@ -103,6 +104,53 @@ inline bool ChangeShape(Location& row, std::string const& kind)
     row.Source = "gm-shape";
     return true;
 }
+inline bool ApplyLocalPaint(Location& row, std::string const& edits)
+{
+    if (edits.size() > 12000 || row.Kind != "polygon")
+        return false;
+    Location candidate = row;
+    std::istringstream stream(edits);
+    std::string operation;
+    size_t count = 0;
+    while (std::getline(stream, operation, ';'))
+    {
+        if (operation.empty() || ++count > 96)
+            return false;
+        std::istringstream input(operation);
+        std::string kind, extra;
+        input >> kind;
+        if (kind == "T")
+            candidate.Points.clear();
+        else if (kind == "P")
+        {
+            Point point;
+            if (!(input >> point.X >> point.Y) || candidate.Points.size() >= MaxPolygonPoints ||
+                !std::isfinite(point.X) || !std::isfinite(point.Y) ||
+                std::abs(point.X) > 20000 || std::abs(point.Y) > 20000)
+                return false;
+            candidate.Points.push_back(point);
+        }
+        else if (kind == "B")
+        {
+            Point from, to;
+            double radius = 0;
+            uint32_t square = 0;
+            if (!(input >> from.X >> from.Y >> to.X >> to.Y >> radius >> square) || square > 1 ||
+                !Paint(candidate, from, to, radius, square != 0))
+                return false;
+        }
+        else
+            return false;
+        if (input >> extra)
+            return false;
+    }
+    if (!count || !ValidPolygon(candidate.Points))
+        return false;
+    candidate.Source = "gm-local-paint";
+    row = std::move(candidate);
+    return true;
+}
+
 }
 
 #endif

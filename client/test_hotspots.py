@@ -135,21 +135,26 @@ class HotspotClientTests(unittest.TestCase):
         self.lua.execute('b.scripts.OnClick(b)')
         self.assertTrue(self.lua.eval('XPHotspots.queue[1]:match("^save ")~=nil'))
 
-    def test_brush_uses_draft_only_and_keeps_save_explicit(self):
+    def test_brush_is_local_until_save_and_undo_sends_nothing(self):
         self.snapshot(kind='polygon', draft=True)
-        self.lua.execute('XPHotspots.ShowPaintTools();XPHotspots.SetPaintMode("Brush");XPHotspots.queue={};control=true')
-        self.lua.execute('WorldMapButton.scripts.OnMouseDown(WorldMapButton,"LeftButton")')
-        self.assertEqual(self.lua.eval('XPHotspots.queue[1]'), 'paintbegin')
-        self.assertTrue(self.lua.eval('XPHotspots.queue[2]:match("^brush ")~=nil'))
-        self.lua.execute('WorldMapButton.scripts.OnMouseUp(WorldMapButton,"LeftButton")')
-        self.assertTrue(self.lua.eval('XPHotspots.stroke==nil'))
-        self.assertEqual(self.lua.eval('oldClicks'), 0)
-        self.assertEqual(self.lua.eval('#XPHotspots.queue'), 3)
-        self.assertTrue(self.lua.eval('XPHotspots.paintPending'))
-        self.receive('PAINTREADY')
-        self.assertTrue(self.lua.eval('XPHotspots.paintPending==nil'))
+        self.lua.execute('XPHotspots.ShowPanel();XPHotspots.ShowPaintTools();XPHotspots.SetPaintMode("Brush");XPHotspots.queue={};control=true')
+        self.lua.execute('WorldMapButton.scripts.OnMouseDown(WorldMapButton,"LeftButton");WorldMapButton.scripts.OnMouseUp(WorldMapButton,"LeftButton")')
+        self.assertEqual(self.lua.eval('#XPHotspots.queue'), 0)
+        self.assertEqual(self.lua.eval('#XPHotspots.localStrokes'), 1)
+        self.lua.execute('XPHotspots.UndoLocalPaint()')
+        self.assertEqual(self.lua.eval('#XPHotspots.queue'), 0)
+        self.assertEqual(self.lua.eval('#XPHotspots.localStrokes'), 0)
+        self.lua.execute('WorldMapButton.scripts.OnMouseDown(WorldMapButton,"LeftButton");WorldMapButton.scripts.OnMouseUp(WorldMapButton,"LeftButton");b=ButtonNamed("Save draft");b.scripts.OnClick(b)')
+        self.assertTrue(self.lua.eval('XPHotspots.queue[1]:match("^localbegin ")~=nil'))
+        self.assertTrue(self.lua.eval('XPHotspots.queue[2]:match("^localpart 0 B ")~=nil'))
+        self.assertTrue(self.lua.eval('XPHotspots.queue[3]:match("^localsave ")~=nil'))
+        self.receive('ERROR|Invalid boundary')
+        self.assertEqual(self.lua.eval('#XPHotspots.localStrokes'), 1)
+        self.assertTrue(self.lua.eval('not XPHotspots.localSaving'))
+        self.receive('LOCALSAVED')
+        self.assertEqual(self.lua.eval('#XPHotspots.localStrokes'), 0)
 
-    def test_trace_replaces_only_when_released(self):
+    def test_trace_is_local_until_save(self):
         self.snapshot(kind='polygon', draft=True)
         self.lua.execute("""
 XPHotspots.ShowPaintTools();XPHotspots.SetPaintMode("Trace");XPHotspots.queue={};control=true
@@ -158,13 +163,24 @@ function GetCursorPosition() return 75,75 end
 XPHotspots.SamplePaint()
 function GetCursorPosition() return 75,25 end
 XPHotspots.SamplePaint()
+WorldMapButton.scripts.OnMouseUp(WorldMapButton,"LeftButton")
 """)
         self.assertEqual(self.lua.eval('#XPHotspots.queue'), 0)
-        self.lua.execute('WorldMapButton.scripts.OnMouseUp(WorldMapButton,"LeftButton")')
-        self.assertEqual(self.lua.eval('XPHotspots.queue[1]'), 'tracebegin')
-        self.assertTrue(self.lua.eval('XPHotspots.queue[2]:match("^tracepoints ")~=nil'))
-        self.assertEqual(self.lua.eval('XPHotspots.queue[3]'), 'traceend')
-        self.assertEqual(self.lua.eval('#XPHotspots.queue'), 4)
+        self.assertEqual(self.lua.eval('#XPHotspots.localStrokes[1].points'), 3)
+        self.lua.execute('XPHotspots.SaveLocalPaint("150 3600 1 3600 1 1 75 Test")')
+        self.assertTrue(self.lua.eval('XPHotspots.queue[2]:match("^localpart 0 T;P ")~=nil'))
+
+    def test_polygon_outline_has_bounded_instruction_cost(self):
+        self.snapshot()
+        self.lua.execute("""
+local points={}
+for i=1,256 do local a=i*math.pi*2/256;points[i]={x=50+30*math.cos(a),y=50+30*math.sin(a)} end
+instructions=0
+debug.sethook(function() instructions=instructions+1000;if instructions>6000000 then error("outline instruction budget exceeded") end end,"",1000)
+XPHotspots.Outline({kind="polygon",map=0,points=points})
+debug.sethook()
+""")
+        self.assertLess(self.lua.eval('instructions'), 6000000)
 
     def test_paint_rejects_wrong_map_and_pending_requests(self):
         self.snapshot(kind='polygon', draft=True)

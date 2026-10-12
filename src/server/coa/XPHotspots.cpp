@@ -39,6 +39,14 @@ std::set<uint32> ActiveIds;
 std::map<uint32, Tree> Records;
 std::map<ObjectGuid, Location> Drafts;
 std::map<ObjectGuid, Location> PaintUndo;
+struct LocalPaintUpload
+{
+    Location Base;
+    std::string Edits;
+    uint32 Parts = 0;
+    uint32 Next = 0;
+};
+std::map<ObjectGuid, LocalPaintUpload> LocalPaint;
 std::map<ObjectGuid, std::vector<Point>> TraceDrafts;
 std::map<ObjectGuid, std::vector<std::pair<uint32, uint32>>> MergeSources;
 std::map<ObjectGuid, uint64> Requests;
@@ -467,6 +475,43 @@ void Execute(Player* player, std::string const& command)
     }
     uint32 account = player->GetSession()->GetAccountId();
     ObjectGuid owner = player->GetGUID();
+    if (action == "localbegin")
+    {
+        uint32 id = 0, revision = 0, parts = 0;
+        LocalPaint.erase(owner);
+        if (!(input >> id >> revision >> parts) || !parts || parts > 62 || !Drafts.contains(owner) ||
+            Drafts.at(owner).Id != id || Drafts.at(owner).Revision != revision)
+        {
+            Send(player, "ERROR|Draft changed. Local painting retained; reopen the original draft before retrying.");
+            return;
+        }
+        LocalPaint[owner] = {Drafts.at(owner), {}, parts, 0};
+        return;
+    }
+    if (action == "localpart")
+    {
+        if (!LocalPaint.contains(owner))
+            return;
+        auto& upload = LocalPaint.at(owner);
+        uint32 index = 0;
+        if (!(input >> index) || index != upload.Next || index >= upload.Parts)
+        {
+            LocalPaint.erase(owner);
+            Send(player, "ERROR|Incomplete drawing upload. Nothing saved; retry Save Draft.");
+            return;
+        }
+        std::string part;
+        std::getline(input >> std::ws, part);
+        ++upload.Next;
+        if (upload.Edits.size() + part.size() > 12000)
+        {
+            LocalPaint.erase(owner);
+            Send(player, "ERROR|Local drawing exceeds the upload limit. Undo some strokes and retry.");
+            return;
+        }
+        upload.Edits += part;
+        return;
+    }
     if (action == "general")
     {
         input >> std::ws;
@@ -783,7 +828,7 @@ void Execute(Player* player, std::string const& command)
             return;
         Drafts[owner] = r;
     }
-    else if (action == "save")
+    else if (action == "save" || action == "localsave")
     {
         if (!Drafts.contains(owner))
         {
@@ -791,6 +836,29 @@ void Execute(Player* player, std::string const& command)
             return;
         }
         auto r = Drafts.at(owner);
+        if (action == "localsave")
+        {
+            if (!LocalPaint.contains(owner))
+            {
+                Send(player, "ERROR|Local drawing upload is missing. Local painting retained; retry Save Draft.");
+                return;
+            }
+            auto upload = std::move(LocalPaint.at(owner));
+            LocalPaint.erase(owner);
+            r = std::move(upload.Base);
+            if (upload.Next != upload.Parts ||
+                (r.Id && (!Locations.contains(r.Id) || Locations.at(r.Id).Revision != r.Revision)))
+            {
+                Send(player, "ERROR|Incomplete upload or hotspot changed. Nothing saved; local drawing retained.");
+                return;
+            }
+            if (!ApplyLocalPaint(r, upload.Edits))
+            {
+                Send(player, "ERROR|Invalid painted boundary. Nothing saved; local painting retained for correction.");
+                return;
+            }
+        }
+
         input >> std::ws;
         if (!input.eof())
         {
@@ -847,6 +915,8 @@ void Execute(Player* player, std::string const& command)
         PaintUndo.erase(owner);
         TraceDrafts.erase(owner);
         MergeSources.erase(owner);
+        if (action == "localsave")
+            Send(player, "LOCALSAVED");
         LOG_INFO("commands.gm", "XPHotspots account {} saved location {} revision {}", account, r.Id, r.Revision);
     }
     else if (action == "teleport" || action == "delete")
@@ -996,6 +1066,7 @@ void Execute(Player* player, std::string const& command)
     else if (action == "cancel")
     {
         Drafts.erase(owner);
+        LocalPaint.erase(owner);
         PaintUndo.erase(owner);
         TraceDrafts.erase(owner);
         MergeSources.erase(owner);
@@ -1207,6 +1278,7 @@ public:
         Drafts.erase(p->GetGUID());
         PaintUndo.erase(p->GetGUID());
         TraceDrafts.erase(p->GetGUID());
+        LocalPaint.erase(p->GetGUID());
         MergeSources.erase(p->GetGUID());
         Requests.erase(p->GetGUID());
     }

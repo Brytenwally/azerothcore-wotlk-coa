@@ -191,8 +191,25 @@ function H.Outline(r)
     local grid={}
     for row=-1,rows do
         grid[row]={}
+        local x=top+(row+0.5)/rows*(bottom-top)
+        local hits={}
+        if r.kind=="polygon" then
+            local points=type(r.points)=="table" and r.points or {}
+            for i,a in ipairs(points) do
+                local b=points[i%#points+1]
+                if (N(a.x)>x)~=(N(b.x)>x) then
+                    hits[#hits+1]=N(a.y)+(x-N(a.x))*(N(b.y)-N(a.y))/(N(b.x)-N(a.x))
+                end
+            end
+            table.sort(hits)
+        end
         for col=-1,cols do
-            grid[row][col]=Inside(r,top+(row+0.5)/rows*(bottom-top),left+(col+0.5)/cols*(right-left))
+            local y=left+(col+0.5)/cols*(right-left)
+            if r.kind=="polygon" then
+                local hit=false
+                for i=1,#hits-1,2 do if y>=hits[i] and y<=hits[i+1] then hit=true;break end end
+                grid[row][col]=hit
+            else grid[row][col]=Inside(r,x,y) end
         end
     end
     local function Edge(x,y,width,height)
@@ -289,6 +306,7 @@ function H.Draw()
         end
     end
     if H.DrawBrowser then H.DrawBrowser() end
+    if H.RebuildLocalPaint then H.RebuildLocalPaint() end
 end
 local function Button(parent,text,x,y,width,click)
     local b=CreateFrame("Button",nil,parent,"UIPanelButtonTemplate")
@@ -400,6 +418,8 @@ local function SelectedCommand(action)
     Send(action .. " " .. N(selected.id) .. " " .. N(selected.revision))
 end
 local function ApplyFields()
+    if H.localSaving then return false end
+    if H.localStrokes and #H.localStrokes>0 then Notify("Settings will be submitted with Save Draft.");return true end
     if not draft or selected and N(selected.id)~=N(draft.id) then Notify("Click Edit selected first.");return false end
     if H.canDesign then Send("name "..fields.Name:GetText()) end
     Send("settings "..fields["XP bonus %"]:GetText().." "..N(fields.Minutes:GetText())*60 .." "..
@@ -550,6 +570,7 @@ function H.ShowPanel()
         DesignButton("Polygon",240,-255,102,function() H.StartShape("polygon") end)
         Button(panel,"Edit selected",12,-285,150,function()
             H.vertex=nil;H.newKind=nil
+            if H.localSaving or H.localStrokes and #H.localStrokes>0 then Notify("Save or cancel the local drawing first.");return end
             if selected then Send("edit "..N(selected.id)) end
         end)
         DesignButton("Merge selection",180,-285,165,function()
@@ -563,7 +584,7 @@ function H.ShowPanel()
         Button(panel,"Save draft",180,-65,165,function()
             if H.stroke or H.paintPending then Notify("Wait for the drawing preview before saving.");return end
             if not draft or selected and N(selected.id)~=N(draft.id) then Notify("Click Edit selected first.");return end
-            Send("save "..fields["XP bonus %"]:GetText().." "..N(fields.Minutes:GetText())*60 .." "..
+            H.SaveLocalPaint(fields["XP bonus %"]:GetText().." "..N(fields.Minutes:GetText())*60 .." "..
                 fields.Weight:GetText().." "..N(fields["Cooldown min"]:GetText())*60 .." "..
                 (fields.icon:GetChecked() and "1" or "0").." "..(fields.fill:GetChecked() and "1" or "0")..
                 " "..fields["Radius yards"]:GetText().." "..fields.Name:GetText())
@@ -594,6 +615,8 @@ function H.ShowPanel()
             Send("announce "..(announcements and "0" or "1"))
         end)
         Button(panel,"Cancel draft",180,-315,165,function()
+            if H.localSaving then Notify("Wait for the save result.");return end
+            H.ClearLocalPaint()
             if selected then selected=H.rows[N(selected.id)] end
             draft=nil;H.newKind=nil;H.newCenter=nil;H.vertex=nil;H.merge={};Send("cancel");H.Draw();H.DrawBrowser()
         end)
@@ -620,6 +643,7 @@ function H.ShowPanel()
     ShowBrowser()
 end
 function H.NewDraft()
+    if H.localSaving or H.localStrokes and #H.localStrokes>0 then Notify("Save or cancel the local drawing first.");return end
     if not H.canDesign then Notify("Level 2 GM required to create hotspots.");return end
     H.stroke=nil
     selected=nil;draft=nil;H.newKind=nil;H.newCenter=nil;H.vertex=nil;H.merge={}
@@ -633,6 +657,7 @@ function H.NewDraft()
     H.Draw();Notify("CTRL-click a zone map to start a circular draft. Choose Polygon to map a boundary.")
 end
 function H.StartShape(kind)
+    if H.localSaving or H.localStrokes and #H.localStrokes>0 then Notify("Save or cancel the local drawing first.");return end
     if not H.canDesign then Notify("Level 2 GM required to change boundaries.");return end
     if draft and N(draft.id)~=0 and (kind=="circle" or kind=="polygon") then
         if Send("shape "..kind) then H.paintPending=true end;return
@@ -653,7 +678,8 @@ function H.StartShape(kind)
     elseif kind=="circle" then Send("radius "..fields["Radius yards"]:GetText()) end
 end
 function H.SetPaintMode(mode)
-    H.stroke=nil;H.paintMode=mode;H.Draw()
+    if H.stroke then H.EndPaint() end
+    H.paintMode=mode;H.Draw();if H.RebuildLocalPaint then H.RebuildLocalPaint() end
     if H.paintLabel then H.paintLabel:SetText("Mode: "..mode.." | CTRL-drag on a zone map") end
 end
 function H.ShowPaintTools()
@@ -685,24 +711,29 @@ function H.ShowPaintTools()
         radius:SetSize(55,20);radius:SetPoint("TOPLEFT",255,-70);radius:SetAutoFocus(false)
         radius:SetText("75");radius:SetMaxLetters(4)
         radius:SetScript("OnTextChanged",function(self) H.brushRadius=math.max(5,math.min(1000,N(self:GetText()))) end)
-        Button(f,"Undo stroke",10,-105,145,function() if not H.stroke then Send("paintundo") end end)
+        Button(f,"Undo stroke",10,-105,145,function() H.UndoLocalPaint() end)
         H.paintLabel=f:CreateFontString(nil,"OVERLAY","GameFontHighlightSmall")
         H.paintLabel:SetPoint("TOPLEFT",10,-138);H.paintLabel:SetWidth(305)
         local hint=f:CreateFontString(nil,"OVERLAY","GameFontHighlightSmall")
         hint:SetPoint("TOPLEFT",10,-158);hint:SetWidth(305)
-        hint:SetText("Brush adds area. Trace replaces the boundary. Save Draft commits changes.")
+        hint:SetText("Local preview: Brush adds area; Trace replaces it. Save Draft validates and applies the drawing.")
     end
     H.paintPanel:Show();H.SetPaintMode(H.paintMode or "Points")
 end
 local function PaintCursor(x,y)
+    local key=tostring(x)..":"..tostring(y)..":"..tostring(H.brushRadius)..":"..tostring(H.brushKind)..":"..tostring(H.paintMode)..":"..tostring(GetCurrentMapAreaID())
+    if key==H.cursorKey then return end
+    H.cursorKey=key
     H.brushDots=H.brushDots or {}
     for _,t in ipairs(H.brushDots) do t:Hide() end
     if not x or H.paintMode~="Brush" then return end
-    local map=View()
+    local map,zone,top,bottom,left,right=View()
+    if not top then return end
     for i=1,48 do
         local a=i*math.pi*2/48;local dx,dy=math.cos(a),math.sin(a)
         if H.brushKind=="square" then local m=math.max(math.abs(dx),math.abs(dy));dx,dy=dx/m,dy/m end
-        local px,py=Position(x+dx*(H.brushRadius or 75),y+dy*(H.brushRadius or 75),map)
+        local px=(y+dy*(H.brushRadius or 75)-left)/(right-left)
+        local py=(x+dx*(H.brushRadius or 75)-top)/(bottom-top)
         if px and px>=0 and px<=1 and py>=0 and py<=1 then
             local t=H.brushDots[i]
             if not t then t=WorldMapButton:CreateTexture(nil,"OVERLAY");H.brushDots[i]=t end
@@ -721,24 +752,127 @@ local function PaintPosition()
     if x and x>=math.min(top,bottom) and x<=math.max(top,bottom) and
         y>=math.min(left,right) and y<=math.max(left,right) then return x,y end
 end
+local function LocalCount()
+    local n=0
+    for _,stroke in ipairs(H.localStrokes or {}) do n=n+(stroke.mode=="Trace" and #stroke.points+1 or #stroke.points) end
+    return n
+end
+function H.ClearLocalPaint()
+    H.stroke=nil;H.localStrokes={};H.localBase=nil;H.localGrid={};H.localSaving=nil
+    for _,t in ipairs(H.paintFills or {}) do t:Hide() end
+end
+local function MarkBrush(stroke,from,to)
+    local map,zone,top,bottom,left,right=View()
+    if not top then return end
+    H.localGrid=H.localGrid or {}
+    local radius=stroke.radius
+    local dx,dy=to.x-from.x,to.y-from.y;local length=dx*dx+dy*dy
+    for row=0,63 do
+        local x=top+(row+0.5)/64*(bottom-top)
+        if x>=math.min(from.x,to.x)-radius and x<=math.max(from.x,to.x)+radius then
+            H.localGrid[row]=H.localGrid[row] or {}
+            for col=0,95 do
+                local y=left+(col+0.5)/96*(right-left)
+                if y>=math.min(from.y,to.y)-radius and y<=math.max(from.y,to.y)+radius then
+                    local hit
+                    if stroke.kind=="square" then
+                        local low,high=0,1
+                        for _,v in ipairs({{x-from.x,dx},{y-from.y,dy}}) do
+                            if math.abs(v[2])<0.000001 then
+                                if math.abs(v[1])>radius then high=-1 end
+                            else
+                                local a,b=(v[1]-radius)/v[2],(v[1]+radius)/v[2]
+                                low=math.max(low,math.min(a,b));high=math.min(high,math.max(a,b))
+                            end
+                        end
+                        hit=low<=high
+                    else
+                        local t=length>0 and math.max(0,math.min(1,((x-from.x)*dx+(y-from.y)*dy)/length)) or 0
+                        hit=(x-from.x-t*dx)^2+(y-from.y-t*dy)^2<=radius^2
+                    end
+                    if hit then H.localGrid[row][col]=true end
+                end
+            end
+        end
+    end
+end
+local function RenderPaint()
+    H.paintFills=H.paintFills or {}
+    for _,t in ipairs(H.paintFills) do t:Hide() end
+    local count=0;local w,h=WorldMapButton:GetWidth(),WorldMapButton:GetHeight()
+    for row=0,63 do
+        local cells=H.localGrid and H.localGrid[row] or {};local first
+        for col=0,96 do
+            local hit=col<96 and cells[col]
+            if hit and not first then first=col end
+            if first and not hit then
+                count=count+1;local t=H.paintFills[count]
+                if not t then t=WorldMapButton:CreateTexture(nil,"OVERLAY");H.paintFills[count]=t end
+                t:SetTexture(0.3,0.7,1,0.35);t:ClearAllPoints()
+                t:SetPoint("TOPLEFT",WorldMapButton,"TOPLEFT",first*w/96,-row*h/64)
+                t:SetSize((col-first)*w/96,h/64+0.5);t:Show();first=nil
+            end
+        end
+    end
+end
+function H.RebuildLocalPaint()
+    H.localGrid={}
+    if not H.localBase then RenderPaint();return end
+    local map,zone=View()
+    if map~=N(H.localBase.map) or zone~=N(H.localBase.zone) or Overview() then RenderPaint();return end
+    H.Highlight(H.localBase)
+    for _,stroke in ipairs(H.localStrokes or {}) do
+        if stroke.mode=="Trace" then
+            H.localGrid={};H.Highlight({kind="polygon",map=map,points=stroke.points,highlight=true})
+        else
+            for i,p in ipairs(stroke.points) do MarkBrush(stroke,stroke.points[i-1] or p,p) end
+        end
+    end
+    RenderPaint()
+end
+function H.UndoLocalPaint()
+    if H.localSaving or H.stroke then return end
+    if H.localStrokes and #H.localStrokes>0 then table.remove(H.localStrokes);H.RebuildLocalPaint() end
+end
+function H.SaveLocalPaint(settings)
+    if H.localSaving or H.stroke then Notify("Finish drawing or wait for the save result.");return end
+    if not H.localStrokes or #H.localStrokes==0 then Send("save "..settings);return end
+    if #H.queue>0 then Notify("Wait for pending requests, then Save Draft again.");return end
+    local requests={}
+    local part=""
+    local function Add(op)
+        if #part+#op>215 then requests[#requests+1]=part;part="" end
+        part=part..op
+    end
+    for _,stroke in ipairs(H.localStrokes) do
+        if stroke.mode=="Trace" then Add("T;") end
+        for i,p in ipairs(stroke.points) do
+            if stroke.mode=="Trace" then Add(string.format("P %.3f %.3f;",p.x,p.y))
+            else
+                local from=stroke.points[i-1] or p
+                Add(string.format("B %.3f %.3f %.3f %.3f %.2f %d;",from.x,from.y,p.x,p.y,stroke.radius,stroke.kind=="square" and 1 or 0))
+            end
+        end
+    end
+    if #part>0 then requests[#requests+1]=part end
+    local count=#requests
+    for i,text in ipairs(requests) do requests[i]="localpart "..(i-1).." "..text end
+    table.insert(requests,1,"localbegin "..N(H.localBase.id).." "..N(H.localBase.revision).." "..count)
+    requests[#requests+1]="localsave "..settings
+    if #requests>64 then Notify("Drawing is too large to save. Undo a stroke and retry.");return end
+    for _,text in ipairs(requests) do if #text>240 then Notify("Save request too long. Shorten the name.");return end end
+    for _,text in ipairs(requests) do Send(text) end
+    H.localSaving=true;H.localSaveAt=GetTime()
+end
 function H.EndPaint()
     local stroke=H.stroke
     if not stroke then return end
     H.stroke=nil
-    if stroke.mode=="Trace" then
-        if #stroke.points<3 then Notify("Trace at least three distinct boundary points.");H.Draw();return end
-        if #H.queue>0 then Notify("Wait for pending requests before tracing again.");H.Draw();return end
-        Send("tracebegin")
-        local command="tracepoints"
-        for _,p in ipairs(stroke.points) do
-            local point=string.format(" %.3f %.3f",p.x,p.y)
-            if #command+#point>220 then Send(command);command="tracepoints" end
-            command=command..point
-        end
-        Send(command);Send("traceend")
-        Notify("Boundary traced. Review the preview, then Save Draft.")
+    if stroke.mode=="Trace" and #stroke.points<3 or #stroke.points==0 then
+        if H.localStrokes[#H.localStrokes]==stroke then table.remove(H.localStrokes) end
+        Notify("Trace at least three boundary points.")
     end
-    Send("paintend");H.paintPending=true
+    H.RebuildLocalPaint()
 end
 function H.SamplePaint()
     local x,y=PaintPosition();PaintCursor(x,y)
@@ -747,17 +881,11 @@ function H.SamplePaint()
     if not x or not IsControlKeyDown() then H.EndPaint();return end
     local last=stroke.points[#stroke.points]
     local distance=last and math.sqrt((x-last.x)^2+(y-last.y)^2) or 999999
-    local spacing=stroke.mode=="Brush" and stroke.radius/3 or 5
-    if distance<spacing then return end
-    if stroke.mode=="Brush" then
-        if #H.queue>=8 then return end
-        if Send(string.format("brush %.3f %.3f %.3f %.3f %.2f %s",last and last.x or x,
-            last and last.y or y,x,y,stroke.radius,stroke.kind)) then stroke.points={{x=x,y=y}} end
-    else
-        if #stroke.points>=60 then H.EndPaint();Notify("Trace reached 60 points. Review or use a shorter outline.");return end
-        stroke.points[#stroke.points+1]={x=x,y=y}
-        H.Highlight({kind="polygon",map=draft.map,points=stroke.points,highlight=true})
-    end
+    if distance<(stroke.mode=="Brush" and stroke.radius/3 or 5) then return end
+    if LocalCount()>=96 then H.EndPaint();Notify("Local drawing limit reached. Save or Undo before continuing.");return end
+    local point={x=x,y=y};stroke.points[#stroke.points+1]=point
+    if stroke.mode=="Brush" then MarkBrush(stroke,last or point,point);RenderPaint()
+    else H.Highlight({kind="polygon",map=draft.map,points=stroke.points,highlight=true}) end
 end
 function H.UpdateDesignAccess()
     if not panel then return end
@@ -776,6 +904,7 @@ function H.UpdateDesignAccess()
     end
 end
 local function Receive(text)
+    if text=="LOCALSAVED" then H.ClearLocalPaint();return end
     if text=="PAINTREADY" then H.paintPending=nil;return end
     local access=text:match("^ACCESS|(%d+)$")
     if access then H.canDesign=N(access)>=2;H.canDelete=N(access)>=3;H.UpdateDesignAccess();return end
@@ -838,6 +967,7 @@ local function Receive(text)
                     end
                     H.Draw()
                 elseif B(r.draft) then
+                    if H.localStrokes and #H.localStrokes>0 then return end
                     draft=r;selected=r
                     if r.kind=="union" and N(r.id)>0 then H.merge={} end
                     H.ShowPanel();H.Draw()
@@ -865,7 +995,7 @@ local function Receive(text)
         if generalFields then generalFields.apply:SetChecked(false) end
         PopulateGeneral()
     end
-    if text:match("^ERROR|") then H.stroke=nil;H.paintPending=nil end
+    if text:match("^ERROR|") then H.stroke=nil;H.paintPending=nil;H.localSaving=nil end
     if text:match("^ERROR|") or text:match("^OK|") then Notify(text:sub(text:find("|",1,true)+1)) end
 end
 frame:RegisterEvent("PLAYER_LOGIN");frame:RegisterEvent("CHAT_MSG_ADDON");frame:RegisterEvent("WORLD_MAP_UPDATE")
@@ -893,7 +1023,7 @@ frame:SetScript("OnEvent",function(_,event,prefix,text,channel,sender)
             end
         end
         WorldMapFrame:HookScript("OnHide",function()
-            H.stroke=nil;PaintCursor();if H.paintPanel then H.paintPanel:Hide() end;H.paintMode="Points"
+            H.EndPaint();PaintCursor();if H.paintPanel then H.paintPanel:Hide() end;H.paintMode="Points"
         end)
         local priorMouseDown=WorldMapButton:GetScript("OnMouseDown")
         WorldMapButton:SetScript("OnMouseDown",function(self,button,...)
@@ -901,10 +1031,11 @@ frame:SetScript("OnEvent",function(_,event,prefix,text,channel,sender)
                 (H.paintMode=="Brush" or H.paintMode=="Trace") then
                 local x=PaintPosition()
                 if not x then Notify("Create or edit a polygon on its zone map first.");H.paintConsumed=true;return end
-                if #H.queue>0 or H.paintPending then Notify("Wait for pending hotspot requests.");H.paintConsumed=true;return end
+                if #H.queue>0 or H.paintPending or H.localSaving then Notify("Wait for pending hotspot requests.");H.paintConsumed=true;return end
                 H.paintConsumed=true
                 H.stroke={mode=H.paintMode,points={},radius=H.brushRadius or 75,kind=H.brushKind or "round"}
-                if H.paintMode=="Brush" then Send("paintbegin") end
+                H.localStrokes=H.localStrokes or {};if #H.localStrokes==0 then H.localBase=draft end
+                H.localStrokes[#H.localStrokes+1]=H.stroke
                 H.SamplePaint();return
             end
             if priorMouseDown then priorMouseDown(self,button,...) end
@@ -912,6 +1043,9 @@ frame:SetScript("OnEvent",function(_,event,prefix,text,channel,sender)
         local priorMouseUp=WorldMapButton:GetScript("OnMouseUp")
         WorldMapButton:SetScript("OnMouseUp",function(self,button,...)
             if H.paintConsumed then H.SamplePaint();H.EndPaint();H.paintConsumed=nil;return end
+            if H.localSaving or H.localStrokes and #H.localStrokes>0 and IsControlKeyDown() then
+                Notify("Save or cancel the local drawing before point editing.");return
+            end
             if gm and H.canDesign and not draft and IsControlKeyDown() and button=="LeftButton" then
                 local map,zone=View();local x,y=AtCursor()
                 if not x or not zone or zone==0 or Overview() then Notify("Open a zone map first.");return end
@@ -947,7 +1081,7 @@ frame:SetScript("OnEvent",function(_,event,prefix,text,channel,sender)
             end
             if priorMouseUp then priorMouseUp(self,button,...) end
         end)
-    elseif enabled then H.stroke=nil;H.Refresh() end
+    elseif enabled then H.EndPaint();H.Refresh();H.RebuildLocalPaint() end
 end)
 local elapsed,paintElapsed=0,0
 frame:SetScript("OnUpdate",function(_,diff)
@@ -955,6 +1089,9 @@ frame:SetScript("OnUpdate",function(_,diff)
     if paintElapsed>=0.06 then
         paintElapsed=0;H.SamplePaint()
         if H.stroke and IsMouseButtonDown and not IsMouseButtonDown("LeftButton") then H.EndPaint() end
+    end
+    if H.localSaving and GetTime()-(H.localSaveAt or GetTime())>60 and #H.queue==0 then
+        H.localSaving=nil;Notify("Save response timed out. Local drawing retained; refresh the hotspot before retrying.")
     end
     elapsed=elapsed+diff
     if elapsed<0.3 then return end

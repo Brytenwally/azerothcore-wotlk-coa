@@ -322,20 +322,29 @@ the client disables Delete selected for Level 2 while enabling all design tools.
 Open Drawing tools while creating or editing a polygon. Points retains the original vertex editing.
 Trace perimeter uses CTRL-drag, then closes the outline on release. It replaces the draft boundary
 atomically after validation; crossing or invalid outlines leave the previous draft intact. A trace
-is limited to 60 sampled points and reports when it reaches that limit.
+shares the 96-operation local drawing limit and reports when it reaches that limit.
 Brush / fill uses CTRL-drag to add a round or square footprint, with radius 5–1000 yards and a live
 cursor outline. Segments bridge consecutive sampled positions, preserving concavities instead of
 filling the whole convex hull of the hotspot. Begin on or overlapping the existing polygon;
 disconnected areas and holes are rejected. The resulting polygon is limited to 256 vertices.
 Complex boundaries may be simplified by at most two yards only when this retains all prior coverage;
-otherwise the edit is rejected. Undo stroke restores the previous boundary (one level).
+otherwise the edit is rejected. Undo stroke removes the latest unsaved local stroke.
 
 Saved circles and polygons can switch shape through Edit selected and Circle/Polygon without changing
 the hotspot ID or operational settings. Polygon-to-circle chooses an enclosing radius, which the GM
-can adjust. Save Draft remains explicit and waits for drawing acknowledgement. Client previews and
+can adjust. Save Draft uploads the complete local drawing for atomic server validation. Client previews and
 server mutations are drafts until saved; a source push does not install this client/server pair.
 
 The painting/permission follow-up reviewed upstream main at `d5ff1cfa46e4bb0ae98b90a289cec2a7c237a13a` (October 12). The standalone
 upstream PR remains held for in-game acceptance and full qualification. Test cursor scaling, drawing
 across existing map icons, cancellation on map changes, invalid outlines, Undo, and Level 2/3 accounts
 in the actual client before acceptance.
+
+
+Painting and Undo now stay entirely on the client until Save Draft. A bounded visual overlay avoids
+polygon unions and network traffic while dragging. The ordered save batch is validated once; missing
+parts, invalid geometry and stale edits leave the saved hotspot unchanged and retain local strokes.
+The preview is approximate; the acknowledged server boundary is authoritative. Limits are 96 drawing
+operations and 12,000 upload bytes. Polygon outlines use scanline intersections. Regression checks
+cover zero drawing/Undo traffic, atomic rejection and a rendering instruction budget; the previous
+implementation fails these checks. This client/server pair still requires in-game acceptance.

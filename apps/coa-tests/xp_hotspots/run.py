@@ -94,6 +94,18 @@ int main()
     denied.Kind = "zone";
     assert(!Paint(denied, {0,0}, {0,0}, 20, false));
     assert(!ChangeShape(denied, "circle"));
+    Location batch = r;
+    auto originalPoints = batch.Points;
+    assert(!ApplyLocalPaint(batch, "B 0 0 10 0 20 0;B 9000 9000 9010 9000 20 0;"));
+    assert(batch.Points.size() == originalPoints.size());
+    for (size_t i = 0; i < originalPoints.size(); ++i)
+        assert(batch.Points[i].X == originalPoints[i].X && batch.Points[i].Y == originalPoints[i].Y);
+    assert(ApplyLocalPaint(batch, "B 0 0 20 0 10 0;"));
+    assert(Contains(batch, 0, 44, {20,0}));
+    assert(ApplyLocalPaint(batch, "T;P 0 0;P 20 0;P 0 20;"));
+    assert(!Contains(batch,0,44,{19,19}));
+    assert(!ApplyLocalPaint(batch, "T;P 0 0;"));
+    assert(!ApplyLocalPaint(batch, "B 0 0 0 0 20 0 garbage;"));
     Location compound = r;
     compound.Kind = "union";
     Location second = r;
