@@ -458,6 +458,7 @@ damage coefficients.
 | `fill_bags` | `actor`, optional `slots` (default 0): fill the bags with distinct non-stacking armor until that many free slots remain, so a scenario can prove what a full inventory does. Fails if the bags cannot be filled. |
 | `equip` | `actor`, `item`, `slot` (0..18 equipment, 19..22 bag slots): equip an owned item through the session handler. |
 | `use_item` | `actor`, `item`, `spell`, optional `target`, `target_item` (an owned item entry, sent as the item target instead of a unit) and `destination`: normal item-use handler. |
+| `use_nearby_gameobject` | `actor`, `entry`, optional `owner` (a player id): native use request for the single gameobject of that entry within 20 yards in the actor's phase; `owner` narrows the choice to the object that player owns, so one of several nearby objects can be clicked. |
 | `use_gameobject` | `actor`, `entry`: native use request for the actor's single nearby owned gameobject. |
 | `set_skill` | `actor`, `skill`, `value`, `maximum`: fixture a native profession skill. |
 | `gather_skill` | `actor`, gathering `skill`, `required`: native gathering XP and skill-up attempt. |
