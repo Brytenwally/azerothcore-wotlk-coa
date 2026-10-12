@@ -40,6 +40,8 @@ def main():
     constants = ['APPEARANCE_CATEGORY_COUNT', 'SMSG_APPEARANCE_ADDED', 'SMSG_VANITY_COLLECTION_ADDED']
     if 'APPEARANCE_CATEGORY_SHADOWHOUND' in compat:
         constants.append('APPEARANCE_CATEGORY_SHADOWHOUND')
+    if 'APPEARANCE_CATEGORY_TAMED_BEAST' in compat:
+        constants.append('APPEARANCE_CATEGORY_TAMED_BEAST')
     replacements = {
         'APPEARANCE_ALIASES': re.sub(r'^#include.*\n', '',
             (ROOT / 'src/server/coa/AscensionItemAppearanceAliases.cpp').read_text(), flags=re.M),
@@ -115,9 +117,9 @@ def main():
                                                 for spell_id, effects in sorted(recipes.items())), encoding='utf-8')
         (out / 'Errors.h').write_text('#pragma once\n#include <cassert>\n'
                                     '#define ASSERT(condition, ...) assert(condition)\n', encoding='utf-8')
-        (out / 'harness.cpp').write_text(harness, encoding='utf-8')
+        (out / 'harness.cpp').write_text('#include \"AscensionIncarnationRules.h\"\n' + harness, encoding='utf-8')
         executable = out / ('regressions.exe' if os.name == 'nt' else 'regressions')
-        includes = [out, ROOT / 'src/common', ROOT / 'src/server/shared/DataStores']
+        includes = [out, ROOT / 'src/server/coa', ROOT / 'src/common', ROOT / 'src/server/shared/DataStores']
         if Path(compiler).stem.lower() == 'cl':
             flags = ['/nologo', '/std:c++20', '/EHsc', '/utf-8', *['/I' + str(path) for path in includes],
                      str(out / 'harness.cpp'), '/Fe' + str(executable)]

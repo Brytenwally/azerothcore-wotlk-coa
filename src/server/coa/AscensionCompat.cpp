@@ -31,6 +31,8 @@
 #include "AscensionFreepick.h"
 #include "AscensionRunemasterEchoes.h"
 #include "AscensionCollectionModelData.h"
+#include "AscensionIncarnationRules.h"
+#include "SpellAuraEffects.h"
 #include "AscensionWitchHunterCompletion.h"
 #include "AscensionAmmunitionData.h"
 #include "AscensionPersonalBank.h"
@@ -534,6 +536,9 @@ struct PlayerCollectionState {
   uint32 CompanionSkinningTimer = 0;
   uint32 CosmeticTimer = 0;
   std::unordered_set<uint32> AppliedCosmeticSpells;
+  ObjectGuid IncarnationPet;
+  uint32 IncarnationPetDisplay = 0;
+  bool UpdatingIncarnation = false;
   bool CanSeeItemAppearances = true;
   bool CanSeeSpellAppearances = true;
 };
@@ -5171,8 +5176,14 @@ public:
       if (IsCosmeticCategory(appearance.PrimaryCategory))
         appearance.CosmeticSpell = ResolveCosmeticSpell(appearanceId,
             displayId, record.GetUInt32(8));
-      if (appearance.PrimaryCategory == APPEARANCE_CATEGORY_SHADOWHOUND)
+      if (appearance.PrimaryCategory == APPEARANCE_CATEGORY_SHADOWHOUND ||
+          AscensionIncarnations::ModelCategory(appearance.PrimaryCategory))
+      {
         appearance.CreatureDisplay = ResolveShadowhoundDisplay(displayId);
+        if (!appearance.CreatureDisplay && AscensionIncarnations::ModelCategory(appearance.PrimaryCategory) &&
+            record.GetInt32(8) > 0 && sCreatureDisplayInfoStore.LookupEntry(record.GetUInt32(8)))
+          appearance.CreatureDisplay = record.GetUInt32(8);
+      }
       if (appearance.PrimaryCategory == APPEARANCE_CATEGORY_TAMED_BEAST)
         appearance.CreatureEntry = record.GetUInt32(8);
       _allAppearanceIds.push_back(appearanceId);
@@ -5360,6 +5371,7 @@ public:
         if (appearance.CosmeticSpell)
             player->RemoveAurasDueToSpell(appearance.CosmeticSpell, player->GetGUID());
     RefreshCosmetics(player, *state);
+    RefreshIncarnations(player);
     InitializeRiding(player);
     QueueOwnedCompanionSpells(player, *state);
 
@@ -5438,6 +5450,8 @@ public:
         {
             state->CosmeticTimer = 1000;
             RefreshCosmetics(player, *state);
+            if (auto pet = player->GetPet())
+                RefreshIncarnation(pet);
         }
         else
             state->CosmeticTimer -= diff;
@@ -5825,6 +5839,82 @@ public:
             appearanceId, [](AscensionAmmunition::Entry const& row, uint32 id) { return row.AppearanceId < id; });
         return entry != AscensionAmmunition::Entries.end() && entry->AppearanceId == appearanceId ?
             entry->ItemDisplayId : 0;
+    }
+
+    uint32 GetIncarnationDisplay(Player* player, uint32 category)
+    {
+        auto state = GetState(player);
+        if (!state || !state->CanSeeSpellAppearances || !AscensionIncarnations::ModelCategory(category))
+            return 0;
+        uint32 id = state->ActiveAppearances[category];
+        auto itr = _appearances.find(id);
+        if (!state->CollectedAppearances.contains(id) || itr == _appearances.end())
+            return 0;
+        auto const& row = itr->second;
+        return AscensionIncarnations::CategoryMatches(category, row.PrimaryCategory,
+            row.SecondaryCategory, row.TertiaryCategory) ? row.CreatureDisplay : 0;
+    }
+
+    void RefreshIncarnation(Unit* unit)
+    {
+        if (!unit || !unit->IsInWorld() || !unit->IsAlive() ||
+            !ascensionCompatConfig.GetConfigValue<bool>(AscensionCompatConfig::ENABLED))
+            return;
+        Player* owner = unit->ToPlayer();
+        if (!owner && unit->GetOwner())
+            owner = unit->GetOwner()->ToPlayer();
+        if (!owner)
+            return;
+        auto state = GetState(owner);
+        if (!state || state->UpdatingIncarnation)
+            return;
+        if (unit->HasAuraType(SPELL_AURA_TRANSFORM) || unit->HasAuraType(SPELL_AURA_CLONE_CASTER))
+            return;
+        uint32 category = 0;
+        if (unit == owner)
+        {
+            category = AscensionIncarnations::FormCategory(owner->GetShapeshiftForm());
+            auto const& forms = owner->GetAuraEffectsByType(SPELL_AURA_MOD_SHAPESHIFT);
+            if (!category || forms.empty() ||
+                owner->GetDisplayId() != owner->GetModelForForm(owner->GetShapeshiftForm(), forms.front()->GetId()))
+                return;
+        }
+        else
+        {
+            auto pet = owner->GetPet();
+            if (!pet || unit != pet || pet->getPetType() != SUMMON_PET)
+                return;
+            category = AscensionIncarnations::PetCategory(pet->GetEntry());
+            if (!category)
+                return;
+            if (state->IncarnationPet != pet->GetGUID())
+            {
+                state->IncarnationPet = pet->GetGUID();
+                state->IncarnationPetDisplay = 0;
+            }
+            if (unit->GetDisplayId() != unit->GetNativeDisplayId() &&
+                unit->GetDisplayId() != state->IncarnationPetDisplay)
+                return;
+        }
+        uint32 display = GetIncarnationDisplay(owner, category);
+        state->UpdatingIncarnation = true;
+        if (display && unit->GetDisplayId() != display)
+            unit->SetDisplayId(display, unit->GetObjectScale());
+        else if (!display && unit != owner && state->IncarnationPetDisplay &&
+            unit->GetDisplayId() == state->IncarnationPetDisplay)
+            unit->RestoreDisplayId();
+        if (unit != owner)
+            state->IncarnationPetDisplay = display;
+        state->UpdatingIncarnation = false;
+    }
+
+    void RefreshIncarnations(Player* player)
+    {
+        if (!player->IsInWorld())
+            return;
+        player->RestoreDisplayId();
+        if (auto pet = player->GetPet())
+            RefreshIncarnation(pet);
     }
 
     uint32 GetShadowhoundDisplay(Player* player)
@@ -6234,6 +6324,7 @@ private:
       }
 
       state->LoginResyncTimer = 0;
+      RefreshIncarnations(player);
       SendActiveAppearances(player, *state);
       SendOutfitCollection(player, *state);
       SendAppearanceVisibility(player, *state);
@@ -6574,6 +6665,7 @@ private:
       AppearanceInfo const &appearance = appearanceItr->second;
       if ((categoryId <= 14 || categoryId == APPEARANCE_CATEGORY_AMMUNITION ||
           categoryId == APPEARANCE_CATEGORY_SHADOWHOUND ||
+          AscensionIncarnations::ModelCategory(categoryId) ||
           IsCosmeticCategory(categoryId)) &&
           appearance.PrimaryCategory != categoryId &&
           appearance.SecondaryCategory != categoryId &&
@@ -6582,7 +6674,8 @@ private:
         return;
       }
       if ((IsCosmeticCategory(categoryId) && !appearance.CosmeticSpell) ||
-          (categoryId == APPEARANCE_CATEGORY_SHADOWHOUND && !appearance.CreatureDisplay))
+          ((categoryId == APPEARANCE_CATEGORY_SHADOWHOUND || AscensionIncarnations::ModelCategory(categoryId)) &&
+           !appearance.CreatureDisplay))
       {
         SendApplyResult(player, "APPLY_APPEARANCES_INVALID_SELECTION");
         return;
@@ -6607,6 +6700,7 @@ private:
 
     state->ActiveAppearances = requested;
     SaveActiveAppearances(player, *state);
+    RefreshIncarnations(player);
     RefreshCosmetics(player, *state);
     RefreshVisibleItems(player);
     SendApplyResult(player, "APPLY_APPEARANCES_OK");
@@ -6675,6 +6769,7 @@ private:
                               player->GetGUID().GetCounter(),
                               canSeeItem ? 1 : 0, canSeeSpell ? 1 : 0);
 
+    RefreshIncarnations(player);
     RefreshVisibleItems(player);
     SendAppearanceVisibility(player, *state);
   }
@@ -8531,7 +8626,12 @@ public:
             {UNITHOOK_ON_BLOCK,
              UNITHOOK_ON_PERIODIC_DAMAGE_RESULT,
              UNITHOOK_ON_AURA_APPLY, UNITHOOK_ON_AURA_REMOVE,
-             UNITHOOK_ON_SEND_AURA_UPDATE}) {}
+             UNITHOOK_ON_SEND_AURA_UPDATE, UNITHOOK_ON_DISPLAYID_CHANGE}) {}
+
+    void OnDisplayIdChange(Unit* unit, uint32) override
+    {
+        AscensionCollectionService::Instance().RefreshIncarnation(unit);
+    }
 
     void OnSendAuraUpdate(Unit* target, Player* receiver,
         AuraApplication const* application, bool remove) override

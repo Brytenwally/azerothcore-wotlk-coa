@@ -1,0 +1,45 @@
+{
+  "Appearances": [
+    {
+      "archive": "patch-D.MPQ",
+      "file": "patch-D-Appearances.dbc",
+      "sha256": "a0692d47a3d7c390e71381752958cf81d60650b99591d47c8ec466e03655cda3"
+    },
+    {
+      "archive": "patch-M.MPQ",
+      "file": "patch-M-Appearances.dbc",
+      "sha256": "7c7b27fa9e535d7ec7549eb61ef1490ec69b990fa243a2ed36fb6dbf7df118f9"
+    }
+  ],
+  "ItemAppearances": [
+    {
+      "archive": "patch-D.MPQ",
+      "file": "patch-D-ItemAppearances.dbc",
+      "sha256": "048eea5b1c6f8a702eda824d05937eb613ec5c68fdf8ea92d43450a34e68c904"
+    },
+    {
+      "archive": "patch-M.MPQ",
+      "file": "patch-M-ItemAppearances.dbc",
+      "sha256": "c2533eaa0c84ccb35e1087b6244e8881f89642385e646a9f7fc6dddf1e6ea434"
+    }
+  ],
+  "VanityCollection": [
+    {
+      "archive": "patch-D.MPQ",
+      "file": "patch-D-VanityCollection.dbc",
+      "sha256": "b68dde16250db66bbf5cdbf5c5685f276b66338343262bf8e34809fb6ec7c769"
+    },
+    {
+      "archive": "patch-M.MPQ",
+      "file": "patch-M-VanityCollection.dbc",
+      "sha256": "aae91e8c4966790be090c1a69d124745aca4bfa4a09f43b52f0789667c98d46c"
+    }
+  ],
+  "Creature": [
+    {
+      "archive": "patch-M.MPQ",
+      "file": "patch-M-Creature.dbc",
+      "sha256": "a6b1d023ecb44f85be7205cacd7cd5aed5521b9634f5b7146bf1712ed5a66f0d"
+    }
+  ]
+}

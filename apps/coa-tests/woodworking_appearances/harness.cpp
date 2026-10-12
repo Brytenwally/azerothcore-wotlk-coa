@@ -1,4 +1,5 @@
 #include "ClientDBC.h"
+#include "AscensionCollectibleSpellData.h"
 #include <algorithm>
 #include <array>
 #include <cstdint>
@@ -26,11 +27,20 @@ void LogSink(Args&&...) { }
 constexpr std::size_t HeaderSize = 20;
 constexpr uint32 SKILL_WOODWORKING = 757;
 std::string Directory;
+struct DisplayStore
+{
+    bool LookupEntry(uint32) const { return false; }
+} sCreatureDisplayInfoStore;
 
 namespace ItemScaling
 {
 uint32 BaseEntry(uint32 entry) { return entry; }
 }
+
+struct ObjectGuid
+{
+    uint32 GetCounter() const { return 42; }
+};
 
 // ACTUAL_CONSTANTS
 // ACTUAL_PATCH_CONSTANTS
@@ -64,11 +74,6 @@ struct WorldSession
     void SendPacket(WorldPacket const* packet) { Packets.push_back(*packet); }
 };
 
-struct ObjectGuid
-{
-    uint32 GetCounter() const { return 42; }
-};
-
 struct Player
 {
     WorldSession Session;
@@ -83,6 +88,7 @@ struct Item
 {
     uint32 Entry;
     uint32 GetEntry() const { return Entry; }
+    bool IsSoulBound() const { return false; }
 };
 
 struct ItemTemplate
@@ -157,9 +163,22 @@ struct AscensionDisplayPatchService
     void SendItemRowOnDemand(Player* player, uint32 entry) { player->ItemPatchRequests.push_back(entry); }
 };
 
+constexpr uint32 CHAR_INS_ACCOUNT_VANITY_COLLECTION = 1;
+struct CharacterDatabasePreparedStatement
+{
+    void SetData(uint32, uint32) { }
+};
 struct Database
 {
     std::vector<std::array<uint32, 3>> Writes;
+    CharacterDatabasePreparedStatement* GetPreparedStatement(uint32)
+    {
+        throw std::runtime_error("Crafting cannot persist vanity items");
+    }
+    void Execute(CharacterDatabasePreparedStatement*)
+    {
+        throw std::runtime_error("Crafting cannot persist vanity items");
+    }
     template<class... Args>
     void Execute(char const*, Args... values)
     {
