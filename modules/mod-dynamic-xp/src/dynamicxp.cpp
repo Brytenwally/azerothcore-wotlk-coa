@@ -5,8 +5,7 @@ Module Created by Micrah/Milestorme
 Original Script from AshmaneCore https://github.com/conan513 Single Player Project
 
 Local additions:
-  * ".xp" lets a player pick their own rate (1, 3, 5, 7 or the per-band curve) or go
-    back to the realm's rate. A game master sets the realm value with ".xp realm ...",
+  * ".xp" lets a player pick their own rate (1 or 3) or go back to the realm's rate. A game master sets the realm value with ".xp realm ...",
     which stays the default for every character without a personal choice.
   * an optional reminder about ".xp", told to a player when they log in and broadcast to
     the realm every Dynamic.XP.Reminder.Interval minutes.
@@ -28,15 +27,14 @@ using namespace Acore::ChatCommands;
 
 namespace
 {
-    /// Keep the per-band curve the module shipped with. A flat preset (1, 3, 5, 7)
-    /// replaces it; 1 therefore leaves experience exactly as the realm granted it.
-    constexpr uint32 PRESET_BAND_CURVE = 0;
+    /// A flat multiplier on the experience the realm grants; 1 leaves it unchanged.
+    constexpr uint32 PRESET_REALM_DEFAULT = 1;
     constexpr char PRESET_CONFIG_KEY[] = "Dynamic.XP.Preset";
     constexpr char PRESET_CONFIG_FILE[] = "modules/dynamicxp.conf";
     constexpr char PLAYER_CHOICE_CONFIG_KEY[] = "Dynamic.XP.Preset.PlayerChoice";
 
-    /// A character's own choice, stored as preset + 1 so that a stored row is never a
-    /// zero and "no personal choice yet" stays distinguishable from "chose the curve".
+    /// A character's own choice, stored as preset + 1 so that zero means "no personal
+    /// choice yet". A stored rate that is no longer offered falls back to the realm's.
     ///
     /// The "core." prefix is required, not cosmetic: Player::_SavePlayerSettings and
     /// _LoadCharacterSettings drop every source that does not start with it while
@@ -49,9 +47,9 @@ namespace
     constexpr char REMINDER_MESSAGE_KEY[] = "Dynamic.XP.Reminder.Message";
 
     constexpr char DEFAULT_REMINDER[] =
-        "|cff4CFF00XP rate|r: pick your own with |cff4CFF00.xp 1|r, |cff4CFF00.xp 3|r, "
-        "|cff4CFF00.xp 5|r or |cff4CFF00.xp 7|r, or |cff4CFF00.xp default|r to follow "
-        "the realm. |cff4CFF00.xp|r shows what you are on.";
+        "|cff4CFF00XP rate|r: pick your own with |cff4CFF00.xp 1|r or |cff4CFF00.xp 3|r, "
+        "or |cff4CFF00.xp default|r to follow the realm. |cff4CFF00.xp|r shows what you "
+        "are on.";
 
     /// -1 until the value has been read from the config. XP is granted on several map
     /// threads at once, so the realm value is cached in an atomic rather than re-read.
@@ -64,14 +62,13 @@ namespace
 
     bool IsKnownPreset(uint32 preset)
     {
-        return preset == PRESET_BAND_CURVE || preset == 1 || preset == 3 ||
-               preset == 5 || preset == 7;
+        return preset == 1 || preset == 3;
     }
 
     uint32 PresetFromConfig()
     {
-        uint32 const preset = sConfigMgr->GetOption<uint32>(PRESET_CONFIG_KEY, 1);
-        return IsKnownPreset(preset) ? preset : 1;
+        uint32 const preset = sConfigMgr->GetOption<uint32>(PRESET_CONFIG_KEY, PRESET_REALM_DEFAULT);
+        return IsKnownPreset(preset) ? preset : PRESET_REALM_DEFAULT;
     }
 
     uint32 RealmPreset()
@@ -136,41 +133,13 @@ namespace
 
     std::string DescribePreset(uint32 preset)
     {
-        if (preset == PRESET_BAND_CURVE)
-            return "the per-band curve";
         return "x" + std::to_string(preset);
     }
 
-    /// Applies one preset to a granted amount. The band curve needs the player's level.
-    void ApplyPreset(Player *player, uint32 &amount, uint32 preset)
+    void ApplyPreset(uint32 &amount, uint32 preset)
     {
         if (preset > 1)
-        {
             amount = static_cast<uint32>(std::round(amount * preset));
-            return;
-        }
-
-        // x1 leaves the granted amount alone.
-        if (preset != PRESET_BAND_CURVE ||
-            !sConfigMgr->GetOption<bool>("Dynamic.XP.Rate", true))
-            return;
-
-        if (player->GetLevel() <= 9)
-            amount =  static_cast<uint32>(round(amount * sConfigMgr->GetOption<float>("Dynamic.XP.Rate.1-9", 1)));
-        else if (player->GetLevel() <= 19)
-            amount =  static_cast<uint32>(round(amount * sConfigMgr->GetOption<float>("Dynamic.XP.Rate.10-19", 2)));
-        else if (player->GetLevel() <= 29)
-            amount =  static_cast<uint32>(round(amount * sConfigMgr->GetOption<float>("Dynamic.XP.Rate.20-29", 3)));
-        else if (player->GetLevel() <= 39)
-            amount =  static_cast<uint32>(round(amount * sConfigMgr->GetOption<float>("Dynamic.XP.Rate.30-39", 4)));
-        else if (player->GetLevel() <= 49)
-            amount =  static_cast<uint32>(round(amount * sConfigMgr->GetOption<float>("Dynamic.XP.Rate.40-49", 5)));
-        else if (player->GetLevel() <= 59)
-            amount =  static_cast<uint32>(round(amount * sConfigMgr->GetOption<float>("Dynamic.XP.Rate.50-59", 6)));
-        else if (player->GetLevel() <= 69)
-            amount =  static_cast<uint32>(round(amount * sConfigMgr->GetOption<float>("Dynamic.XP.Rate.60-69", 7)));
-        else if (player->GetLevel() <= 79)
-            amount =  static_cast<uint32>(round(amount * sConfigMgr->GetOption<float>("Dynamic.XP.Rate.70-79", 8)));
     }
 
     /// Writes the realm value into this module's config so a restart keeps it. Only the
@@ -274,7 +243,7 @@ public:
 
     void OnPlayerGiveXP(Player* player, uint32& amount, Unit* /*victim*/, uint8 /*xpSource*/) override
     {
-        ApplyPreset(player, amount, EffectivePreset(player));
+        ApplyPreset(amount, EffectivePreset(player));
     }
 };
 
@@ -316,9 +285,6 @@ public:
         {
             { "1",       HandleRealmOne,     SEC_GAMEMASTER, Console::Yes },
             { "3",       HandleRealmThree,   SEC_GAMEMASTER, Console::Yes },
-            { "5",       HandleRealmFive,    SEC_GAMEMASTER, Console::Yes },
-            { "7",       HandleRealmSeven,   SEC_GAMEMASTER, Console::Yes },
-            { "dynamic", HandleRealmCurve,   SEC_GAMEMASTER, Console::Yes },
             { "",        HandleShowRealm,    SEC_GAMEMASTER, Console::Yes },
         };
 
@@ -326,9 +292,6 @@ public:
         {
             { "1",       HandleMineOne,      SEC_PLAYER, Console::No },
             { "3",       HandleMineThree,    SEC_PLAYER, Console::No },
-            { "5",       HandleMineFive,     SEC_PLAYER, Console::No },
-            { "7",       HandleMineSeven,    SEC_PLAYER, Console::No },
-            { "dynamic", HandleMineCurve,    SEC_PLAYER, Console::No },
             { "default", HandleMineDefault,  SEC_PLAYER, Console::No },
             { "realm",   realmTable },
             { "",        HandleShowMine,     SEC_PLAYER, Console::No },
@@ -365,9 +328,6 @@ private:
 
     static bool HandleMineOne(ChatHandler* handler)     { return SetMine(handler, 1); }
     static bool HandleMineThree(ChatHandler* handler)   { return SetMine(handler, 3); }
-    static bool HandleMineFive(ChatHandler* handler)    { return SetMine(handler, 5); }
-    static bool HandleMineSeven(ChatHandler* handler)   { return SetMine(handler, 7); }
-    static bool HandleMineCurve(ChatHandler* handler)   { return SetMine(handler, PRESET_BAND_CURVE); }
 
     static bool HandleMineDefault(ChatHandler* handler)
     {
@@ -398,8 +358,7 @@ private:
                                      "follows it again.", DescribePreset(RealmPreset()));
         if (PlayersMayChoose())
             handler->SendSysMessage(
-                "Pick yours with |cff4CFF00.xp 1|r, .xp 3, .xp 5, .xp 7 or "
-                "|cff4CFF00.xp dynamic|r (the per-band curve).");
+                "Pick yours with |cff4CFF00.xp 1|r or |cff4CFF00.xp 3|r.");
         return true;
     }
 
@@ -434,9 +393,6 @@ private:
 
     static bool HandleRealmOne(ChatHandler* handler)    { return SetRealm(handler, 1); }
     static bool HandleRealmThree(ChatHandler* handler)  { return SetRealm(handler, 3); }
-    static bool HandleRealmFive(ChatHandler* handler)   { return SetRealm(handler, 5); }
-    static bool HandleRealmSeven(ChatHandler* handler)  { return SetRealm(handler, 7); }
-    static bool HandleRealmCurve(ChatHandler* handler)  { return SetRealm(handler, PRESET_BAND_CURVE); }
 
     static bool HandleShowRealm(ChatHandler* handler)
     {
@@ -447,8 +403,7 @@ private:
                                  "character without its own choice).",
                                  DescribePreset(RealmPreset()));
         handler->SendSysMessage(
-            "Change it with |cff4CFF00.xp realm 1|r, .xp realm 3, .xp realm 5, .xp realm 7, "
-            ".xp realm dynamic|r.");
+            "Change it with |cff4CFF00.xp realm 1|r or |cff4CFF00.xp realm 3|r.");
         return true;
     }
 };

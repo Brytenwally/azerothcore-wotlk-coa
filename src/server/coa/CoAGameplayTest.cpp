@@ -3493,9 +3493,17 @@ private:
         else if (action == "command")
         {
             ChatHandler handler(player->GetSession());
-            bool handled = handler.ParseCommands(CommandText(step));
-            Require(handled && !handler.HasSentErrorMessage(), "Player command failed");
-            record.put("result", "submitted; verify effects with assertions");
+            bool accepted = handler.ParseCommands(CommandText(step)) && !handler.HasSentErrorMessage();
+            if (step.get<bool>("rejected", false))
+            {
+                Require(!accepted, "Player command was accepted");
+                record.put("result", "rejected");
+            }
+            else
+            {
+                Require(accepted, "Player command failed");
+                record.put("result", "submitted; verify effects with assertions");
+            }
         }
         else if (action == "prepare_quest" || action == "reward_quest")
         {

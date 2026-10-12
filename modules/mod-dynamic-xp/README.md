@@ -9,20 +9,19 @@ additions described below.
 | command | effect |
 | --- | --- |
 | `.xp` | shows your rate and where it comes from |
-| `.xp 1` / `.xp 3` / `.xp 5` / `.xp 7` | your own flat rate |
-| `.xp dynamic` | your own per-band curve (see the configuration below) |
+| `.xp 1` / `.xp 3` | your own flat rate |
 | `.xp default` | drop your choice and follow the realm again |
 
 The choice is stored per character (`core.dynamic_xp.preset` in `character_settings`), so
-it survives relogs and restarts. Players who never pick a rate follow the realm value.
+it survives relogs and restarts. Players who never pick a rate follow the realm value, and
+so do characters that stored a rate no longer offered (`5`, `7` or the old per-band curve).
 
 ## Game masters
 
 | command | effect |
 | --- | --- |
 | `.xp realm` | shows the realm rate |
-| `.xp realm 1` / `.xp realm 3` / `.xp realm 5` / `.xp realm 7` | sets the realm rate |
-| `.xp realm dynamic` | the realm uses the per-band curve |
+| `.xp realm 1` / `.xp realm 3` | sets the realm rate |
 
 The realm rate is written back to `dynamicxp.conf` and is the default for every character
 without a choice of its own; changing it leaves personal rates alone.
@@ -31,11 +30,10 @@ without a choice of its own; changing it leaves personal rates alone.
 
 All keys live in `conf/dynamicxp.conf.dist`:
 
-- `Dynamic.XP.Preset` - the realm rate: `1` (default, no bonus), `3`, `5`, `7`, or `0` for
-  the per-band curve.
+- `Dynamic.XP.Preset` - the realm rate: `1` (default, no bonus) or `3`; any other value
+  falls back to `1`.
 - `Dynamic.XP.Preset.PlayerChoice` - `1` (default) lets players choose their own rate,
   `0` restricts the choice to game masters.
-- `Dynamic.XP.Rate` and `Dynamic.XP.Rate.X-X` - the per-band curve, used by preset `0`.
 - `Dynamic.XP.Rate.Announce` - `0` (default) stays silent; `1` tells each player their
   rate on login.
 - `Dynamic.XP.Reminder.Enable` - the realm-wide note about `.xp` (default `1`).
