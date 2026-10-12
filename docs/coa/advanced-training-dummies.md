@@ -62,7 +62,7 @@ The owner requested either a stun or a disarm as the heavy-strike counter.
 - Uses the tank session, stationary attacks, owner-only `/poke` stop, and nonlethal outgoing damage.
 - Acquires the engaging player's level +3, using creature class/level health, armor, attack power and
   base damage. The supported player range is 1–80 (dummy levels 4–83).
-- At six seconds, begins Shadow Bolt (686), a normal cast with its existing client cast bar. Subsequent
+- At six seconds, begins NPC Shadow Bolt (9613), a three-second cast with its existing client cast bar. Subsequent
   attempts are 18 seconds apart. The prototype supplies twice its maximum melee damage as the spell's
   base damage. It bypasses resource cost only; casting, interrupts and school lockout remain native.
 - At twelve seconds, sends the owner a boss whisper: heavy strike in three seconds, stun or disarm.

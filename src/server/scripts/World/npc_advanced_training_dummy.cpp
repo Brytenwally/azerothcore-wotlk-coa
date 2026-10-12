@@ -31,7 +31,7 @@ enum DummyEntries
 
 enum DummySpells
 {
-    SPELL_PRACTICE_SHADOW_BOLT = 686,
+    SPELL_PRACTICE_SHADOW_BOLT = 9613,
     SPELL_BOSS_HOLOGRAM = 2180104
 };
 }
