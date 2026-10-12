@@ -5303,9 +5303,9 @@
     "name": null,
     "scope": "shared",
     "display": 0,
-    "display_source": "creature-model-map",
+    "display_source": "native-player-model-and-visual-aura",
     "model": null,
-    "status": "missing-model",
+    "status": "spell-visual-connected",
     "display_conflict": false,
     "source_mapping_present": true,
     "source_items": [
@@ -5317,7 +5317,8 @@
     "client_server_vanity_differences": [],
     "item_names": [
       "Incarnation: Moonkin Astral Form"
-    ]
+    ],
+    "visual_spell": 499397
   },
   {
     "appearance": 47637,
@@ -5454,9 +5455,9 @@
     "name": null,
     "scope": "shared",
     "display": 0,
-    "display_source": "creature-model-map",
+    "display_source": "native-player-model-and-visual-aura",
     "model": null,
-    "status": "missing-model",
+    "status": "spell-visual-connected",
     "display_conflict": false,
     "source_mapping_present": true,
     "source_items": [
@@ -5468,7 +5469,8 @@
     "client_server_vanity_differences": [],
     "item_names": [
       "Incarnation: Tree of Life Forest Guardian Form"
-    ]
+    ],
+    "visual_spell": 499396
   },
   {
     "appearance": 47648,

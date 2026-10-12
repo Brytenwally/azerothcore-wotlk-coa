@@ -14,6 +14,11 @@ constexpr int SUMMON_PET=1;
 namespace AscensionCompatConfig { constexpr int ENABLED=1; }
 struct Config { template<class T> T GetConfigValue(int) { return T(enabled); } bool enabled=true; } ascensionCompatConfig;
 struct Player;
+struct Aura
+{
+    void SetDuration(int) { }
+    void SetMaxDuration(int) { }
+} visualAura;
 struct AuraEffect { uint32 GetId() const { return 768; } } effect;
 struct Unit
 {
@@ -45,6 +50,11 @@ struct Pet : Unit
 };
 struct Player : Unit
 {
+    ObjectGuid GetGUID() { return 1; }
+    bool HasAura(uint32 id, ObjectGuid) { return auras.contains(id); }
+    void RemoveAurasDueToSpell(uint32 id, ObjectGuid) { auras.erase(id); }
+    Aura* AddAura(uint32 id, Player*) { auras.insert(id);return &visualAura; }
+    std::unordered_set<uint32> auras;
     Player* ToPlayer() override { return this; }
     Pet* GetPet() { return pet; }
     uint32 GetShapeshiftForm() { return form; }
@@ -58,12 +68,14 @@ struct Player : Unit
 struct AppearanceInfo
 {
     uint32 PrimaryCategory,SecondaryCategory,TertiaryCategory,CreatureDisplay;
+    uint32 IncarnationSpell=0,CosmeticSpell=0;
 };
 struct PlayerCollectionState
 {
     bool CanSeeSpellAppearances=true,UpdatingIncarnation=false;
     std::array<uint32,69> ActiveAppearances{};
     std::unordered_set<uint32> CollectedAppearances;
+    std::unordered_set<uint32> AppliedCosmeticSpells;
     ObjectGuid IncarnationPet=0;
     uint32 IncarnationPetDisplay=0;
 };
@@ -113,6 +125,27 @@ int main()
         state->CanSeeSpellAppearances=true;
     }
     p.world=false;p.display=100;s.RefreshIncarnations(&p);assert(p.display==100);
+    p.world=true;
+    for (uint32 form : {31u,2u})
+    {
+        uint32 category=AscensionIncarnations::FormCategory(form);
+        uint32 id=form==31 ? 47636 : 47647;
+        uint32 spell=AscensionIncarnations::VisualSpell(id,category);
+        assert(spell && !AscensionIncarnations::VisualSpell(id,18));
+        s._appearances[id]={category,0,0,0,spell};
+        state->ActiveAppearances[category]=id;state->CollectedAppearances.insert(id);
+        p.form=form;p.RestoreDisplayId();assert(p.display==p.native && p.auras.contains(spell));
+        p.transform=true;p.RestoreDisplayId();assert(p.display==999 && !p.auras.contains(spell));
+        p.transform=false;p.RestoreDisplayId();assert(p.auras.contains(spell));
+        p.clone=true;s.RefreshIncarnation(&p);assert(!p.auras.contains(spell));
+        p.clone=false;p.RestoreDisplayId();assert(p.auras.contains(spell));
+        state->CanSeeSpellAppearances=false;s.RefreshIncarnations(&p);
+        assert(p.display==p.baseForm && !p.auras.contains(spell));
+        state->CanSeeSpellAppearances=true;p.RestoreDisplayId();assert(p.auras.contains(spell));
+        p.form=0;p.RestoreDisplayId();assert(!p.auras.contains(spell));
+        p.form=form;p.RestoreDisplayId();state->ActiveAppearances[category]=0;s.RefreshIncarnations(&p);
+        assert(p.display==p.baseForm && !p.auras.contains(spell));
+    }
     assert(!AscensionIncarnations::FormCategory(0));assert(!AscensionIncarnations::PetCategory(1793));
     assert(!AscensionIncarnations::ModelCategory(30));assert(!AscensionIncarnations::ModelCategory(65));
 }

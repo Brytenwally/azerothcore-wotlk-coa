@@ -5,6 +5,15 @@
 
 namespace AscensionIncarnations
 {
+inline uint32_t VisualSpell(uint32_t appearance, uint32_t category)
+{
+    if (appearance == 47636 && category == 22)
+        return 499397;
+    if (appearance == 47647 && category == 23)
+        return 499396;
+    return 0;
+}
+
 inline bool ModelCategory(uint32_t category)
 {
     return (category >= 17 && category <= 29) || category == 31;

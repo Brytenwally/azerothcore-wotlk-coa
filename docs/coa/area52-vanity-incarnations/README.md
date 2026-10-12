@@ -25,7 +25,8 @@ all 320 appearances have source-item appearance mappings.
 | CoA Knight / Draconic / Lich / Shadowhound | 1 / 2 / 1 / 4 |
 
 267 shared model entries resolve to a valid display; 266 also have a located
-model asset in the installed client. All 43 ammunition entries have existing
+model asset in the installed client. Two additional entries use spell-based
+humanoid visuals, whose visual kits and effect files are present. All 43 ammunition entries have existing
 projectile mappings. Eight class-specific entries are outside Area 52's approved
 class progression; this change does not activate their CoA mechanics.
 
@@ -52,18 +53,49 @@ the missing creature-map reference. Conflicting appearance metadata for Slatebou
 Incubus and Autumnal Tree of Life uses the creature display mapping, corroborated
 by the community Free Pick cache (99203 and 40971 respectively).
 
+## Spectral forms resolved
+
+Further investigation establishes that appearances 47636 and 47647 are spell
+appearances, not missing creature models. Their negative display references point
+to 499397 (Moonkin Astral Form) and 499396 (Tree of Life Spectral Form). The client
+collection artwork depicts humanoid characters with blue astral or green spectral
+effects respectively. Both spells apply a Dummy aura and have no effective SQL
+override or bound script in the reviewed Area 52 database.
+
+The repair retains the player's native model while the corresponding learned form
+is active and applies its recovered visual aura. Visuals are removed on form exit,
+selection changes, visibility changes, death, or transform/clone suppression. Form
+benefits remain controlled by the original form spell. Ownership and category
+checks still apply, and no new form spells are taught.
+
+| Appearance | Spell | Visual / kit | Installed effect |
+| --- | --- | --- | --- |
+| 47636 | 499397 | 21088 / 21062 | `Spells/druid_glyphofstars_base.m2` in patch-N |
+| 47647 | 499396 | 21232 / 21206 | `Spells/custom_leaf_form.m2` in patch-N |
+
+The [Ascension spell listing](https://db.ascension.gg/?spell=499397) independently
+identifies Moonkin Astral Form as a Dummy aura. The actual visual chain and intended
+humanoid presentation come from installed client data and collection artwork.
+Native regressions and the Area 52 build pass; appearance quality still needs
+in-game acceptance. No client patch is needed for these two effects.
+
+Upstream was fetched again for this follow-up at `7bcaec8a6`; its only new commit
+since the original pin is an unrelated Witch Doctor fix, so the focused branch
+keeps its original tested base.
+
 ## Unresolved data
 
 | Appearance | Item | Reason |
 | --- | --- | --- |
-| 47636 | 499402, Moonkin Astral Form | Creature 499397 is absent; negative display reference cannot establish the intended model/effect. |
-| 47647 | 499401, Tree of Life Forest Guardian Form | Creature 499396 is absent; no recovered model reference. |
 | 47640 | 97742, Oakheart | Display 950002 points to `creature/vsancient/vsnightmareancient.mdx`; neither that file nor its `.m2` variant was found in the installed client. |
 
-The first two invalid selections are rejected rather than displaying a fallback
-pig. Oakheart still needs the correct shared client asset; its valid DBC row alone
-does not prove that it renders. These entries are not reported as functional.
+Oakheart still needs the correct shared client asset; its valid DBC row alone
+does not prove that it renders. It is not reported as functional.
 The missing Oakheart asset was also absent from 35 historical/base client archives.
+The community cache corroborates display 950002 for incarnation creature 80963;
+the separate Oakheart creature 80648 uses display 68127, which points to the same
+missing model family. Other installed ancient models are not evidence of the
+intended Oakheart model and are not substituted.
 79 source items lack a separate VanityCollection row, but all have the existing
 item-to-appearance collection path. Appearance ownership and a deliverable vanity
 item are distinct; this change does not invent additional reclaimable item records.
@@ -96,6 +128,9 @@ and tests are unchanged by this repair. The first sandboxed attempt additionally
 hit temporary-directory permission errors; the host rerun removed those errors.
 Do not describe this result as a completely passing upstream qualification. A
 clean Linux baseline comparison is still needed before an upstream PR.
+The targeted C++ style scan also reports two existing same-line braces in the
+unmodified GM vanity-unlock methods; the new incarnation code introduces no
+reported style violation.
 
 This is structural/native verification. In-game visual, relog and pet-resummon
 acceptance remains required before claiming full gameplay functionality. No

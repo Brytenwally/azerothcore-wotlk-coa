@@ -1,0 +1,26 @@
+{
+  "kits": [
+    {
+      "kit": 21062,
+      "paths": [
+        "Spells\\druid_glyphofstars_base.mdx"
+      ]
+    },
+    {
+      "kit": 21206,
+      "paths": [
+        "Spells\\custom_leaf_form.mdx"
+      ]
+    }
+  ],
+  "assets": {
+    "Spells\\druid_glyphofstars_base.mdx": {
+      "archive": "patch-N.MPQ",
+      "path": "Spells\\druid_glyphofstars_base.m2"
+    },
+    "Spells\\custom_leaf_form.mdx": {
+      "archive": "patch-N.MPQ",
+      "path": "Spells\\custom_leaf_form.m2"
+    }
+  }
+}
