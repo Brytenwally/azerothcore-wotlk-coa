@@ -1,0 +1,7 @@
+{
+  "patch_reproduces_archive": true,
+  "idempotent": true,
+  "lua_syntax": true,
+  "unrelated_grants_preserved": true,
+  "spell_dbc_sha256": "2c0de36c5c68ec14b9db7a74c7c881a33f71c1514b74502b49d973ca1634154d"
+}

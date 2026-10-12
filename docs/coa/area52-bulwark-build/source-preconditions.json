@@ -1,0 +1,61 @@
+{
+  "hash_format": "UTF-8 text with LF newlines",
+  "files": {
+    "apps/coa-tests/area52_bulwark/run.py": {
+      "before": null,
+      "after": "9d11c621bf3f11d9d0a7deab7250144b39b0b2c95e61bd9c7bf88fdeb6a05560"
+    },
+    "data/sql/updates/pending_db_world/rev_20261012_10_area52_bulwark.sql": {
+      "before": null,
+      "after": "d93148e652e42e5cf70ae6fb4b50e8ee63c11a19622d208262151c2b7f793390"
+    },
+    "src/server/coa/Area52BulwarkRules.h": {
+      "before": null,
+      "after": "cdac9c85dc68c3d2ba79beaeff7922ce21b3d5a6f60b344bc4b0dfa440526d8f"
+    },
+    "src/server/coa/Area52CompanionTraining.h": {
+      "before": null,
+      "after": "950f830e42f885a3c211d323b45a8c532bf1b8ffefeed7efd8c7236d618eb988"
+    },
+    "src/server/coa/AscensionBulwark.cpp": {
+      "before": null,
+      "after": "0a28e661673324a9713c31b0c75a0826f2d1d4fee27780de69337f38e0462fe4"
+    },
+    "src/server/coa/AscensionFreePick.cpp": {
+      "before": "b5d31882d8e6388b22cc0bc13b537c2bfdaeeaeae31760b967344ad44238822e",
+      "after": "af557ef8d1829d86883689be35caa4d10a7494130aab9e7fac8bbc95fbcf2e31"
+    },
+    "src/server/coa/AscensionFreePick.h": {
+      "before": "626174976ca4d29c588fcfd082210a8c64a31ae0a46a31a08bd276d7f6e61300",
+      "after": "69c6db9d585b0c95f55af3fcefdde086cf2cb1d79f541eb09eba0737614af31b"
+    },
+    "src/server/coa/AscensionFreePickLinkedSpells.h": {
+      "before": "c5f3ea14eba75b6be5158e0e42fd3bba7cd01ae90668dae49b44077a136ceff8",
+      "after": "5deaabe2fa51f4eccbb132d8143f08d9b2007bd7ee3699db91e3a51c9d0b8aed"
+    },
+    "src/server/coa/AscensionMysticAudit.h": {
+      "before": "db19196b02de73259e513060ed89cdd85fa6aa06ddc3d9238442eaf27aa4e185",
+      "after": "d0e59c68d33e41e76963c953a9a701b750bb0253d9fd3f286f72855a8fb8f58d"
+    },
+    "src/server/coa/AscensionMysticEnchant.cpp": {
+      "before": "828a5e5bf7606672692e45860243329243eeab8be6f62124b763d46ef871bd84",
+      "after": "09cb7c00f8826cc9ca79f6a94e34638b2d3eb8c822e9a55adedb93c9b42e0532"
+    },
+    "src/server/coa/AscensionMysticSpellGrants.h": {
+      "before": "136741d6bb04baa15c4376ff171e97a80fd3ec1404b0c37e8ca7db8627846abb",
+      "after": "67e55043c2a705ff1ae647fe9b327aa566b49a0328abe96cc7f49ee31062b4d6"
+    },
+    "src/server/coa/CoAScriptLoader.cpp": {
+      "before": "c5d82ebd8a9b8ec24562c556a763818ee9cdb67e1ccc69ca4a0d7c8f59b6c5b2",
+      "after": "2ade90fced8ab1e436c8d11c5c30c200257e624a8bfed42680ecb9632d3d56a5"
+    },
+    "src/server/game/Entities/Creature/Trainer.cpp": {
+      "before": "289096c8d0a9e87a50ff358d4a1640fed6b5b4d6eb42ae6a4a49525a4bed96dc",
+      "after": "89010da65269fca08620105f06f0cec23509dcea3ad07febc523b023a5a11db6"
+    },
+    "src/server/game/Entities/Unit/Unit.cpp": {
+      "before": "0c2b14f6fc4d46ac3ba7ba83129ff0c854e3763613283acd19b513ee2b9eb494",
+      "after": "8a45eb02126392ff693b611c5fc5049830d355fa60f524d47848174cf3a2eaf2"
+    }
+  }
+}

@@ -1,0 +1,1119 @@
+--- /dev/null
++++ b/apps/coa-tests/area52_bulwark/run.py
+@@ -0,0 +1,86 @@
++from pathlib import Path
++import os
++import shutil
++import subprocess
++import tempfile
++
++root = Path(__file__).resolve().parents[3]
++compiler = shutil.which(os.environ.get('CXX', 'c++'))
++assert compiler, 'C++20 compiler unavailable'
++
++
++def execute(source):
++    with tempfile.TemporaryDirectory() as directory:
++        p = Path(directory)
++        (p / 'test.cpp').write_text(source)
++        subprocess.run([compiler, '-std=c++20', '-Wall', '-Wextra', '-Werror',
++                        '-I' + str(root / 'src/server/coa'), str(p / 'test.cpp'),
++                        '-o', str(p / 'test')], check=True)
++        subprocess.run([str(p / 'test')], check=True)
++
++
++execute(r'''
++#include "AscensionMysticSpellGrants.h"
++#include "AscensionFreePickLinkedSpells.h"
++#include <algorithm>
++#include <cassert>
++int main()
++{
++    auto const& grants = AscensionMysticEnchant::SpellGrants;
++    assert(std::count_if(grants.begin(), grants.end(), [](auto const& grant) {
++        return grant.Enchant == 978724 && grant.Spell == 922565;
++    }) == 1);
++    auto const& groups = AscensionFreePick::LinkedSpellGroups;
++    auto const tracking = std::find_if(groups.begin(), groups.end(), [](auto const& group) {
++        return group.Parent == 801494;
++    });
++    assert(tracking != groups.end());
++    for (auto id : {1494u, 19878u, 19879u, 19880u, 19882u, 19884u})
++        assert(std::count(tracking->Children.begin(), tracking->Children.end(), id) == 1);
++}
++''')
++
++execute(r'''
++#include "Area52BulwarkRules.h"
++#include <cassert>
++int main()
++{
++    using namespace Area52Bulwark;
++    assert(EnergyDrain(0) == 10);
++    assert(EnergyDrain(1) == 15);
++    assert(EnergyDrain(5) == 35);
++    assert(EnergyDrain(100) == 60);
++    assert(WildAggressionEligible(1495, true, 1));
++    assert(!WildAggressionEligible(1495, false, 100));
++    assert(!WildAggressionEligible(1495, true, 0));
++    assert(!WildAggressionEligible(1752, true, 100));
++    for (unsigned i = 0; i < 3; ++i)
++    {
++        assert(InsightEffect(i, false) == (i == 0));
++        assert(InsightEffect(i, true) == (i == 2));
++    }
++}
++''')
++execute(r'''
++#include "Area52CompanionTraining.h"
++#include <cassert>
++#include <set>
++int main()
++{
++    using namespace Area52CompanionTraining;
++    std::set<unsigned> spells;
++    for (unsigned id : Spells)
++    {
++        assert(spells.insert(id).second);
++        assert(Parent(id) == Mastery);
++    }
++    for (unsigned id : Runes)
++    {
++        assert(spells.insert(id).second);
++        assert(Parent(id) == Runeforging);
++    }
++    for (unsigned id : {0u, 133u, 116u, 1752u, 53428u, 818045u, 364768u})
++        assert(Parent(id) == 0);
++}
++''')
++print('PASS: persistent grants, tracking, escalating drain, proc ownership, PvP selector and bounded trainer entitlements')
+--- /dev/null
++++ b/data/sql/updates/pending_db_world/rev_20261012_10_area52_bulwark.sql
+@@ -0,0 +1,63 @@
++DELETE FROM `spell_script_names` WHERE `spell_id` IN (-59088, 59088, 59089, 859089) AND `ScriptName` = 'spell_warr_improved_spell_reflection';
++DELETE FROM `spell_proc` WHERE `SpellId` IN (-59088, 59088, 59089, 859089, 977828, 978724, 922565, 86378);
++INSERT INTO `spell_proc` (`SpellId`, `SchoolMask`, `SpellFamilyName`, `SpellFamilyMask0`, `SpellFamilyMask1`, `SpellFamilyMask2`, `ProcFlags`, `SpellTypeMask`, `SpellPhaseMask`, `HitMask`, `AttributesMask`, `DisableEffectsMask`, `ProcsPerMinute`, `Chance`, `Cooldown`, `Charges`) VALUES
++(977828, 0, 0, 0, 0, 0, 16, 1, 2, 0, 0, 0, 0, 100, 0, 0),
++(978724, 0, 0, 0, 0, 0, 680, 1, 0, 8256, 0, 0, 0, 100, 1000, 0),
++(922565, 0, 0, 0, 0, 0, 139944, 1, 0, 9283, 0, 6, 0, 100, 0, 0),
++(86378, 0, 0, 0, 0, 0, 139944, 1, 0, 9283, 0, 0, 0, 100, 0, 0);
++
++DELETE FROM `spell_proc` WHERE `SpellId` IN (-20127, 20127, 20130, 20135, 20100);
++INSERT INTO `spell_proc` (`SpellId`, `ProcFlags`, `SpellTypeMask`, `SpellPhaseMask`, `HitMask`, `DisableEffectsMask`, `Chance`, `Cooldown`) VALUES
++(20127, 680, 1, 0, 8256, 2, 10, 0),
++(20130, 680, 1, 0, 8256, 2, 10, 0),
++(20135, 680, 1, 0, 8256, 2, 10, 0),
++(20100, 680, 1, 0, 8256, 5, 100, 1000);
++
++UPDATE `spell_bonus_data` SET `ap_bonus` = 0.69 WHERE `entry` = 1495;
++
++DELETE FROM `spell_proc` WHERE `SpellId` = 20095;
++INSERT INTO `spell_proc` (`SpellId`, `ProcFlags`, `SpellTypeMask`, `SpellPhaseMask`, `HitMask`, `DisableEffectsMask`, `Chance`, `Charges`) VALUES
++(20095, 680, 1, 0, 8256, 0, 100, 2);
++
++DELETE FROM `spell_script_names` WHERE `ScriptName` IN ('spell_area52_shield_tools', 'aura_area52_bulwark_cleanup', 'aura_area52_wild_aggression', 'aura_area52_bulwark_energy', 'spell_area52_bulwark_channel', 'aura_area52_bulwark_drain', 'spell_area52_shockwave', 'spell_area52_shockwave_damage', 'spell_area52_bulwark_damage', 'aura_area52_combat_readiness');
++INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`) VALUES
++(871, 'spell_area52_shield_tools'),
++(2565, 'spell_area52_shield_tools'),
++(23920, 'spell_area52_shield_tools'),
++(-23922, 'spell_area52_shield_tools'),
++(859089, 'aura_area52_bulwark_cleanup'),
++(986125, 'aura_area52_bulwark_cleanup'),
++(977828, 'aura_area52_bulwark_cleanup'),
++(901144, 'aura_area52_bulwark_cleanup'),
++(978724, 'aura_area52_bulwark_cleanup'),
++(977828, 'aura_area52_wild_aggression'),
++(978724, 'aura_area52_bulwark_energy'),
++(922565, 'spell_area52_bulwark_channel'),
++(923923, 'aura_area52_bulwark_drain'),
++(46968, 'spell_area52_shockwave'),
++(846968, 'spell_area52_shockwave_damage'),
++(846969, 'spell_area52_shockwave_damage'),
++(923921, 'spell_area52_bulwark_damage'),
++(923922, 'spell_area52_bulwark_damage'),
++(86378, 'aura_area52_combat_readiness'),
++(886378, 'aura_area52_combat_readiness');
++
++DELETE FROM `spell_script_names` WHERE `ScriptName` IN ('spell_area52_intervene_taunt', 'spell_area52_primal_precision');
++INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`) VALUES
++(3411, 'spell_area52_intervene_taunt'),
++(-1079, 'spell_area52_primal_precision'),
++(-22568, 'spell_area52_primal_precision'),
++(-22570, 'spell_area52_primal_precision'),
++(52610, 'spell_area52_primal_precision');
++
++DELETE FROM `spell_script_names` WHERE `ScriptName` = 'aura_area52_tank_stance';
++INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`) VALUES
++(71, 'aura_area52_tank_stance'),
++(48263, 'aura_area52_tank_stance'),
++(25780, 'aura_area52_tank_stance'),
++(701463, 'aura_area52_tank_stance'),
++(5487, 'aura_area52_tank_stance'),
++(9634, 'aura_area52_tank_stance');
++
++DELETE FROM `spell_script_names` WHERE `ScriptName` = 'aura_area52_avatar_movement';
++INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`) VALUES (86380, 'aura_area52_avatar_movement');
+--- /dev/null
++++ b/src/server/coa/Area52BulwarkRules.h
+@@ -0,0 +1,26 @@
++#ifndef AREA52_BULWARK_RULES_H
++#define AREA52_BULWARK_RULES_H
++#include <algorithm>
++#include <array>
++#include <cstdint>
++
++namespace Area52Bulwark
++{
++inline constexpr std::array<std::uint32_t, 6> TankStances = {71, 48263, 25780, 701463, 5487, 9634};
++
++inline std::uint32_t EnergyDrain(std::uint32_t elapsedTicks)
++{
++    return 10u + 5u * std::min(elapsedTicks, 10u);
++}
++
++inline bool WildAggressionEligible(std::uint32_t root, bool ownDamage, std::uint32_t damage)
++{
++    return root == 1495 && ownDamage && damage > 0;
++}
++
++inline bool InsightEffect(std::uint8_t index, bool playerAttacker)
++{
++    return index == (playerAttacker ? 2 : 0);
++}
++}
++#endif
+--- /dev/null
++++ b/src/server/coa/Area52CompanionTraining.h
+@@ -0,0 +1,31 @@
++#ifndef AREA52_COMPANION_TRAINING_H
++#define AREA52_COMPANION_TRAINING_H
++#include <algorithm>
++#include <array>
++#include <cstdint>
++
++namespace Area52CompanionTraining
++{
++inline constexpr std::uint32_t Mastery = 818045;
++inline constexpr std::array<std::uint32_t, 26> Spells = {
++    3561, 3562, 3563, 3565, 3566, 3567, 10059, 11416, 11417, 11418, 11419, 11420,
++    32266, 32267, 32271, 32272, 33690, 33691, 35715, 35717, 49358, 49359, 49360, 49361, 53140, 53142
++};
++inline constexpr std::uint32_t Runeforging = 53428;
++inline constexpr std::array<std::uint32_t, 10> Runes = {
++    53323, 53331, 53341, 53342, 53343, 53344, 54446, 54447, 62158, 70164
++};
++inline std::uint32_t Parent(std::uint32_t spell)
++{
++    if (std::find(Spells.begin(), Spells.end(), spell) != Spells.end())
++        return Mastery;
++    if (std::find(Runes.begin(), Runes.end(), spell) != Runes.end())
++        return Runeforging;
++    return 0;
++}
++inline bool Contains(std::uint32_t spell)
++{
++    return std::find(Spells.begin(), Spells.end(), spell) != Spells.end();
++}
++}
++#endif
+--- /dev/null
++++ b/src/server/coa/AscensionBulwark.cpp
+@@ -0,0 +1,485 @@
++/* Copyright (C) 2016+ AzerothCore, GNU AGPL v3. */
++#include "Area52BulwarkRules.h"
++#include "AscensionFreePick.h"
++#include "Config.h"
++#include "Containers.h"
++#include "Player.h"
++#include "ScriptMgr.h"
++#include "Spell.h"
++#include "SpellMgr.h"
++#include "SpellAuraEffects.h"
++#include "SpellScript.h"
++
++namespace
++{
++bool Enabled = false;
++
++bool Applies(Unit* unit)
++{
++    return unit && AscensionFreePick::Applies(unit->ToPlayer());
++}
++
++void ClearBulwark(Unit* unit)
++{
++    for (uint32 id : {923923u, 923924u, 923927u})
++        unit->RemoveAurasDueToSpell(id);
++}
++}
++
++class area52_bulwark_world final : public WorldScript
++{
++public:
++    area52_bulwark_world() : WorldScript("area52_bulwark_world") { }
++    void OnAfterConfigLoad(bool) override
++    {
++        Enabled = sConfigMgr->GetOption<bool>("CoA.Enable", true) &&
++            sConfigMgr->GetOption<std::string>("CoA.ClassModel", "coa") == "hero" &&
++            sConfigMgr->GetOption<std::string>("CoA.RealmType", "live") == "live";
++    }
++};
++
++class area52_bulwark_metadata final : public GlobalScript
++{
++public:
++    area52_bulwark_metadata() : GlobalScript("area52_bulwark_metadata") { }
++    bool OnIsAffectedBySpellModCheck(SpellInfo const*, SpellInfo const* spell, SpellModifier const* mod) override
++    {
++        return !(Enabled && mod->spellId == 920127 && mod->op == SPELLMOD_CHANCE_OF_SUCCESS &&
++            (spell->Id == 20127 || spell->Id == 20130 || spell->Id == 20135));
++    }
++    void OnLoadSpellCustomAttr(SpellInfo* info) override
++    {
++        if (!Enabled)
++            return;
++        if (info->Id == 1495 || info->Id == 14269 || info->Id == 14270 ||
++            info->Id == 14271 || info->Id == 36916 || info->Id == 53339)
++            info->UseRangedAttackPowerForDamage = true;
++        if (info->Id == 7376)
++            info->Effects[EFFECT_2].ApplyAuraName = SPELL_AURA_MOD_THREAT;
++        if (info->Id == 71)
++            info->Effects[EFFECT_1].BasePoints = -6;
++        if (info->Id == 59088 || info->Id == 59089)
++            info->Effects[EFFECT_1].ApplyAuraName = SPELL_AURA_MOD_DAMAGE_PERCENT_TAKEN;
++        if (info->Id == 59088)
++            info->Effects[EFFECT_0].MiscValue = SPELLMOD_COOLDOWN;
++        if (info->Id == 86378)
++            info->Effects[EFFECT_1].TargetA = SpellImplicitTargetInfo(TARGET_UNIT_CASTER);
++        if (info->Id == 923921 || info->Id == 923922)
++        {
++            info->AttributesEx3 |= SPELL_ATTR3_SUPPRESS_CASTER_PROCS;
++            info->AttributesEx4 |= SPELL_ATTR4_SUPPRESS_WEAPON_PROCS;
++        }
++    }
++};
++
++class aura_area52_avatar_movement : public AuraScript
++{
++    PrepareAuraScript(aura_area52_avatar_movement);
++    bool Load() override { return Applies(GetUnitOwner()); }
++
++    void Apply(AuraEffect const*, AuraEffectHandleModes)
++    {
++        GetTarget()->ApplySpellImmune(GetId(), IMMUNITY_MECHANIC, MECHANIC_ROOT, true);
++        GetTarget()->RemoveAurasWithMechanic(1ULL << MECHANIC_ROOT);
++    }
++
++    void Remove(AuraEffect const*, AuraEffectHandleModes)
++    {
++        GetTarget()->ApplySpellImmune(GetId(), IMMUNITY_MECHANIC, MECHANIC_ROOT, false);
++    }
++
++    void Register() override
++    {
++        AfterEffectApply += AuraEffectApplyFn(aura_area52_avatar_movement::Apply,
++            EFFECT_2, SPELL_AURA_MOD_MINIMUM_SPEED, AURA_EFFECT_HANDLE_REAL);
++        AfterEffectRemove += AuraEffectRemoveFn(aura_area52_avatar_movement::Remove,
++            EFFECT_2, SPELL_AURA_MOD_MINIMUM_SPEED, AURA_EFFECT_HANDLE_REAL);
++    }
++};
++
++class aura_area52_tank_stance : public AuraScript
++{
++    PrepareAuraScript(aura_area52_tank_stance);
++    bool Load() override { return Applies(GetUnitOwner()); }
++    bool Validate(SpellInfo const*) override { return ValidateSpellInfo({991293}); }
++
++    void Apply(AuraEffect const*, AuraEffectHandleModes)
++    {
++        Unit* owner = GetTarget();
++        for (auto stance : Area52Bulwark::TankStances)
++            if (stance != GetId())
++                owner->RemoveAurasDueToSpell(stance);
++        owner->CastSpell(owner, 991293, true);
++    }
++
++    void Remove(AuraEffect const*, AuraEffectHandleModes)
++    {
++        Unit* owner = GetTarget();
++        if (std::none_of(Area52Bulwark::TankStances.begin(), Area52Bulwark::TankStances.end(),
++            [owner, this](uint32 id) { return id != GetId() && owner->HasAura(id); }))
++            owner->RemoveAurasDueToSpell(991293);
++    }
++
++    void Register() override
++    {
++        AfterEffectApply += AuraEffectApplyFn(aura_area52_tank_stance::Apply,
++            EFFECT_0, SPELL_AURA_ANY, AURA_EFFECT_HANDLE_REAL);
++        AfterEffectRemove += AuraEffectRemoveFn(aura_area52_tank_stance::Remove,
++            EFFECT_0, SPELL_AURA_ANY, AURA_EFFECT_HANDLE_REAL);
++    }
++};
++
++class spell_area52_shield_tools : public SpellScript
++{
++    PrepareSpellScript(spell_area52_shield_tools);
++
++    bool Load() override { return Applies(GetCaster()); }
++
++    bool Validate(SpellInfo const*) override
++    {
++        return ValidateSpellInfo({2565, 23922, 859090, 986126});
++    }
++
++    void Handle()
++    {
++        Player* player = GetCaster()->ToPlayer();
++        uint32 root = GetSpellInfo()->GetFirstRankSpell()->Id;
++        if ((root == 2565 || root == 23920) && player->HasAura(859089))
++            player->CastSpell(player, 859090, true);
++        if (!player->HasAura(986125))
++            return;
++        if (root == 871)
++            player->RemoveSpellCooldown(2565, true);
++        else if (root == 2565)
++        {
++            for (uint32 rank = 23922; rank; rank = sSpellMgr->GetNextSpellInChain(rank))
++                player->RemoveSpellCooldown(rank, true);
++        }
++        else if (root == 23922)
++            player->CastSpell(player, 986126, true);
++    }
++
++    void Register() override { AfterCast += SpellCastFn(spell_area52_shield_tools::Handle); }
++};
++
++class aura_area52_bulwark_cleanup : public AuraScript
++{
++    PrepareAuraScript(aura_area52_bulwark_cleanup);
++    bool Load() override { return Applies(GetUnitOwner()); }
++
++    void Remove(AuraEffect const*, AuraEffectHandleModes)
++    {
++        if (GetId() == 859089)
++            GetTarget()->RemoveAurasDueToSpell(859090);
++        else if (GetId() == 986125)
++            GetTarget()->RemoveAurasDueToSpell(986126);
++        else if (GetId() == 977828)
++            GetTarget()->RemoveAurasDueToSpell(977829);
++        else if (GetId() == 901144)
++            GetTarget()->RemoveAurasDueToSpell(901145);
++        else if (GetId() == 978724)
++        {
++            GetTarget()->RemoveAurasDueToSpell(922565);
++            ClearBulwark(GetTarget());
++        }
++    }
++
++    void Register() override
++    {
++        AfterEffectRemove += AuraEffectRemoveFn(aura_area52_bulwark_cleanup::Remove,
++            EFFECT_0, SPELL_AURA_ANY, AURA_EFFECT_HANDLE_REAL);
++    }
++};
++
++class aura_area52_wild_aggression : public AuraScript
++{
++    PrepareAuraScript(aura_area52_wild_aggression);
++    bool Load() override { return Applies(GetUnitOwner()); }
++    bool Validate(SpellInfo const*) override { return ValidateSpellInfo({977830, 977829}); }
++
++    bool Check(ProcEventInfo& event)
++    {
++        SpellInfo const* spell = event.GetSpellInfo();
++        DamageInfo* damage = event.GetDamageInfo();
++        return spell && damage && Area52Bulwark::WildAggressionEligible(
++            spell->GetFirstRankSpell()->Id, event.GetActor() == GetTarget(), damage->GetDamage());
++    }
++
++    void Proc(AuraEffect const* effect, ProcEventInfo&)
++    {
++        PreventDefaultAction();
++        Unit* owner = GetTarget();
++        owner->CastSpell(owner, 977830, true, nullptr, effect);
++        if (owner->GetPower(POWER_ENERGY) == owner->GetMaxPower(POWER_ENERGY))
++            owner->CastSpell(owner, 977829, true, nullptr, effect);
++    }
++
++    void Register() override
++    {
++        DoCheckProc += AuraCheckProcFn(aura_area52_wild_aggression::Check);
++        OnEffectProc += AuraEffectProcFn(aura_area52_wild_aggression::Proc, EFFECT_0, SPELL_AURA_PROC_TRIGGER_SPELL);
++    }
++};
++
++class aura_area52_bulwark_energy : public AuraScript
++{
++    PrepareAuraScript(aura_area52_bulwark_energy);
++    bool Load() override { return Applies(GetUnitOwner()); }
++
++    bool Check(ProcEventInfo& event)
++    {
++        return event.GetActionTarget() == GetTarget() && (event.GetHitMask() & PROC_HIT_BLOCK);
++    }
++
++    void Proc(AuraEffect const*, ProcEventInfo&)
++    {
++        PreventDefaultAction();
++        GetTarget()->ModifyPower(POWER_ENERGY, 5);
++    }
++
++    void Register() override
++    {
++        DoCheckProc += AuraCheckProcFn(aura_area52_bulwark_energy::Check);
++        OnEffectProc += AuraEffectProcFn(aura_area52_bulwark_energy::Proc, EFFECT_0, SPELL_AURA_DUMMY);
++    }
++};
++
++class spell_area52_bulwark_channel : public SpellScript
++{
++    PrepareSpellScript(spell_area52_bulwark_channel);
++    bool Load() override { return Applies(GetCaster()); }
++
++    SpellCastResult Check()
++    {
++        Player* player = GetCaster()->ToPlayer();
++        if (!player->HasAura(978724) || !player->HasActiveSpell(2565))
++            return SPELL_FAILED_CANT_DO_THAT_RIGHT_NOW;
++        if (!player->GetShield())
++            return SPELL_FAILED_EQUIPPED_ITEM_CLASS;
++        if (player->GetPower(POWER_ENERGY) < player->GetMaxPower(POWER_ENERGY))
++            return SPELL_FAILED_NO_POWER;
++        return SPELL_CAST_OK;
++    }
++
++    void Register() override { OnCheckCast += SpellCheckCastFn(spell_area52_bulwark_channel::Check); }
++};
++
++class aura_area52_bulwark_channel : public AuraScript
++{
++    PrepareAuraScript(aura_area52_bulwark_channel);
++    bool Load() override { return Applies(GetUnitOwner()); }
++    bool Validate(SpellInfo const*) override { return ValidateSpellInfo({923923, 923927, 923921}); }
++
++    void Apply(AuraEffect const*, AuraEffectHandleModes)
++    {
++        GetTarget()->CastSpell(GetTarget(), 923923, true);
++        GetTarget()->CastSpell(GetTarget(), 923927, true);
++    }
++
++    void Remove(AuraEffect const*, AuraEffectHandleModes) { ClearBulwark(GetTarget()); }
++
++    bool Check(ProcEventInfo& event)
++    {
++        Unit* attacker = event.GetActor();
++        return attacker && attacker != GetTarget() && event.GetActionTarget() == GetTarget() &&
++            GetTarget()->IsValidAttackTarget(attacker) && (event.GetHitMask() &
++            (PROC_HIT_NORMAL | PROC_HIT_CRITICAL | PROC_HIT_BLOCK | PROC_HIT_ABSORB));
++    }
++
++    void Proc(AuraEffect const* effect, ProcEventInfo& event)
++    {
++        PreventDefaultAction();
++        GetTarget()->CastSpell(event.GetActor(), 923921, true, nullptr, effect);
++    }
++
++    void Register() override
++    {
++        AfterEffectApply += AuraEffectApplyFn(aura_area52_bulwark_channel::Apply,
++            EFFECT_0, SPELL_AURA_MOD_BLOCK_PERCENT, AURA_EFFECT_HANDLE_REAL);
++        AfterEffectRemove += AuraEffectRemoveFn(aura_area52_bulwark_channel::Remove,
++            EFFECT_0, SPELL_AURA_MOD_BLOCK_PERCENT, AURA_EFFECT_HANDLE_REAL);
++        DoCheckProc += AuraCheckProcFn(aura_area52_bulwark_channel::Check);
++        OnEffectProc += AuraEffectProcFn(aura_area52_bulwark_channel::Proc, EFFECT_0, SPELL_AURA_MOD_BLOCK_PERCENT);
++    }
++};
++
++class aura_area52_bulwark_drain : public AuraScript
++{
++    PrepareAuraScript(aura_area52_bulwark_drain);
++    uint32 ticks = 0;
++    bool Load() override { return Applies(GetUnitOwner()); }
++
++    void Tick(AuraEffect const*)
++    {
++        PreventDefaultAction();
++        Unit* owner = GetTarget();
++        if (!owner->HasAura(922565))
++        {
++            Remove();
++            return;
++        }
++        uint32 const cost = Area52Bulwark::EnergyDrain(ticks++);
++        uint32 const available = owner->GetPower(POWER_ENERGY);
++        owner->ModifyPower(POWER_ENERGY, -int32(std::min(cost, available)));
++        if (available <= cost)
++        {
++            owner->InterruptSpell(CURRENT_CHANNELED_SPELL);
++            owner->RemoveAurasDueToSpell(922565);
++        }
++    }
++
++    void Register() override
++    {
++        OnEffectPeriodic += AuraEffectPeriodicFn(aura_area52_bulwark_drain::Tick,
++            EFFECT_1, SPELL_AURA_PERIODIC_TRIGGER_SPELL);
++    }
++};
++
++class spell_area52_shockwave : public SpellScript
++{
++    PrepareSpellScript(spell_area52_shockwave);
++    bool Load() override { return Applies(GetCaster()); }
++    bool Validate(SpellInfo const*) override { return ValidateSpellInfo({846968, 846969}); }
++
++    void Suppress(SpellEffIndex index)
++    {
++        PreventHitDefaultEffect(index);
++    }
++
++    void Trigger() { GetCaster()->CastSpell(GetCaster(), GetCaster()->HasAura(507903) ? 846969 : 846968, true); }
++
++    void Register() override
++    {
++        OnEffectLaunch += SpellEffectFn(spell_area52_shockwave::Suppress, EFFECT_0, SPELL_EFFECT_TRIGGER_SPELL);
++        OnEffectLaunch += SpellEffectFn(spell_area52_shockwave::Suppress, EFFECT_1, SPELL_EFFECT_TRIGGER_SPELL);
++        OnEffectLaunchTarget += SpellEffectFn(spell_area52_shockwave::Suppress, EFFECT_0, SPELL_EFFECT_TRIGGER_SPELL);
++        OnEffectLaunchTarget += SpellEffectFn(spell_area52_shockwave::Suppress, EFFECT_1, SPELL_EFFECT_TRIGGER_SPELL);
++        AfterCast += SpellCastFn(spell_area52_shockwave::Trigger);
++    }
++};
++
++class spell_area52_shockwave_damage : public SpellScript
++{
++    PrepareSpellScript(spell_area52_shockwave_damage);
++    bool Load() override { return Applies(GetCaster()); }
++
++    void Damage(SpellEffIndex)
++    {
++        int32 const percent = GetSpellInfo()->Effects[EFFECT_2].CalcValue(GetCaster());
++        SetEffectValue(GetEffectValue() + int32(CalculatePct(GetCaster()->GetTotalAttackPowerValue(BASE_ATTACK), percent)));
++    }
++
++    void Register() override
++    {
++        OnEffectLaunchTarget += SpellEffectFn(spell_area52_shockwave_damage::Damage, EFFECT_1, SPELL_EFFECT_SCHOOL_DAMAGE);
++    }
++};
++
++class spell_area52_bulwark_damage : public SpellScript
++{
++    PrepareSpellScript(spell_area52_bulwark_damage);
++    bool Load() override { return Applies(GetCaster()); }
++
++    void Damage(SpellEffIndex index)
++    {
++        if (GetSpellInfo()->GetCategory() == 1209)
++            return;
++        uint8 const level = GetCaster()->GetLevel();
++        float const limit = GetCaster()->HasAura(2565) ? 2.0f : 1.0f;
++        uint32 const block = GetCaster()->GetShieldBlockValue(uint32(level * 24.5f * limit),
++            uint32(level * 34.5f * limit));
++        SetEffectValue(GetEffectValue() + int32(GetCaster()->ApplyEffectModifiers(GetSpellInfo(), index, float(block))));
++    }
++
++    void Register() override
++    {
++        OnEffectLaunchTarget += SpellEffectFn(spell_area52_bulwark_damage::Damage, EFFECT_1, SPELL_EFFECT_SCHOOL_DAMAGE);
++    }
++};
++
++class spell_area52_intervene_taunt : public SpellScript
++{
++    PrepareSpellScript(spell_area52_intervene_taunt);
++    bool Load() override { return Applies(GetCaster()); }
++    bool Validate(SpellInfo const*) override { return ValidateSpellInfo({277421}); }
++
++    void Taunt(SpellEffIndex)
++    {
++        Unit* ally = GetHitUnit();
++        if (!ally)
++            return;
++        std::vector<Unit*> attackers;
++        for (Unit* attacker : ally->getAttackers())
++            if (attacker->IsAlive() && GetCaster()->IsValidAttackTarget(attacker))
++                attackers.push_back(attacker);
++        Acore::Containers::RandomResize(attackers, 3);
++        for (Unit* attacker : attackers)
++            GetCaster()->CastSpell(attacker, 277421, true);
++    }
++
++    void Register() override
++    {
++        OnEffectHitTarget += SpellEffectFn(spell_area52_intervene_taunt::Taunt, EFFECT_1, SPELL_EFFECT_APPLY_AURA);
++    }
++};
++
++class spell_area52_primal_precision : public SpellScript
++{
++    PrepareSpellScript(spell_area52_primal_precision);
++    bool Load() override { return Applies(GetCaster()); }
++    bool Validate(SpellInfo const*) override { return ValidateSpellInfo({48414}); }
++
++    void Cast()
++    {
++        if (GetCaster()->HasAura(48410))
++            GetCaster()->CastSpell(GetCaster(), 48414, true);
++    }
++
++    void Register() override { AfterCast += SpellCastFn(spell_area52_primal_precision::Cast); }
++};
++
++class aura_area52_combat_readiness : public AuraScript
++{
++    PrepareAuraScript(aura_area52_combat_readiness);
++    bool Load() override { return Applies(GetUnitOwner()); }
++
++    bool Check(ProcEventInfo& event)
++    {
++        return event.GetActionTarget() == GetTarget() && event.GetDamageInfo() &&
++            event.GetActor() != GetTarget() && (event.GetHitMask() &
++            (PROC_HIT_NORMAL | PROC_HIT_CRITICAL | PROC_HIT_BLOCK | PROC_HIT_ABSORB));
++    }
++
++    void Remove(AuraEffect const*, AuraEffectHandleModes)
++    {
++        GetTarget()->RemoveAurasDueToSpell(86379);
++        GetTarget()->RemoveAurasDueToSpell(GetId() == 86378 ? 886378 : 86378);
++    }
++
++    void Register() override
++    {
++        DoCheckProc += AuraCheckProcFn(aura_area52_combat_readiness::Check);
++        AfterEffectRemove += AuraEffectRemoveFn(aura_area52_combat_readiness::Remove,
++            EFFECT_0, SPELL_AURA_ANY, AURA_EFFECT_HANDLE_REAL);
++    }
++};
++
++void AddAscensionBulwarkScripts()
++{
++    new area52_bulwark_world();
++    new area52_bulwark_metadata();
++    RegisterSpellScript(aura_area52_tank_stance);
++    RegisterSpellScript(aura_area52_avatar_movement);
++    RegisterSpellScript(spell_area52_shield_tools);
++    RegisterSpellScript(aura_area52_bulwark_cleanup);
++    RegisterSpellScript(aura_area52_wild_aggression);
++    RegisterSpellScript(aura_area52_bulwark_energy);
++    RegisterSpellAndAuraScriptPair(spell_area52_bulwark_channel, aura_area52_bulwark_channel);
++    RegisterSpellScript(aura_area52_bulwark_drain);
++    RegisterSpellScript(spell_area52_shockwave);
++    RegisterSpellScript(spell_area52_shockwave_damage);
++    RegisterSpellScript(spell_area52_bulwark_damage);
++    RegisterSpellScript(spell_area52_intervene_taunt);
++    RegisterSpellScript(spell_area52_primal_precision);
++    RegisterSpellScript(aura_area52_combat_readiness);
++}
+--- a/src/server/coa/AscensionFreePick.cpp
++++ b/src/server/coa/AscensionFreePick.cpp
+@@ -2,6 +2,7 @@
+ #include "AscensionFreePick.h"
+ #include "AscensionRemovedSpellActionBars.h"
+ #include "AscensionFreePickLinkedSpells.h"
++#include "Area52CompanionTraining.h"
+ #include "Area52BuildSelection.h"
+ #include "Area52ActiveBuild.h"
+ #include "AscensionMysticEnchantCatalog.h"
+@@ -236,8 +237,27 @@
+ 
+ bool IsLinkedSpellParent(std::uint32_t spell)
+ {
+-    return std::any_of(LinkedSpellGroups.begin(), LinkedSpellGroups.end(),
++    return spell == Area52CompanionTraining::Mastery || spell == Area52CompanionTraining::Runeforging || std::any_of(LinkedSpellGroups.begin(), LinkedSpellGroups.end(),
+         [spell](auto const& group) { return group.Parent == spell; });
++}
++
++bool CanTrainCompanion(Player const* player, std::uint32_t spell)
++{
++    uint32 const parent = Area52CompanionTraining::Parent(spell);
++    return Applies(player) && parent && player->HasSpell(parent);
++}
++
++bool LearnCompanion(Player* player, std::uint32_t spell)
++{
++    if (!CanTrainCompanion(player, spell) || player->HasSpell(spell) || !sSpellMgr->GetSpellInfo(spell))
++        return false;
++    std::set<std::uint32_t> const allowed = {spell};
++    SpellLearningScope learning(player, allowed);
++    player->learnSpell(spell);
++    if (!player->HasSpell(spell))
++        return false;
++    player->UpdatePlayerSetting("core.freepick.companion." + std::to_string(spell), 0, 1);
++    return true;
+ }
+ 
+ bool SynchronizeLinkedSpells(Player* player)
+@@ -258,6 +278,15 @@
+                     if (player->HasSpell(group.Parent))
+                         wanted.insert(child);
+                 }
++    std::vector<uint32> lessons(Area52CompanionTraining::Spells.begin(), Area52CompanionTraining::Spells.end());
++    lessons.insert(lessons.end(), Area52CompanionTraining::Runes.begin(), Area52CompanionTraining::Runes.end());
++    for (auto spell : lessons)
++        if (player->GetPlayerSetting("core.freepick.companion." + std::to_string(spell), 0).value == 1)
++        {
++            managed.insert(spell);
++            if (player->HasSpell(Area52CompanionTraining::Parent(spell)))
++                wanted.insert(spell);
++        }
+     bool changed = false;
+     SpellLearningScope learning(player, wanted);
+     for (auto child : managed)
+--- a/src/server/coa/AscensionFreePick.h
++++ b/src/server/coa/AscensionFreePick.h
+@@ -91,6 +91,8 @@
+ };
+ bool CanLearnSpell(Player const* player, std::uint32_t spell, bool temporary, bool alreadyOwned);
+ bool SynchronizeLinkedSpells(Player* player);
++bool CanTrainCompanion(Player const* player, std::uint32_t spell);
++bool LearnCompanion(Player* player, std::uint32_t spell);
+ bool RemoveQuestGrantedClassSpells(Player* player);
+ bool IsLinkedSpellParent(std::uint32_t spell);
+ struct RankUpgrade
+--- a/src/server/coa/AscensionFreePickLinkedSpells.h
++++ b/src/server/coa/AscensionFreePickLinkedSpells.h
+@@ -10,7 +10,7 @@
+     std::uint32_t Parent;
+     std::array<std::uint32_t, 6> Children;
+ };
+-inline constexpr std::array<LinkedSpellGroup, 19> LinkedSpellGroups = {{
++inline constexpr std::array<LinkedSpellGroup, 20> LinkedSpellGroups = {{
+     {33917, {33876, 33878}},
+     {84864, {986202, 986203}},
+     {84865, {986200, 986201}},
+@@ -29,7 +29,8 @@
+     {25780, {277422}},
+     {71, {277421}},
+     {701463, {277423}},
+-    {275585, {217364, 275588}}
++    {275585, {217364, 275588}},
++    {801494, {1494, 19878, 19879, 19880, 19882, 19884}}
+ }};
+ }
+ #endif
+--- a/src/server/coa/AscensionMysticAudit.h
++++ b/src/server/coa/AscensionMysticAudit.h
+@@ -4,6 +4,7 @@
+ 
+ #include "AscensionMysticSpellGrants.h"
+ #include "AscensionFreePickLinkedSpells.h"
++#include "Area52CompanionTraining.h"
+ #include <boost/bind/placeholders.hpp>
+ #include <boost/property_tree/json_parser.hpp>
+ #include <boost/property_tree/ptree.hpp>
+@@ -85,6 +86,10 @@
+         for (uint32 child : group.Children)
+             if (child)
+                 scriptedGrants[group.Parent].push_back(child);
++    for (auto spell : Area52CompanionTraining::Spells)
++        scriptedGrants[Area52CompanionTraining::Mastery].push_back(spell);
++    for (auto spell : Area52CompanionTraining::Runes)
++        scriptedGrants[Area52CompanionTraining::Runeforging].push_back(spell);
+     while (!pending.empty())
+     {
+         uint32 const id = pending.back();
+--- a/src/server/coa/AscensionMysticEnchant.cpp
++++ b/src/server/coa/AscensionMysticEnchant.cpp
+@@ -817,7 +817,7 @@
+ 
+ bool GrantsActive(Player const* player, std::uint32_t enchant)
+ {
+-    if (!Applies(player) || !Connected.contains(enchant))
++    if (!Applies(player) || !Connected.contains(enchant) || (enchant == 978724 && !player->HasSpell(2565)))
+         return false;
+     auto const slots = ReadSlots(player);
+     if (std::find(slots.begin(), slots.end(), enchant) == slots.end())
+@@ -957,7 +957,8 @@
+         if (std::find(slots.begin(), slots.end(), grant.Enchant) != slots.end())
+         {
+             auto const& entry = Data.BySpell.at(grant.Enchant);
+-            if (InvestmentMet(player, entry, false) && InvestmentMet(player, entry, true))
++            if (InvestmentMet(player, entry, false) && InvestmentMet(player, entry, true) &&
++                (grant.Enchant != 978724 || player->HasSpell(2565)))
+                 SetGrantedSpell(player, grant.Enchant, grant.Spell, true);
+         }
+     constexpr std::array<std::uint32_t, 5> spellGrantingEnchants = {81116, 92580, 926573, 954081, 978217};
+--- a/src/server/coa/AscensionMysticSpellGrants.h
++++ b/src/server/coa/AscensionMysticSpellGrants.h
+@@ -11,11 +11,12 @@
+     std::uint32_t Enchant;
+     std::uint32_t Spell;
+ };
+-inline constexpr std::array<SpellGrant, 4> SpellGrants = {{
++inline constexpr std::array<SpellGrant, 5> SpellGrants = {{
+     {84408, 84409},
+     {84466, 84467},
+     {92574, 92575},
+-    {92582, 92584}
++    {92582, 92584},
++    {978724, 922565}
+ }};
+ }
+ #endif
+--- a/src/server/coa/CoAScriptLoader.cpp
++++ b/src/server/coa/CoAScriptLoader.cpp
+@@ -28,6 +28,7 @@
+ void AddAscensionHopliteScripts();
+ void AddAscensionBlademasterScripts();
+ void AddAscensionSpartanKickScripts();
++void AddAscensionBulwarkScripts();
+ 
+ void AddAscensionCompatScripts();
+ void AddSC_XPHotspots();
+@@ -644,5 +645,6 @@
+     AddAscensionHopliteScripts();
+     AddAscensionBlademasterScripts();
+     AddAscensionSpartanKickScripts();
++    AddAscensionBulwarkScripts();
+     AddSC_XPHotspots();
+ }
+--- a/src/server/game/Entities/Creature/Trainer.cpp
++++ b/src/server/game/Entities/Creature/Trainer.cpp
+@@ -213,7 +213,8 @@
+             return;
+         }
+ 
+-        if (_trainerId == WILDCARD_RANK_TRAINER_ID && AscensionFreePick::Applies(player))
++        bool const companionLesson = AscensionFreePick::CanTrainCompanion(player, spellId);
++        if (_trainerId == WILDCARD_RANK_TRAINER_ID && AscensionFreePick::Applies(player) && !companionLesson)
+         {
+             if (!AscensionFreePick::LearnRankUpgrade(player, spellId))
+             {
+@@ -241,7 +242,17 @@
+         npc->SendPlaySpellImpact(player->GetGUID(), 362); // 113 EmoteSalute
+ 
+         // learn explicitly or cast explicitly
+-        if (trainerSpell->IsCastable())
++        if (companionLesson)
++        {
++            if (!AscensionFreePick::LearnCompanion(player, spellId))
++            {
++                player->ModifyMoney(moneyCost);
++                SendTeachFailure(npc, player, spellId, FailReason::Unavailable);
++                return;
++            }
++            player->SaveToDB(false, false);
++        }
++        else if (trainerSpell->IsCastable())
+             player->CastSpell(player, trainerSpell->SpellId, true);
+         else
+             player->learnSpell(trainerSpell->SpellId, false);
+@@ -436,6 +447,10 @@
+         std::vector<Spell> rows;
+         if (freepick)
+         {
++            if (trainer)
++                for (auto const& spell : trainer->GetSpells())
++                    if (AscensionFreePick::CanTrainCompanion(player, spell.SpellId))
++                        rows.push_back(spell);
+             for (auto const& rank : AscensionFreePick::RankUpgrades(player))
+             {
+                 if (npc->GetEntry() == 75118 && rank.Level >= 10)
+@@ -455,4 +470,3 @@
+         return &*wildcardRanks;
+     }
+ }
+-
+--- a/src/server/game/Entities/Unit/Unit.cpp
++++ b/src/server/game/Entities/Unit/Unit.cpp
+@@ -20,6 +20,7 @@
+ #include "../../../coa/Area52FollowupProcRules.h"
+ #include "../../../coa/Area52WyvernSleep.h"
+ #include "../../../coa/Area52HopliteRemainingRules.h"
++#include "../../../coa/Area52BulwarkRules.h"
+ #include "AbstractFollower.h"
+ #include "AreaDefines.h"
+ #include "ArenaSpectator.h"
+@@ -133,22 +134,41 @@
+     return std::max(0.0f, ClassicPlusCombat::CreatureBaseAvoidance + creature->GetTotalAuraModifier(aura));
+ }
+ 
++static bool Area52TankDefense(Unit const* defender)
++{
++    return AscensionFreePick::Applies(defender->ToPlayer()) &&
++        std::any_of(Area52Bulwark::TankStances.begin(), Area52Bulwark::TankStances.end(),
++            [defender](uint32 id) { return defender->HasAura(id); });
++}
++
++static bool Area52BlockDuringCast(Unit const* defender)
++{
++    return Area52TankDefense(defender) ||
++        (AscensionFreePick::Applies(defender->ToPlayer()) && defender->HasAura(922565));
++}
++
+ static uint32 Area52CriticalBlockBonus(Unit const* defender, Unit const* attacker, uint32 damage, uint32 block)
+ {
+     using namespace Area52HopliteRemaining;
+-    if (!AscensionFreePick::Applies(defender->ToPlayer()) || !attacker ||
+-        attacker->IsCharmedOwnedByPlayerOrPlayer() || defender->HasAura(TouchedRank1) ||
+-        defender->HasAura(TouchedRank2) || defender->HasAura(TouchedRank3))
++    if (!AscensionFreePick::Applies(defender->ToPlayer()) || !attacker)
+         return 0;
+-    for (uint32 id : {CriticalBlockRank3, CriticalBlockRank2, CriticalBlockRank1})
+-        if (AuraEffect const* talent = defender->GetAuraEffect(id, EFFECT_2))
+-        {
+-            int32 percent = talent->GetAmount();
+-            if (AuraEffect const* enchant = defender->GetAuraEffect(CriticalBlockEnchant, EFFECT_0))
+-                percent += enchant->GetAmount();
+-            return Area52HopliteRemaining::AdditionalBlock(damage, block, percent);
+-        }
+-    return 0;
++    int32 percent = 0;
++    if (!attacker->IsCharmedOwnedByPlayerOrPlayer() && !defender->HasAura(TouchedRank1) &&
++        !defender->HasAura(TouchedRank2) && !defender->HasAura(TouchedRank3))
++        for (uint32 id : {CriticalBlockRank3, CriticalBlockRank2, CriticalBlockRank1})
++            if (AuraEffect const* talent = defender->GetAuraEffect(id, EFFECT_2))
++            {
++                percent += talent->GetAmount();
++                if (AuraEffect const* enchant = defender->GetAuraEffect(CriticalBlockEnchant, EFFECT_0))
++                    percent += enchant->GetAmount();
++                if (AuraEffect const* finesse = defender->GetAuraEffect(986126, EFFECT_0))
++                    percent += finesse->GetAmount();
++                break;
++            }
++    if (defender->HasAura(922565))
++        if (AuraEffect const* bulwark = defender->GetAuraEffect(923927, EFFECT_0))
++            percent += bulwark->GetAmount();
++    return Area52HopliteRemaining::AdditionalBlock(damage, block, percent);
+ }
+ 
+ DamageInfo::DamageInfo(Unit* _attacker, Unit* _victim, uint32 _damage, SpellInfo const* _spellInfo, SpellSchoolMask _schoolMask, DamageEffectType _damageType, uint32 cleanDamage)
+@@ -3287,7 +3307,7 @@
+         tmp = dodge_chance;
+ 
+         // xinef: if casting or stunned - cant dodge
+-        if (victim->IsNonMeleeSpellCast(false, victim->CanDefendDuringChannel(), true) || victim->HasUnitState(UNIT_STATE_CONTROLLED))
++        if ((!Area52TankDefense(victim) && victim->IsNonMeleeSpellCast(false, victim->CanDefendDuringChannel(), true)) || victim->HasUnitState(UNIT_STATE_CONTROLLED))
+             tmp = 0;
+ 
+         if ((tmp > 0)                                        // check if unit _can_ dodge
+@@ -3320,7 +3340,7 @@
+             tmp = parry_chance;
+ 
+             // xinef: cant parry while casting or while stunned
+-            if (victim->IsNonMeleeSpellCast(false, victim->CanDefendDuringChannel(), true) || victim->HasUnitState(UNIT_STATE_CONTROLLED))
++            if ((!Area52TankDefense(victim) && victim->IsNonMeleeSpellCast(false, victim->CanDefendDuringChannel(), true)) || victim->HasUnitState(UNIT_STATE_CONTROLLED))
+                 tmp = 0;
+ 
+             if (tmp > 0                                         // check if unit _can_ parry
+@@ -3371,7 +3391,7 @@
+         tmp = block_chance;
+ 
+         // xinef: cant block while casting or while stunned
+-        if (victim->IsNonMeleeSpellCast(false, false, true) || victim->HasUnitState(UNIT_STATE_CONTROLLED))
++        if ((!Area52BlockDuringCast(victim) && victim->IsNonMeleeSpellCast(false, false, true)) || victim->HasUnitState(UNIT_STATE_CONTROLLED))
+             tmp = 0;
+ 
+         if (tmp > 0                                          // check if unit _can_ block
+@@ -3584,7 +3604,7 @@
+             blockChance += (weaponSkill - victimMaxSkill) * 0.04f;
+ 
+         // xinef: cant block while casting or while stunned
+-        if (blockChance < 0.0f || victim->IsNonMeleeSpellCast(false, false, true) || victim->HasUnitState(UNIT_STATE_CONTROLLED))
++        if (blockChance < 0.0f || (!Area52BlockDuringCast(victim) && victim->IsNonMeleeSpellCast(false, false, true)) || victim->HasUnitState(UNIT_STATE_CONTROLLED))
+             blockChance = 0.0f;
+ 
+         if (roll_chance_f(blockChance))
+@@ -3775,7 +3795,7 @@
+             dodgeChance -= GetTotalAuraModifier(SPELL_AURA_MOD_EXPERTISE) * 25;
+ 
+         // xinef: cant dodge while casting or while stunned
+-        if (dodgeChance < 0 || victim->IsNonMeleeSpellCast(false, victim->CanDefendDuringChannel(), true) || victim->HasUnitState(UNIT_STATE_CONTROLLED))
++        if (dodgeChance < 0 || (!Area52TankDefense(victim) && victim->IsNonMeleeSpellCast(false, victim->CanDefendDuringChannel(), true)) || victim->HasUnitState(UNIT_STATE_CONTROLLED))
+             dodgeChance = 0;
+ 
+         tmp += dodgeChance;
+@@ -3796,7 +3816,7 @@
+             parryChance -= GetTotalAuraModifier(SPELL_AURA_MOD_EXPERTISE) * 25;
+ 
+         // xinef: cant parry while casting or while stunned
+-        if (parryChance < 0 || victim->IsNonMeleeSpellCast(false, victim->CanDefendDuringChannel(), true) || victim->HasUnitState(UNIT_STATE_CONTROLLED))
++        if (parryChance < 0 || (!Area52TankDefense(victim) && victim->IsNonMeleeSpellCast(false, victim->CanDefendDuringChannel(), true)) || victim->HasUnitState(UNIT_STATE_CONTROLLED))
+             parryChance = 0;
+ 
+         tmp += parryChance;
+@@ -3811,7 +3831,7 @@
+             int32(victim->GetUnitBlockChance() * 100.0f) - skillDiff * 4;
+ 
+         // xinef: cant block while casting or while stunned
+-        if (blockChance < 0 || victim->IsNonMeleeSpellCast(false, false, true) || victim->HasUnitState(UNIT_STATE_CONTROLLED))
++        if (blockChance < 0 || (!Area52BlockDuringCast(victim) && victim->IsNonMeleeSpellCast(false, false, true)) || victim->HasUnitState(UNIT_STATE_CONTROLLED))
+             blockChance = 0;
+ 
+         tmp += blockChance;
+@@ -9484,6 +9504,11 @@
+     int32 DoneTotal = 0;
+     float DoneTotalMod = TotalMod ? TotalMod : SpellPctDamageModsDone(victim, spellProto, damagetype);
+ 
++    if (AscensionFreePick::Applies(ToPlayer()) && spellProto->GetFirstRankSpell()->Id == 6343)
++        if (Item* weapon = ToPlayer()->GetWeaponForAttack(BASE_ATTACK, true))
++            if (weapon->GetTemplate()->InventoryType == INVTYPE_2HWEAPON)
++                DoneTotalMod *= 1.6f;
++
+     // Config : RATE_CREATURE_X_SPELLDAMAGE & Do Not Modify Pet/Guardian/Mind Controlled Damage
+     if (IsCreature() && (!ToCreature()->IsPet() || !ToCreature()->IsGuardian() || !ToCreature()->IsControlledByPlayer()))
+         DoneTotalMod *= ToCreature()->GetSpellDamageMod(ToCreature()->GetCreatureTemplate()->rank);
+@@ -9682,11 +9707,15 @@
+     return spellId >= 887100 && spellId <= 887190;
+ }
+ 
+-static bool IsAscensionTuningDamageTakenSource(AuraEffect const* effect, Unit const* attacker)
++static bool IsAscensionTuningDamageTakenSource(AuraEffect const* effect, Unit const* attacker, Unit const* defender)
+ {
+     // Tuning auras copy the aura 87 selectors of Libram of Tenacity 801461:
+     // 1 means damage from players, 2 damage from creatures (cf. Thunder Hide 92815).
+     bool const fromPlayer = attacker && attacker->IsCharmedOwnedByPlayerOrPlayer();
++    if (effect->GetId() == 871 && AscensionFreePick::Applies(defender->ToPlayer()))
++        return effect->GetEffIndex() == (fromPlayer ? EFFECT_1 : EFFECT_0);
++    if (effect->GetId() == 86379 && AscensionFreePick::Applies(defender->ToPlayer()))
++        return Area52Bulwark::InsightEffect(effect->GetEffIndex(), fromPlayer);
+     if (effect->GetId() == 887083 && effect->GetMiscValueB() == 2)
+         return attacker && !fromPlayer;
+     if (IsAscensionPvpTuningAura(effect->GetId()) && effect->GetMiscValueB() == 1)
+@@ -9758,12 +9787,15 @@
+     // from positive and negative SPELL_AURA_MOD_DAMAGE_PERCENT_TAKEN
+     // multiplicative bonus, for example Dispersion + Shadowform (0.10*0.85=0.085)
+     TakenTotalMod *= GetTotalAuraMultiplier(SPELL_AURA_MOD_DAMAGE_PERCENT_TAKEN,
+-        [caster, spellProto](AuraEffect const* effect)
++        [this, caster, spellProto](AuraEffect const* effect)
+         {
+             return (effect->GetMiscValue() & spellProto->GetSchoolMask()) &&
+-                IsAscensionTuningDamageTakenSource(effect, caster);
++                IsAscensionTuningDamageTakenSource(effect, caster, this);
+         });
+     TakenTotalMod *= GetHealthBasedDamageTakenMultiplier();
++    if (AscensionFreePick::Applies(ToPlayer()) && HasAura(71) && caster &&
++        caster->IsCharmedOwnedByPlayerOrPlayer())
++        TakenTotalMod *= 1.10f;
+ 
+     if (damagetype == DOT && AscensionFreePick::Applies(ToPlayer()))
+         TakenTotalMod *= GetTotalAuraMultiplier(AuraType(214),
+@@ -11295,12 +11327,15 @@
+     float TakenTotalMod = 1.0f;
+ 
+     TakenTotalMod *= GetTotalAuraMultiplier(SPELL_AURA_MOD_DAMAGE_PERCENT_TAKEN,
+-        [attacker, damageSchoolMask](AuraEffect const* effect)
++        [this, attacker, damageSchoolMask](AuraEffect const* effect)
+         {
+             return (effect->GetMiscValue() & damageSchoolMask) &&
+-                IsAscensionTuningDamageTakenSource(effect, attacker);
++                IsAscensionTuningDamageTakenSource(effect, attacker, this);
+         });
+     TakenTotalMod *= GetHealthBasedDamageTakenMultiplier();
++    if (AscensionFreePick::Applies(ToPlayer()) && HasAura(71) && attacker &&
++        attacker->IsCharmedOwnedByPlayerOrPlayer())
++        TakenTotalMod *= 1.10f;
+ 
+     // .. taken pct (special attacks)
+     if (spellProto)
+@@ -12227,6 +12262,10 @@
+ 
+     if (mtype == MOVE_RUN && HasAura(300513))
+         speed = std::min(speed, 1.0f); // Crusader's Brand caps running at normal speed.
++
++    if (mtype == MOVE_RUN && AscensionFreePick::Applies(ToPlayer()))
++        if (AuraEffect const* avatar = GetAuraEffect(86380, EFFECT_2))
++            speed = float(avatar->GetAmount()) / 100.0f;
+ 
+     SetSpeed(mtype, speed, forced);
+ }

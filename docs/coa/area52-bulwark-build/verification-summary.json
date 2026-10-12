@@ -1,0 +1,61 @@
+{
+  "state": "Verified and staged; not activated or released to testers",
+  "entries": 78,
+  "advancement": 69,
+  "mystic": 9,
+  "verified": 53,
+  "certified_preserved": 25,
+  "newly_verified": 24,
+  "spell_records": 306,
+  "remaining_verification_exceptions": 0,
+  "build": "passed",
+  "harness": {
+    "status": "passed",
+    "seconds": 2.417,
+    "passed": 5
+  },
+  "native": {
+    "startup": "passed exploratory native scenario",
+    "binding_errors_in_scope": 0,
+    "rank_bindings": "passed",
+    "proc_data": "passed",
+    "combined_gameplay_verification": "not claimed; exploratory scenario only",
+    "binary_sha256": "fe450a3902641d698b0079ee28dd5abad57da4a82479c9bdf4352fe4b3a290cd"
+  },
+  "client": {
+    "patch_reproduces_archive": true,
+    "idempotent": true,
+    "lua_syntax": true,
+    "unrelated_grants_preserved": true,
+    "spell_dbc_sha256": "2c0de36c5c68ec14b9db7a74c7c881a33f71c1514b74502b49d973ca1634154d"
+  },
+  "sql": {
+    "database": "disposable isolated baseline only",
+    "passes": 2,
+    "sha256": "acaf6f678c0bdd72e2938a7b8620f2c46592c35ac1f2d9cec3836c8ff581ef11",
+    "duplicate_bindings": 0
+  },
+  "lint": {
+    "cpp": {
+      "returncode": 0,
+      "files": 12
+    },
+    "sql": {
+      "returncode": 0,
+      "files": 1
+    }
+  },
+  "source_patch": {
+    "patch_applies": true,
+    "source_reproduction": true,
+    "idempotent": true,
+    "changed_files": 14
+  },
+  "verification_limit": "Structural checks only. No combat or reconnect CERTIFICATION is claimed. Native startup/export is exploratory, not combined gameplay verification.",
+  "activation_notes": [
+    "One pending world migration; use the staged immutable binary and matching client overlay/addon together.",
+    "Reconcile any certifications submitted after the snapshot before activation.",
+    "Normal three-minute restart announcement applies when activation is authorized.",
+    "Tester launcher release assets and channel metadata have not been changed."
+  ]
+}

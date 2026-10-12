@@ -1,0 +1,3676 @@
+{
+  "build": "Bulwark",
+  "revision": 38,
+  "entries": [
+    {
+      "kind": "mystic",
+      "id": 901144,
+      "name": "First to the Fight",
+      "previous_status": "Structurally Connected, Unverified",
+      "status": "VERIFIED",
+      "spells": [
+        901144,
+        901145
+      ],
+      "evidence": "Shield Slam hit proc -> native stacking Vanguard 901145; shield armor/block value and effect-165 Shield Block cooldown reduction. Added parent-removal cleanup.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Shield Slam hit proc -> native stacking Vanguard 901145; shield armor/block value and effect-165 Shield Block cooldown reduction. Added parent-removal cleanup.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "mystic",
+      "id": 920127,
+      "name": "Redoubt",
+      "previous_status": "VERIFIED",
+      "status": "VERIFIED",
+      "spells": [
+        920127
+      ],
+      "evidence": "Flat +10 proc-chance spell modifier explicitly matches the three Redoubt talent ranks; no unrelated proc chance modified.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Flat +10 proc-chance spell modifier explicitly matches the three Redoubt talent ranks; no unrelated proc chance modified.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "mystic",
+      "id": 929598,
+      "name": "Shield Mastery",
+      "previous_status": "Structurally Connected, Unverified",
+      "status": "VERIFIED",
+      "spells": [
+        929598
+      ],
+      "evidence": "Native +2% shield block value and +5% Shield Slam threat spell modifier; Shield Slam mask 512 and all ranks checked.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Native +2% shield block value and +5% Shield Slam threat spell modifier; Shield Slam mask 512 and all ranks checked.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "mystic",
+      "id": 931122,
+      "name": "Vitality",
+      "previous_status": "Needs Investigation",
+      "status": "VERIFIED",
+      "spells": [
+        931122,
+        931123,
+        961329
+      ],
+      "evidence": "Selected ME 931122 uses native aura 110, energy type 3, +6% regeneration. Other catalog variants preserved; they are not applied together.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Selected ME 931122 uses native aura 110, energy type 3, +6% regeneration. Other catalog variants preserved; they are not applied together.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "mystic",
+      "id": 947294,
+      "name": "Critical Block",
+      "previous_status": "VERIFIED",
+      "status": "VERIFIED",
+      "spells": [
+        947294,
+        947295,
+        947296
+      ],
+      "evidence": "Existing scoped Critical Block additional reduction reads this ME only with the talent; ordinary block value/chance modifiers retained.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Existing scoped Critical Block additional reduction reads this ME only with the talent; ordinary block value/chance modifiers retained.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "mystic",
+      "id": 948409,
+      "name": "Primal Precision",
+      "previous_status": "Needs Investigation",
+      "status": "VERIFIED",
+      "spells": [
+        948409,
+        948410
+      ],
+      "evidence": "Selected ME 948409 uses native energy regeneration and failed-finisher refund modifier with recovered finisher masks; unused variants not substituted.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Selected ME 948409 uses native energy regeneration and failed-finisher refund modifier with recovered finisher masks; unused variants not substituted.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "mystic",
+      "id": 977828,
+      "name": "Wild Aggression",
+      "previous_status": "Needs Investigation",
+      "status": "VERIFIED",
+      "spells": [
+        977828,
+        977830
+      ],
+      "evidence": "Own successful Mongoose Bite damage restores 40 energy; full-energy result applies native Rogue damage buff for eight seconds. No unrelated damage proc; cleanup on ME removal.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Own successful Mongoose Bite damage restores 40 energy; full-energy result applies native Rogue damage buff for eight seconds. No unrelated damage proc; cleanup on ME removal.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "mystic",
+      "id": 978724,
+      "name": "Bulwark",
+      "previous_status": "Needs Investigation",
+      "status": "VERIFIED",
+      "spells": [
+        922565,
+        923922,
+        978724
+      ],
+      "evidence": "Blocks grant 5 energy with 1-second ICD. Owned ME plus Shield Block grants persistent 922565. Shield/full-energy cast gate, mobile channel, shield-scaled retaliation/AoE, escalating energy drain and helper cleanup connected; damage suppresses on-hit procs.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Blocks grant 5 energy with 1-second ICD. Owned ME plus Shield Block grants persistent 922565. Shield/full-energy cast gate, mobile channel, shield-scaled retaliation/AoE, escalating energy drain and helper cleanup connected; damage suppresses on-hit procs.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "mystic",
+      "id": 986125,
+      "name": "Shield Finesse",
+      "previous_status": "Needs Investigation",
+      "status": "VERIFIED",
+      "spells": [
+        986125,
+        986126
+      ],
+      "evidence": "Shield Wall resets Shield Block; Shield Block resets every Shield Slam rank; Shield Slam applies four-second Finesse bonus to Critical Block. Cleanup on removal.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Shield Wall resets Shield Block; Shield Block resets every Shield Slam rank; Shield Slam applies four-second Finesse bonus to Critical Block. Cleanup on removal.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 452,
+      "name": "Adaptive Defense",
+      "previous_status": "VERIFIED",
+      "status": "VERIFIED",
+      "spells": [
+        12297,
+        12750,
+        12751,
+        12752,
+        12753,
+        912753
+      ],
+      "evidence": "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(6, 42), (6, 49)]. Bound handlers: spell_area52_advancement_proc.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(6, 42), (6, 49)]. Bound handlers: spell_area52_advancement_proc.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 453,
+      "name": "Firm Grip",
+      "previous_status": "CERTIFIED",
+      "status": "CERTIFIED",
+      "spells": [
+        12299,
+        12761,
+        12762
+      ],
+      "evidence": "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(6, 137), (6, 142), (6, 150)]. Bound handlers: native effects only.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(6, 137), (6, 142), (6, 150)]. Bound handlers: native effects only.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 454,
+      "name": "Improved Thunder Clap",
+      "previous_status": "VERIFIED",
+      "status": "CERTIFIED",
+      "spells": [
+        12287,
+        12665,
+        12666
+      ],
+      "evidence": "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(6, 107), (6, 108)]. Bound handlers: native effects only.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(6, 107), (6, 108)]. Bound handlers: native effects only.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 593,
+      "name": "One-Handed Weapon Specialization",
+      "previous_status": "VERIFIED",
+      "status": "VERIFIED",
+      "spells": [
+        16538,
+        16539,
+        16540,
+        16541,
+        16542
+      ],
+      "evidence": "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(6, 51), (6, 79)]. Bound handlers: native effects only.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(6, 51), (6, 79)]. Bound handlers: native effects only.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 716,
+      "name": "Improved Aspect of the Monkey",
+      "previous_status": "VERIFIED",
+      "status": "VERIFIED",
+      "spells": [
+        19549,
+        19550,
+        19551
+      ],
+      "evidence": "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(6, 107)]. Bound handlers: native effects only.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(6, 107)]. Bound handlers: native effects only.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 735,
+      "name": "Redoubt",
+      "previous_status": "CERTIFIED",
+      "status": "CERTIFIED",
+      "spells": [
+        20127,
+        20128,
+        20130,
+        20131,
+        20132,
+        20135
+      ],
+      "evidence": "Redoubt: existing proc chance/block buff retained; eligibility restricted to blocks, including fully blocked hits. ME chance modifier is explicitly linked to all three talent ranks.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Redoubt: existing proc chance/block buff retained; eligibility restricted to blocks, including fully blocked hits. ME chance modifier is explicitly linked to all three talent ranks.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 737,
+      "name": "Tenacity",
+      "previous_status": "CERTIFIED",
+      "status": "CERTIFIED",
+      "spells": [
+        20143,
+        20144,
+        20145
+      ],
+      "evidence": "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(6, 10), (6, 142), (6, 182)]. Bound handlers: native effects only.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(6, 10), (6, 142), (6, 182)]. Bound handlers: native effects only.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 766,
+      "name": "Shield Specialization",
+      "previous_status": "CERTIFIED",
+      "status": "CERTIFIED",
+      "spells": [
+        12298,
+        12724,
+        12725,
+        23602
+      ],
+      "evidence": "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(6, 42), (6, 51)]. Bound handlers: native effects only.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(6, 42), (6, 51)]. Bound handlers: native effects only.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 774,
+      "name": "Anticipation",
+      "previous_status": "VERIFIED",
+      "status": "VERIFIED",
+      "spells": [
+        20095,
+        20096,
+        20097,
+        20098,
+        20099,
+        20100
+      ],
+      "evidence": "Anticipation: native block chance/value; capstone only procs on blocks, has 1-second ICD, and consumes its two block charges.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Anticipation: native block chance/value; capstone only procs on blocks, has 1-second ICD, and consumes its two block charges.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 794,
+      "name": "Improved Defensive Stance",
+      "previous_status": "CERTIFIED",
+      "status": "CERTIFIED",
+      "spells": [
+        29593,
+        29594,
+        57514,
+        57516
+      ],
+      "evidence": "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(6, 42), (6, 107)]. Bound handlers: native effects only.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(6, 42), (6, 107)]. Bound handlers: native effects only.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 796,
+      "name": "Shield Mastery",
+      "previous_status": "VERIFIED",
+      "status": "CERTIFIED",
+      "spells": [
+        29598,
+        29599
+      ],
+      "evidence": "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(6, 107), (6, 108), (6, 150)]. Bound handlers: native effects only.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(6, 107), (6, 108), (6, 150)]. Bound handlers: native effects only.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 837,
+      "name": "Vitality",
+      "previous_status": "VERIFIED",
+      "status": "VERIFIED",
+      "spells": [
+        31122,
+        31123,
+        61329
+      ],
+      "evidence": "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(6, 110)]. Bound handlers: native effects only.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(6, 110)]. Bound handlers: native effects only.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 877,
+      "name": "Combat Expertise",
+      "previous_status": "VERIFIED",
+      "status": "VERIFIED",
+      "spells": [
+        31858,
+        31859,
+        31860
+      ],
+      "evidence": "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(6, 54), (6, 55), (6, 137)]. Bound handlers: native effects only.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(6, 54), (6, 55), (6, 137)]. Bound handlers: native effects only.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 972,
+      "name": "Safeguard",
+      "previous_status": "VERIFIED",
+      "status": "VERIFIED",
+      "spells": [
+        46945,
+        46946,
+        46947,
+        46949
+      ],
+      "evidence": "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(6, 42), (6, 87), (6, 107)]. Bound handlers: native effects only.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(6, 42), (6, 87), (6, 107)]. Bound handlers: native effects only.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 990,
+      "name": "Critical Block",
+      "previous_status": "VERIFIED",
+      "status": "VERIFIED",
+      "spells": [
+        47294,
+        47295,
+        47296
+      ],
+      "evidence": "Critical Block: native chance and existing extra reduction retained. Finesse adds 12 percentage points during its buff; Bulwark adds its separate authored reduction only while channeling.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Critical Block: native chance and existing extra reduction retained. Finesse adds 12 percentage points during its buff; Bulwark adds its separate authored reduction only while channeling.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 1009,
+      "name": "Primal Precision",
+      "previous_status": "VERIFIED",
+      "status": "VERIFIED",
+      "spells": [
+        48409,
+        48410
+      ],
+      "evidence": "Primal Precision: native energy regeneration and failed-finisher refund; capstone finishing moves invoke existing 48414 cooldown helper, all Rip/Ferocious Bite/Maim ranks and Savage Roar.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Primal Precision: native energy regeneration and failed-finisher refund; capstone finishing moves invoke existing 48414 cooldown helper, all Rip/Ferocious Bite/Maim ranks and Savage Roar.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 1120,
+      "name": "Damage Shield",
+      "previous_status": "Structurally Connected, Unverified",
+      "status": "VERIFIED",
+      "spells": [
+        58872,
+        58874
+      ],
+      "evidence": "Damage Shield: stock spell_warr_damage_shield converts direct melee damage proc to 59653 based on shield block value; both talent ranks bound.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Damage Shield: stock spell_warr_damage_shield converts direct melee damage proc to 59653 based on shield block value; both talent ranks bound.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 1121,
+      "name": "Shield Cover",
+      "previous_status": "Needs Investigation",
+      "status": "VERIFIED",
+      "spells": [
+        59088,
+        59089,
+        859089
+      ],
+      "evidence": "Shield Cover: all three ranks retain cooldown reduction, damage reduction and block value; capstone Shield Block/Reflection applies 859090 magic mitigation for three seconds, with parent-removal cleanup. Obsolete all-ranks Improved Spell Reflection binding removed.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Shield Cover: all three ranks retain cooldown reduction, damage reduction and block value; capstone Shield Block/Reflection applies 859090 magic mitigation for three seconds, with parent-removal cleanup. Obsolete all-ranks Improved Spell Reflection binding removed.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 1123,
+      "name": "Armored to the Teeth",
+      "previous_status": "CERTIFIED",
+      "status": "CERTIFIED",
+      "spells": [
+        61216,
+        61221,
+        61222
+      ],
+      "evidence": "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(3, 0), (6, 285)]. Bound handlers: native effects only.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(3, 0), (6, 285)]. Bound handlers: native effects only.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 1138,
+      "name": "Thunderstruck",
+      "previous_status": "VERIFIED",
+      "status": "VERIFIED",
+      "spells": [
+        954195,
+        954196,
+        954197
+      ],
+      "evidence": "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(6, 107), (6, 108)]. Bound handlers: native effects only.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(6, 107), (6, 108)]. Bound handlers: native effects only.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 1154,
+      "name": "Path of Frost",
+      "previous_status": "Needs Investigation",
+      "status": "VERIFIED",
+      "spells": [
+        3714
+      ],
+      "evidence": "Path of Frost: native party/raid water-walking aura, mounted allowance and taking-damage interruption; inert visual helper is not a missing grant.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Path of Frost: native party/raid water-walking aura, mounted allowance and taking-damage interruption; inert visual helper is not a missing grant.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 1167,
+      "name": "Frost Presence",
+      "previous_status": "Structurally Connected, Unverified",
+      "status": "VERIFIED",
+      "spells": [
+        48263,
+        56222,
+        57340
+      ],
+      "evidence": "Frost Presence: native armor/reduction plus stock stamina helper 61261 and linked Dark Command; tank stance exclusivity and crit suppression connected.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Frost Presence: native armor/reduction plus stock stamina helper 61261 and linked Dark Command; tank stance exclusivity and crit suppression connected.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 1169,
+      "name": "Blood Presence",
+      "previous_status": "Structurally Connected, Unverified",
+      "status": "VERIFIED",
+      "spells": [
+        48266
+      ],
+      "evidence": "Blood Presence: stock spell_dk_presence and spell_dk_improved_blood_presence_triggered connect aura 63611 effect 1 to damage-based healing 50475.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Blood Presence: stock spell_dk_presence and spell_dk_improved_blood_presence_triggered connect aura 63611 effect 1 to damage-based healing 50475.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 1173,
+      "name": "Icebound Fortitude",
+      "previous_status": "VERIFIED",
+      "status": "VERIFIED",
+      "spells": [
+        48792
+      ],
+      "evidence": "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(6, 4), (6, 77), (6, 87)]. Bound handlers: spell_dk_icebound_fortitude.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(6, 4), (6, 77), (6, 87)]. Bound handlers: spell_dk_icebound_fortitude.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 1175,
+      "name": "Forceful Deflection",
+      "previous_status": "CERTIFIED",
+      "status": "CERTIFIED",
+      "spells": [
+        49410
+      ],
+      "evidence": "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(6, 220)]. Bound handlers: native effects only.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(6, 220)]. Bound handlers: native effects only.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 1179,
+      "name": "Runeforging",
+      "previous_status": "VERIFIED",
+      "status": "VERIFIED",
+      "spells": [
+        53323,
+        53331,
+        53341,
+        53342,
+        53343,
+        53344,
+        53428,
+        54446,
+        54447,
+        62158,
+        70164
+      ],
+      "evidence": "Runeforging authorizes the ten existing trainer-13 rune lessons at their authored levels/prices. Learning scope is restricted to owned Runeforging and a listed recipe; paid lessons persist and follow parent ownership.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Runeforging authorizes the ten existing trainer-13 rune lessons at their authored levels/prices. Learning scope is restricted to owned Runeforging and a listed recipe; paid lessons persist and follow parent ownership.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 1181,
+      "name": "Rune Strike",
+      "previous_status": "VERIFIED",
+      "status": "VERIFIED",
+      "spells": [
+        56815
+      ],
+      "evidence": "Rune Strike: native weapon damage, native 15% AP addition and dodge/parry admission; no extra rank or replacement grant.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Rune Strike: native weapon damage, native 15% AP addition and dodge/parry admission; no extra rank or replacement grant.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 1182,
+      "name": "Horn of Winter",
+      "previous_status": "CERTIFIED",
+      "status": "CERTIFIED",
+      "spells": [
+        57330,
+        57623
+      ],
+      "evidence": "Horn of Winter: native raid Strength/Agility effects; authored rune-cost rows 1704/1705 supply runic-power gain through normal rune-power handling.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Horn of Winter: native raid Strength/Agility effects; authored rune-cost rows 1704/1705 supply runic-power gain through normal rune-power handling.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 1188,
+      "name": "Avatar",
+      "previous_status": "VERIFIED",
+      "status": "VERIFIED",
+      "spells": [
+        74996,
+        86380
+      ],
+      "evidence": "Avatar: native damage/reduction and existing growth visual retained; fixed ground movement rate from effect 2 and source-owned root immunity/cleanup added.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Avatar: native damage/reduction and existing growth visual retained; fixed ground movement rate from effect 2 and source-owned root immunity/cleanup added.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 1191,
+      "name": "Combat Readiness",
+      "previous_status": "Needs Investigation",
+      "status": "VERIFIED",
+      "spells": [
+        86378,
+        86379,
+        886378
+      ],
+      "evidence": "Combat Readiness: incoming direct-hit proc builds native Combat Insight; ten-second inactivity timer targets caster, refreshes on stacks, and clears parent/stacks on expiry. PvE/PvP mitigation effects are selected once.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Combat Readiness: incoming direct-hit proc builds native Combat Insight; ten-second inactivity timer targets caster, refreshes on stacks, and clears parent/stacks on expiry. PvE/PvP mitigation effects are selected once.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 1236,
+      "name": "Toughness",
+      "previous_status": "VERIFIED",
+      "status": "VERIFIED",
+      "spells": [
+        49042,
+        49786,
+        49787,
+        49788,
+        49789
+      ],
+      "evidence": "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(6, 142), (6, 232)]. Bound handlers: native effects only.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(6, 142), (6, 232)]. Bound handlers: native effects only.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 1240,
+      "name": "Unbreakable Armor",
+      "previous_status": "VERIFIED",
+      "status": "VERIFIED",
+      "spells": [
+        51271
+      ],
+      "evidence": "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(6, 101), (6, 137)]. Bound handlers: native effects only.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(6, 101), (6, 137)]. Bound handlers: native effects only.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 1245,
+      "name": "Howling Blast",
+      "previous_status": "Needs Investigation",
+      "status": "VERIFIED",
+      "spells": [
+        49184,
+        51409,
+        51410,
+        51411
+      ],
+      "evidence": "Howling Blast: four ranks have native hostile AoE Frost damage, correct rank links and existing coefficient data; no additional dummy-effect script required.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Howling Blast: four ranks have native hostile AoE Frost damage, correct rank links and existing coefficient data; no additional dummy-effect script required.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 1246,
+      "name": "Frigid Dreadplate",
+      "previous_status": "VERIFIED",
+      "status": "VERIFIED",
+      "spells": [
+        49186,
+        51108,
+        51109
+      ],
+      "evidence": "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(6, 184)]. Bound handlers: native effects only.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(6, 184)]. Bound handlers: native effects only.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 1270,
+      "name": "Improved Frost Presence",
+      "previous_status": "Structurally Connected, Unverified",
+      "status": "VERIFIED",
+      "spells": [
+        50384,
+        50385
+      ],
+      "evidence": "Improved Frost Presence: stock DK presence scripts retain 4/8% stamina outside Frost Presence; native spell modifier reduces Frost Presence damage taken.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Improved Frost Presence: stock DK presence scripts retain 4/8% stamina outside Frost Presence; native spell modifier reduces Frost Presence damage taken.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 1312,
+      "name": "Mage Armor Mastery",
+      "previous_status": "Needs Investigation",
+      "status": "VERIFIED",
+      "spells": [
+        92155
+      ],
+      "evidence": "Mastery is a progression entitlement, not a combat aura. Existing Advancement catalog/group/required links and native Validate mastery gem exemption checked; authored essence costs retained. No invented combat effect for the zero-effect record.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Mastery is a progression entitlement, not a combat aura. Existing Advancement catalog/group/required links and native Validate mastery gem exemption checked; authored essence costs retained. No invented combat effect for the zero-effect record.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 1313,
+      "name": "Hunter Aspect Mastery",
+      "previous_status": "CERTIFIED",
+      "status": "CERTIFIED",
+      "spells": [
+        92156
+      ],
+      "evidence": "Mastery is a progression entitlement, not a combat aura. Existing Advancement catalog/group/required links and native Validate mastery gem exemption checked; authored essence costs retained. No invented combat effect for the zero-effect record.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Mastery is a progression entitlement, not a combat aura. Existing Advancement catalog/group/required links and native Validate mastery gem exemption checked; authored essence costs retained. No invented combat effect for the zero-effect record.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 1314,
+      "name": "Paladin Aura Mastery",
+      "previous_status": "Needs Investigation",
+      "status": "VERIFIED",
+      "spells": [
+        92157
+      ],
+      "evidence": "Mastery is a progression entitlement, not a combat aura. Existing Advancement catalog/group/required links and native Validate mastery gem exemption checked; authored essence costs retained. No invented combat effect for the zero-effect record.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Mastery is a progression entitlement, not a combat aura. Existing Advancement catalog/group/required links and native Validate mastery gem exemption checked; authored essence costs retained. No invented combat effect for the zero-effect record.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 1322,
+      "name": "Presence Mastery",
+      "previous_status": "Needs Investigation",
+      "status": "VERIFIED",
+      "spells": [
+        92418
+      ],
+      "evidence": "Mastery is a progression entitlement, not a combat aura. Existing Advancement catalog/group/required links and native Validate mastery gem exemption checked; authored essence costs retained. No invented combat effect for the zero-effect record.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Mastery is a progression entitlement, not a combat aura. Existing Advancement catalog/group/required links and native Validate mastery gem exemption checked; authored essence costs retained. No invented combat effect for the zero-effect record.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 1363,
+      "name": "Stance Mastery",
+      "previous_status": "CERTIFIED",
+      "status": "CERTIFIED",
+      "spells": [
+        954704
+      ],
+      "evidence": "Mastery is a progression entitlement, not a combat aura. Existing Advancement catalog/group/required links and native Validate mastery gem exemption checked; authored essence costs retained. No invented combat effect for the zero-effect record.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Mastery is a progression entitlement, not a combat aura. Existing Advancement catalog/group/required links and native Validate mastery gem exemption checked; authored essence costs retained. No invented combat effect for the zero-effect record.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 1369,
+      "name": "Blessing Mastery",
+      "previous_status": "CERTIFIED",
+      "status": "CERTIFIED",
+      "spells": [
+        954711
+      ],
+      "evidence": "Mastery is a progression entitlement, not a combat aura. Existing Advancement catalog/group/required links and native Validate mastery gem exemption checked; authored essence costs retained. No invented combat effect for the zero-effect record.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Mastery is a progression entitlement, not a combat aura. Existing Advancement catalog/group/required links and native Validate mastery gem exemption checked; authored essence costs retained. No invented combat effect for the zero-effect record.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 1612,
+      "name": "Demoralizing Banner",
+      "previous_status": "VERIFIED",
+      "status": "VERIFIED",
+      "spells": [
+        955062
+      ],
+      "evidence": "Demoralizing Banner: summon 955062 -> creature 105938 -> npc_ascension_summoned_effect -> aura 954805; native hostile area armor/critical-chance reductions and existing Intervene target path.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Demoralizing Banner: summon 955062 -> creature 105938 -> npc_ascension_summoned_effect -> aura 954805; native hostile area armor/critical-chance reductions and existing Intervene target path.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 2659,
+      "name": "Defensive Stance",
+      "previous_status": "Structurally Connected, Unverified",
+      "status": "VERIFIED",
+      "spells": [
+        71,
+        277421
+      ],
+      "evidence": "Defensive Stance uses native stance/threat/armor and linked Taunt; corrected healing penalty, tank-stance exclusivity, crit suppression and casting defense. PvP damage penalty explicitly scoped.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Defensive Stance uses native stance/threat/armor and linked Taunt; corrected healing penalty, tank-stance exclusivity, crit suppression and casting defense. PvP damage penalty explicitly scoped.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 2660,
+      "name": "Shield Bash",
+      "previous_status": "VERIFIED",
+      "status": "CERTIFIED",
+      "spells": [
+        72,
+        29703
+      ],
+      "evidence": "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(2, 0), (64, 0), (68, 0)]. Bound handlers: native effects only.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(2, 0), (64, 0), (68, 0)]. Bound handlers: native effects only.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 2675,
+      "name": "Frost Armor",
+      "previous_status": "CERTIFIED",
+      "status": "CERTIFIED",
+      "spells": [
+        168,
+        6136,
+        7300,
+        7301,
+        7302,
+        7320,
+        7321,
+        10219,
+        10220,
+        27124,
+        43008
+      ],
+      "evidence": "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(6, 22), (6, 42)]. Bound handlers: native effects only.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(6, 22), (6, 42)]. Bound handlers: native effects only.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 2687,
+      "name": "Devotion Aura",
+      "previous_status": "CERTIFIED",
+      "status": "CERTIFIED",
+      "spells": [
+        465,
+        643,
+        1032,
+        10290,
+        10291,
+        10292,
+        10293,
+        27149,
+        48941,
+        48942
+      ],
+      "evidence": "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(65, 22), (65, 118)]. Bound handlers: native effects only.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(65, 22), (65, 118)]. Bound handlers: native effects only.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 2698,
+      "name": "Astral Recall",
+      "previous_status": "VERIFIED",
+      "status": "CERTIFIED",
+      "spells": [
+        556
+      ],
+      "evidence": "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(5, 0)]. Bound handlers: native effects only.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(5, 0)]. Bound handlers: native effects only.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 2701,
+      "name": "Conjure Food",
+      "previous_status": "CERTIFIED",
+      "status": "CERTIFIED",
+      "spells": [
+        587,
+        597,
+        990,
+        6129,
+        10144,
+        10145,
+        28612,
+        33717
+      ],
+      "evidence": "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(24, 0)]. Bound handlers: native effects only.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(24, 0)]. Bound handlers: native effects only.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 2737,
+      "name": "Shield Wall",
+      "previous_status": "VERIFIED",
+      "status": "VERIFIED",
+      "spells": [
+        871
+      ],
+      "evidence": "Shield Wall: native reduction/cooldown; selects authored PvE or PvP effect rather than multiplying both effects.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Shield Wall: native reduction/cooldown; selects authored PvE or PvP effect rather than multiplying both effects.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 2759,
+      "name": "Power Word: Fortitude",
+      "previous_status": "CERTIFIED",
+      "status": "CERTIFIED",
+      "spells": [
+        1243,
+        1244,
+        1245,
+        2791,
+        10937,
+        10938,
+        21562,
+        21564,
+        25389,
+        25392,
+        48161,
+        48162
+      ],
+      "evidence": "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(6, 29)]. Bound handlers: native effects only.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(6, 29)]. Bound handlers: native effects only.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 2766,
+      "name": "Mongoose Bite",
+      "previous_status": "VERIFIED",
+      "status": "VERIFIED",
+      "spells": [
+        1495,
+        14269,
+        14270,
+        14271,
+        36916,
+        53339
+      ],
+      "evidence": "Mongoose Bite: six ranks use 69% ranged AP; corrected legacy 20% melee AP coefficient and explicit ranged-AP selector.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Mongoose Bite: six ranks use 69% ranged AP; corrected legacy 20% melee AP coefficient and explicit ranged-AP selector.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 2794,
+      "name": "Resurrection",
+      "previous_status": "VERIFIED",
+      "status": "VERIFIED",
+      "spells": [
+        2006,
+        2010,
+        10880,
+        10881,
+        20770,
+        25435,
+        48171
+      ],
+      "evidence": "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(113, 0)]. Bound handlers: native effects only.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(113, 0)]. Bound handlers: native effects only.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 2796,
+      "name": "Greater Heal",
+      "previous_status": "VERIFIED",
+      "status": "VERIFIED",
+      "spells": [
+        2050,
+        2052,
+        2053,
+        2054,
+        2055,
+        2060,
+        6063,
+        6064,
+        10963,
+        10964,
+        10965,
+        25210,
+        25213,
+        25314,
+        48062,
+        48063
+      ],
+      "evidence": "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(10, 0)]. Bound handlers: native effects only.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(10, 0)]. Bound handlers: native effects only.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 2809,
+      "name": "Shield Block",
+      "previous_status": "VERIFIED",
+      "status": "VERIFIED",
+      "spells": [
+        2565
+      ],
+      "evidence": "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(6, 51), (6, 150)]. Bound handlers: spell_area52_shield_tools.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(6, 51), (6, 150)]. Bound handlers: spell_area52_shield_tools.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 2832,
+      "name": "Intervene",
+      "previous_status": "Structurally Connected, Unverified",
+      "status": "VERIFIED",
+      "spells": [
+        3411
+      ],
+      "evidence": "Intervene: native movement/redirect/Safeguard plus taunt of at most three valid attackers of the selected ally; uses existing taunt spell and immunity handling.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Intervene: native movement/redirect/Safeguard plus taunt of at most three valid attackers of the selected ally; uses existing taunt spell and immunity handling.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 2856,
+      "name": "Conjure Water",
+      "previous_status": "CERTIFIED",
+      "status": "CERTIFIED",
+      "spells": [
+        5504,
+        5505,
+        5506,
+        6127,
+        10138,
+        10139,
+        10140,
+        27090,
+        37420
+      ],
+      "evidence": "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(24, 0)]. Bound handlers: native effects only.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(24, 0)]. Bound handlers: native effects only.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 2870,
+      "name": "Thunder Clap",
+      "previous_status": "CERTIFIED",
+      "status": "CERTIFIED",
+      "spells": [
+        6343,
+        8198,
+        8204,
+        8205,
+        11580,
+        11581,
+        25264,
+        47501,
+        47502
+      ],
+      "evidence": "Thunder Clap: native AoE damage/slow/threat plus authored 12% AP; added tooltip-required 60% two-handed weapon bonus.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Thunder Clap: native AoE damage/slow/threat plus authored 12% AP; added tooltip-required 60% two-handed weapon bonus.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 2894,
+      "name": "Frost Shock",
+      "previous_status": "VERIFIED",
+      "status": "CERTIFIED",
+      "spells": [
+        8056,
+        8058,
+        10472,
+        10473,
+        25464,
+        49235,
+        49236
+      ],
+      "evidence": "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(2, 0), (6, 33)]. Bound handlers: native effects only.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(2, 0), (6, 33)]. Bound handlers: native effects only.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 2922,
+      "name": "Aspect of the Monkey",
+      "previous_status": "VERIFIED",
+      "status": "VERIFIED",
+      "spells": [
+        13163,
+        60798
+      ],
+      "evidence": "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(6, 42), (6, 49), (6, 87)]. Bound handlers: native effects only.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(6, 42), (6, 49), (6, 87)]. Bound handlers: native effects only.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 2964,
+      "name": "Spell Reflection",
+      "previous_status": "VERIFIED",
+      "status": "VERIFIED",
+      "spells": [
+        23920
+      ],
+      "evidence": "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(6, 28)]. Bound handlers: spell_area52_shield_tools.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(6, 28)]. Bound handlers: spell_area52_shield_tools.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 2965,
+      "name": "Shield Slam",
+      "previous_status": "CERTIFIED",
+      "status": "CERTIFIED",
+      "spells": [
+        23922,
+        23923,
+        23924,
+        23925,
+        25258,
+        30356,
+        47487,
+        47488,
+        823922
+      ],
+      "evidence": "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(2, 0), (64, 0)]. Bound handlers: spell_area52_shield_tools, spell_warr_shield_slam_dispel_gate.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(2, 0), (64, 0)]. Bound handlers: spell_area52_shield_tools, spell_warr_shield_slam_dispel_gate.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 3001,
+      "name": "Conjure Refreshment",
+      "previous_status": "CERTIFIED",
+      "status": "CERTIFIED",
+      "spells": [
+        42955,
+        42956
+      ],
+      "evidence": "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(24, 0)]. Bound handlers: native effects only.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(24, 0)]. Bound handlers: native effects only.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 3002,
+      "name": "Ritual of Refreshment",
+      "previous_status": "VERIFIED",
+      "status": "VERIFIED",
+      "spells": [
+        43987,
+        58659
+      ],
+      "evidence": "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(50, 0)]. Bound handlers: native effects only.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(50, 0)]. Bound handlers: native effects only.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 3042,
+      "name": "Tracking Mastery",
+      "previous_status": "Needs Investigation",
+      "status": "VERIFIED",
+      "spells": [
+        1494,
+        19878,
+        19879,
+        19880,
+        19882,
+        19884,
+        801494
+      ],
+      "evidence": "Tracking Mastery grants all six authored tracking abilities through the persistent companion ownership mechanism; native tracking/type damage auras supply 1% bonus.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Tracking Mastery grants all six authored tracking abilities through the persistent companion ownership mechanism; native tracking/type damage auras supply 1% bonus.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 3043,
+      "name": "Portal Mastery",
+      "previous_status": "Needs Investigation",
+      "status": "VERIFIED",
+      "spells": [
+        3561,
+        3562,
+        3563,
+        3565,
+        3566,
+        3567,
+        10059,
+        11416,
+        11417,
+        11418,
+        11419,
+        11420,
+        32266,
+        32267,
+        32271,
+        32272,
+        33690,
+        33691,
+        35715,
+        35717,
+        49358,
+        49359,
+        49360,
+        49361,
+        53140,
+        53142,
+        818045
+      ],
+      "evidence": "Portal Mastery authorizes 26 existing city trainer lessons. Original level, price and trainer retained; paid lessons have source ownership and removal/restoration. No blanket teleport grant; unrecovered Azzar Faire destination excluded.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Portal Mastery authorizes 26 existing city trainer lessons. Original level, price and trainer retained; paid lessons have source ownership and removal/restoration. No blanket teleport grant; unrecovered Azzar Faire destination excluded.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 3117,
+      "name": "Last Stand",
+      "previous_status": "VERIFIED",
+      "status": "VERIFIED",
+      "spells": [
+        12975
+      ],
+      "evidence": "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(3, 0)]. Bound handlers: spell_warr_last_stand.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(3, 0)]. Bound handlers: spell_warr_last_stand.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 3395,
+      "name": "Blessing of Sanctuary",
+      "previous_status": "Structurally Connected, Unverified",
+      "status": "VERIFIED",
+      "spells": [
+        20911,
+        25899
+      ],
+      "evidence": "Blessing of Sanctuary: stock blessing handler applies source-owned helper 67480; block/dodge/parry proc energizes through 57319, and native aura supplies healing received. Parent removal cleans the helper.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Blessing of Sanctuary: stock blessing handler applies source-owned helper 67480; block/dodge/parry proc energizes through 57319, and native aura supplies healing received. Parent removal cleans the helper.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 3459,
+      "name": "Devastate",
+      "previous_status": "CERTIFIED",
+      "status": "CERTIFIED",
+      "spells": [
+        20243,
+        30016,
+        30022,
+        47497,
+        47498,
+        302035,
+        302036,
+        302037,
+        302038
+      ],
+      "evidence": "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(3, 0), (31, 0), (121, 0)]. Bound handlers: spell_area52_blademaster_empower.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Recovered effects route through native spell/aura handlers and existing family-mask modifiers. Effect/aura pairs: [(3, 0), (31, 0), (121, 0)]. Bound handlers: spell_area52_blademaster_empower.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    },
+    {
+      "kind": "advancement",
+      "id": 3627,
+      "name": "Shockwave",
+      "previous_status": "Needs Investigation",
+      "status": "VERIFIED",
+      "spells": [
+        46968,
+        846968,
+        846969
+      ],
+      "evidence": "Shockwave selects exactly one recovered child (normal or Seismic) and supplies its authored AP scaling before damage modifiers. Thunderstruck family masks remain intact.",
+      "checks": {
+        "connections": {
+          "result": "pass",
+          "evidence": [
+            "Shockwave selects exactly one recovered child (normal or Seismic) and supplies its authored AP scaling before damage modifiers. Thunderstruck family masks remain intact.",
+            "Candidate native startup/export validates loaded bindings; see audit.json for the complete rank/helper closure."
+          ]
+        },
+        "granted_abilities": {
+          "result": "pass",
+          "evidence": [
+            "SelectedSpells/linked companion ownership and persistent ME SpellGrants reviewed; paid trainer entitlements are parent-gated. No blanket new class-ability learning path."
+          ]
+        },
+        "persistence": {
+          "result": "pass",
+          "evidence": [
+            "Native learned spell ownership, source settings, rank ownership and logout guard retained; source removal cleans managed spells/helpers. No temporary ME grant or logout unlearning introduced. Reconnect remains tester certification."
+          ]
+        },
+        "rank_upgrades": {
+          "result": "pass",
+          "evidence": [
+            "All effective rank edges in the recorded closure resolve. Owned Advancement and ME roots feed RankUpgrades/LearnRankUpgrade; passive talent ranks remain point selections, not book purchases. Companion book level/summon auto-training paths retained."
+          ]
+        },
+        "movement": {
+          "result": "pass",
+          "evidence": [
+            "movement-review.json covers all applicable ranks and triggered/granted helpers. Cast/channel interruption flags checked; Bulwark is the documented mobile channel. No grant of unrestricted movement-casting."
+          ]
+        }
+      }
+    }
+  ],
+  "provenance": {
+    "upstream": "b366fa8434d0a50a03c6d4cf0611eae37d99821e",
+    "ptr": "826c9ee207313c0dafcc7b4b9ad37d655b4723d2"
+  },
+  "effective_sha256": "83ddca5b8fab620dcce080c5348ef03d90b8a603af4765338778d08ed93753e0",
+  "limits": [
+    "Structural verification; no player combat certification or reconnect test claimed.",
+    "Native startup scenario is exploratory; verify_all correctly reports incomplete combined gameplay verification.",
+    "Area 52 integration source, not a clean-main deployment or upstream PR."
+  ]
+}

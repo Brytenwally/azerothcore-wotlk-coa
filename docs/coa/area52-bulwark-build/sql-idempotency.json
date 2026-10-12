@@ -1,0 +1,6 @@
+{
+  "database": "disposable isolated baseline only",
+  "passes": 2,
+  "sha256": "acaf6f678c0bdd72e2938a7b8620f2c46592c35ac1f2d9cec3836c8ff581ef11",
+  "duplicate_bindings": 0
+}

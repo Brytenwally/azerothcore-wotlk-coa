@@ -1,0 +1,8 @@
+{
+  "startup": "passed exploratory native scenario",
+  "binding_errors_in_scope": 0,
+  "rank_bindings": "passed",
+  "proc_data": "passed",
+  "combined_gameplay_verification": "not claimed; exploratory scenario only",
+  "binary_sha256": "fe450a3902641d698b0079ee28dd5abad57da4a82479c9bdf4352fe4b3a290cd"
+}

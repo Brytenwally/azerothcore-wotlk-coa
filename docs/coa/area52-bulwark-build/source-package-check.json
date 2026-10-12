@@ -1,0 +1,6 @@
+{
+  "patch_applies": true,
+  "source_reproduction": true,
+  "idempotent": true,
+  "changed_files": 14
+}
