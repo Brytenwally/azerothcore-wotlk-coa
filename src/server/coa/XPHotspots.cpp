@@ -1,4 +1,5 @@
 #include "XPHotspotRules.h"
+#include "XPHotspotPainting.h"
 #include "Chat.h"
 #include "Config.h"
 #include "DatabaseEnv.h"
@@ -37,6 +38,8 @@ std::map<uint32, Location> Locations;
 std::set<uint32> ActiveIds;
 std::map<uint32, Tree> Records;
 std::map<ObjectGuid, Location> Drafts;
+std::map<ObjectGuid, Location> PaintUndo;
+std::map<ObjectGuid, std::vector<Point>> TraceDrafts;
 std::map<ObjectGuid, std::vector<std::pair<uint32, uint32>>> MergeSources;
 std::map<ObjectGuid, uint64> Requests;
 std::map<ObjectGuid, uint32> Seen;
@@ -329,6 +332,7 @@ void SendGeneral(Player* player)
 void Snapshot(Player* player, uint32 map, uint32 zone, uint32 page, bool catalog, std::string search)
 {
     bool gm = GM(player);
+    Send(player, "ACCESS|" + std::to_string(player->GetSession()->GetSecurity()));
     std::vector<Location> rows;
     uint64 now = Now();
     std::transform(search.begin(), search.end(), search.begin(), [](unsigned char c) { return std::tolower(c); });
@@ -456,6 +460,11 @@ void Execute(Player* player, std::string const& command)
         Send(player, "ERROR|Game Master permission required.");
         return;
     }
+    if (!CanManage(player->GetSession()->GetSecurity(), action))
+    {
+        Send(player, "ERROR|Level 3 GM is required to create, delete, merge or redraw hotspots.");
+        return;
+    }
     uint32 account = player->GetSession()->GetAccountId();
     ObjectGuid owner = player->GetGUID();
     if (action == "general")
@@ -539,6 +548,8 @@ void Execute(Player* player, std::string const& command)
             return;
         }
         Drafts[owner] = r;
+        PaintUndo.erase(owner);
+        TraceDrafts.erase(owner);
         MergeSources.erase(owner);
         if (r.Kind == "zone" && !Masks.contains(r.Zone) && MaskRequests.size() < 20)
             MaskRequests[r.Zone] = r;
@@ -598,6 +609,98 @@ void Execute(Player* player, std::string const& command)
         MergeSources[owner] = std::move(sources);
         Send(player, "OK|Preview the combined area. Save retires its source entries; enable the saved area separately.");
     }
+    else if (action == "tracebegin" || action == "tracepoints" || action == "traceend")
+    {
+        if (!Drafts.contains(owner) || Drafts.at(owner).Kind != "polygon")
+            return;
+        if (action == "tracebegin")
+        {
+            TraceDrafts[owner].clear();
+            return;
+        }
+        if (!TraceDrafts.contains(owner))
+            return;
+        auto& points = TraceDrafts.at(owner);
+        if (action == "tracepoints")
+        {
+            Point point;
+            while (input >> point.X >> point.Y)
+            {
+                if (points.size() >= MaxPolygonPoints || !std::isfinite(point.X) || !std::isfinite(point.Y) ||
+                    std::abs(point.X) > 20000 || std::abs(point.Y) > 20000)
+                {
+                    TraceDrafts.erase(owner);
+                    Send(player, "ERROR|Invalid traced boundary. Draft unchanged.");
+                    return;
+                }
+                points.push_back(point);
+            }
+            return;
+        }
+        if (!ValidPolygon(points))
+        {
+            TraceDrafts.erase(owner);
+            Send(player, "ERROR|Traced boundary crosses itself or has too few points. Draft unchanged.");
+            return;
+        }
+        PaintUndo[owner] = Drafts.at(owner);
+        Drafts[owner].Points = points;
+        Drafts[owner].Center = points.front();
+        Drafts[owner].Source = "gm-trace";
+        TraceDrafts.erase(owner);
+    }
+    else if (action == "shape" || action == "paintbegin" || action == "paintundo" || action == "brush")
+    {
+        if (!Drafts.contains(owner))
+            return;
+        auto candidate = Drafts.at(owner);
+        if (action == "paintbegin")
+        {
+            PaintUndo[owner] = candidate;
+            return;
+        }
+        if (action == "paintundo")
+        {
+            if (!PaintUndo.contains(owner))
+                return;
+            candidate = PaintUndo.at(owner);
+            PaintUndo.erase(owner);
+        }
+        else if (action == "shape")
+        {
+            std::string kind;
+            input >> kind;
+            if (!ChangeShape(candidate, kind))
+            {
+                Send(player, "ERROR|Only circle and polygon drafts can convert. Preview a smaller boundary if needed.");
+                return;
+            }
+            PaintUndo[owner] = Drafts.at(owner);
+        }
+        else if (action == "brush")
+        {
+            Point from, to;
+            double radius = 0;
+            std::string kind;
+            if (!(input >> from.X >> from.Y >> to.X >> to.Y >> radius >> kind) ||
+                (kind != "round" && kind != "square"))
+                return;
+            try
+            {
+                if (!Paint(candidate, from, to, radius, kind == "square"))
+                {
+                    Send(player, "ERROR|Brush must touch a valid polygon. Boundary too complex, disconnected or contains holes; undo or use smaller strokes.");
+                    return;
+                }
+            }
+            catch (std::exception const&)
+            {
+                Send(player, "ERROR|Brush boundary could not be combined. Draft unchanged.");
+                return;
+            }
+        }
+        Drafts[owner] = std::move(candidate);
+    }
     else if (action == "point" || action == "center" || action == "radius" || action == "vertex")
     {
         if (!Drafts.contains(owner))
@@ -644,7 +747,7 @@ void Execute(Player* player, std::string const& command)
             }
             else if (action == "vertex")
                 r.Points[vertex - 1] = p;
-            else if (r.Kind == "polygon" && r.Points.size() < 64)
+            else if (r.Kind == "polygon" && r.Points.size() < MaxPolygonPoints)
                 r.Points.push_back(p);
         }
     }
@@ -655,6 +758,8 @@ void Execute(Player* player, std::string const& command)
         if (!Locations.contains(id) || Locations.at(id).Retired)
             return;
         Drafts[owner] = Locations.at(id);
+        PaintUndo.erase(owner);
+        TraceDrafts.erase(owner);
         MergeSources.erase(owner);
     }
     else if (action == "undo" || action == "clear")
@@ -695,6 +800,23 @@ void Execute(Player* player, std::string const& command)
                 return;
             }
             std::getline(input >> std::ws, r.Name);
+        }
+        if (player->GetSession()->GetSecurity() < SEC_ADMINISTRATOR)
+        {
+            if (!r.Id || !Locations.contains(r.Id) || MergeSources.contains(owner))
+            {
+                Send(player, "ERROR|Level 2 GM may save settings only for an existing hotspot.");
+                return;
+            }
+            auto settingsOnly = Locations.at(r.Id);
+            settingsOnly.Revision = r.Revision;
+            settingsOnly.Bonus = r.Bonus;
+            settingsOnly.Duration = r.Duration;
+            settingsOnly.Weight = r.Weight;
+            settingsOnly.Cooldown = r.Cooldown;
+            settingsOnly.Icon = r.Icon;
+            settingsOnly.Highlight = r.Highlight;
+            r = std::move(settingsOnly);
         }
         if (!Valid(r) || (r.Id && (!Locations.contains(r.Id) || Locations.at(r.Id).Revision != r.Revision)))
         {
@@ -739,6 +861,8 @@ void Execute(Player* player, std::string const& command)
             return;
         }
         Drafts[owner] = r;
+        PaintUndo.erase(owner);
+        TraceDrafts.erase(owner);
         MergeSources.erase(owner);
         LOG_INFO("commands.gm", "XPHotspots account {} saved location {} revision {}", account, r.Id, r.Revision);
     }
@@ -889,11 +1013,13 @@ void Execute(Player* player, std::string const& command)
     else if (action == "cancel")
     {
         Drafts.erase(owner);
+        PaintUndo.erase(owner);
+        TraceDrafts.erase(owner);
         MergeSources.erase(owner);
         Send(player, "OK|Draft discarded.");
         return;
     }
-    else if (action != "preview")
+    else if (action != "preview" && action != "paintend")
     {
         Send(player, "ERROR|Commands: list, new, edit, center, radius, point, undo, clear, settings, "
             "preview, save, enable, disable, next, stop, announce, cancel.");
@@ -912,7 +1038,10 @@ void Execute(Player* player, std::string const& command)
         auto t = Write(Drafts.at(owner));
         t.put("draft", true);
         SendRow(player, t);
-        Send(player, "OK|Draft updated. Save then enable to join the rotation.");
+        if (action == "shape" || action == "paintend")
+            Send(player, "PAINTREADY");
+        else if (action != "brush")
+            Send(player, "OK|Draft updated. Save then enable to join the rotation.");
     }
 }
 
@@ -1093,6 +1222,8 @@ public:
         Timers.erase(p->GetGUID());
         Seen.erase(p->GetGUID());
         Drafts.erase(p->GetGUID());
+        PaintUndo.erase(p->GetGUID());
+        TraceDrafts.erase(p->GetGUID());
         MergeSources.erase(p->GetGUID());
         Requests.erase(p->GetGUID());
     }

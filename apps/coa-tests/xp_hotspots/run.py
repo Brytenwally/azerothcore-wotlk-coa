@@ -7,12 +7,23 @@ import tempfile
 root = Path(__file__).resolve().parents[3]
 source = r'''
 #include "XPHotspotRules.h"
+#include "XPHotspotPainting.h"
 #include <cassert>
 #include <limits>
 #include <iostream>
 int main()
 {
     using namespace XPHotspots;
+    for (auto action : {"new", "newmap", "delete", "merge", "brush", "shape", "point", "center", "clear"})
+    {
+        assert(!CanManage(2, action));
+        assert(CanManage(3, action));
+    }
+    for (auto action : {"general", "edit", "save", "stop", "next", "enable", "disable", "announce", "teleport"})
+    {
+        assert(CanManage(2, action));
+        assert(!CanManage(1, action));
+    }
     GeneralSettings settings;
     assert(ValidSettings(settings));
     std::array<uint32_t, SettingCount> counts{};
@@ -57,6 +68,30 @@ int main()
     r.Points = {{0,0},{10,0},{10,10},{0,10}};
     assert(Valid(r) && Contains(r,0,44,{5,5}) && Contains(r,0,44,{10,5}));
     assert(!Contains(r,0,44,{11,5}));
+    Location painted = r;
+    painted.Points.clear();
+    painted.Id = 55;
+    painted.Revision = 7;
+    assert(Paint(painted, {0,0}, {100,0}, 20, false));
+    assert(Valid(painted) && Contains(painted,0,44,{50,0}));
+    assert(!Contains(painted,0,44,{50,25}));
+    assert(Paint(painted, {100,0}, {100,100}, 20, true));
+    assert(Contains(painted,0,44,{110,90}) && Contains(painted,0,44,{0,0}));
+    assert(!Contains(painted,0,44,{50,50}));
+    auto beforePaint = painted.Points;
+    assert(!Paint(painted, {1000,1000}, {1100,1000}, 20, false));
+    assert(painted.Points.size() == beforePaint.size());
+    assert(!Paint(painted, {0,0}, {0,0}, std::numeric_limits<double>::quiet_NaN(), false));
+    assert(!Paint(painted, {0,0}, {6000,0}, 20, false));
+    assert(ChangeShape(painted, "circle"));
+    assert(painted.Id == 55 && painted.Revision == 7 && painted.Kind == "circle");
+    for (Point point : beforePaint)
+        assert(Contains(painted,0,44,point));
+    assert(ChangeShape(painted, "polygon") && Valid(painted));
+    Location denied = r;
+    denied.Kind = "zone";
+    assert(!Paint(denied, {0,0}, {0,0}, 20, false));
+    assert(!ChangeShape(denied, "circle"));
     Location compound = r;
     compound.Kind = "union";
     Location second = r;

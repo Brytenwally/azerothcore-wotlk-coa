@@ -310,3 +310,33 @@ frame layer when dismissed.
 Overview markers are filtered by geographic continent before projection. Azeroth excludes actual
 Outland locations; expansion-map blood elf and draenei starting zones remain on Eastern Kingdoms
 and Kalimdor respectively. Outland and Northrend overviews show only their own locations.
+
+
+## Polygon painting and permissions
+
+Level 2 GMs can browse and manage existing hotspots: enable/disable, stop, move to next, teleport,
+edit XP/timing/rotation/display settings, manage general limits and announcements, and apply defaults.
+Level 3 GMs additionally create, delete, merge, rename and edit boundaries. The server checks each
+operation, including addon requests; Level 2 saves retain the existing identity and geometry.
+The client receives a separate ACCESS capability packet and disables design controls for Level 2.
+
+Open Drawing tools while creating or editing a polygon. Points retains the original vertex editing.
+Trace perimeter uses CTRL-drag, then closes the outline on release. It replaces the draft boundary
+atomically after validation; crossing or invalid outlines leave the previous draft intact. A trace
+is limited to 60 sampled points and reports when it reaches that limit.
+Brush / fill uses CTRL-drag to add a round or square footprint, with radius 5–1000 yards and a live
+cursor outline. Segments bridge consecutive sampled positions, preserving concavities instead of
+filling the whole convex hull of the hotspot. Begin on or overlapping the existing polygon;
+disconnected areas and holes are rejected. The resulting polygon is limited to 256 vertices.
+Complex boundaries may be simplified by at most two yards only when this retains all prior coverage;
+otherwise the edit is rejected. Undo stroke restores the previous boundary (one level).
+
+Saved circles and polygons can switch shape through Edit selected and Circle/Polygon without changing
+the hotspot ID or operational settings. Polygon-to-circle chooses an enclosing radius, which the GM
+can adjust. Save Draft remains explicit and waits for drawing acknowledgement. Client previews and
+server mutations are drafts until saved; a source push does not install this client/server pair.
+
+The painting/permission follow-up reviewed upstream main at `d5ff1cfa46e4bb0ae98b90a289cec2a7c237a13a` (October 12). The standalone
+upstream PR remains held for in-game acceptance and full qualification. Test cursor scaling, drawing
+across existing map icons, cancellation on map changes, invalid outlines, Undo, and Level 2/3 accounts
+in the actual client before acceptance.

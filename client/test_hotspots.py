@@ -101,9 +101,80 @@ class HotspotClientTests(unittest.TestCase):
         self.receive('R|0|1|{}')
 
     def snapshot(self, gm=1, **values):
+        self.receive("ACCESS|3" if gm else "ACCESS|0")
         self.receive(f'B|1|{gm}|1|1000|1|1')
         self.row(**values)
         self.receive('E')
+
+    def test_level_two_can_manage_but_cannot_design(self):
+        self.snapshot(kind='polygon', draft=True)
+        self.receive('ACCESS|2')
+        self.lua.execute('XPHotspots.ShowPanel();XPHotspots.queue={};XPHotspots.NewDraft();XPHotspots.StartShape("circle")')
+        self.assertEqual(self.lua.eval('#XPHotspots.queue'), 0)
+        self.lua.execute('b=ButtonNamed("Stop selected");b.scripts.OnClick(b)')
+        self.assertTrue(self.lua.eval('XPHotspots.queue[1]:match("^stop ")~=nil'))
+        self.lua.execute('XPHotspots.ShowPaintTools()')
+        self.assertTrue(self.lua.eval('XPHotspots.paintPanel==nil'))
+
+    def test_level_two_apply_settings_does_not_send_design_commands(self):
+        self.snapshot(draft=True)
+        self.receive('ACCESS|2')
+        self.lua.execute('XPHotspots.ShowPanel();XPHotspots.queue={};b=ButtonNamed("Apply settings");b.scripts.OnClick(b)')
+        self.assertEqual(self.lua.eval('#XPHotspots.queue'), 1)
+        self.assertTrue(self.lua.eval('XPHotspots.queue[1]:match("^settings ")~=nil'))
+
+    def test_save_waits_for_finished_paint_preview(self):
+        self.snapshot(kind='polygon', draft=True)
+        self.lua.execute('XPHotspots.ShowPanel();XPHotspots.queue={};XPHotspots.paintPending=true;b=ButtonNamed("Save draft");b.scripts.OnClick(b)')
+        self.assertEqual(self.lua.eval('#XPHotspots.queue'), 0)
+        self.receive('PAINTREADY')
+        self.lua.execute('b.scripts.OnClick(b)')
+        self.assertTrue(self.lua.eval('XPHotspots.queue[1]:match("^save ")~=nil'))
+
+    def test_brush_uses_draft_only_and_keeps_save_explicit(self):
+        self.snapshot(kind='polygon', draft=True)
+        self.lua.execute('XPHotspots.ShowPaintTools();XPHotspots.SetPaintMode("Brush");XPHotspots.queue={};control=true')
+        self.lua.execute('WorldMapButton.scripts.OnMouseDown(WorldMapButton,"LeftButton")')
+        self.assertEqual(self.lua.eval('XPHotspots.queue[1]'), 'paintbegin')
+        self.assertTrue(self.lua.eval('XPHotspots.queue[2]:match("^brush ")~=nil'))
+        self.lua.execute('WorldMapButton.scripts.OnMouseUp(WorldMapButton,"LeftButton")')
+        self.assertTrue(self.lua.eval('XPHotspots.stroke==nil'))
+        self.assertEqual(self.lua.eval('oldClicks'), 0)
+        self.assertEqual(self.lua.eval('#XPHotspots.queue'), 3)
+        self.assertTrue(self.lua.eval('XPHotspots.paintPending'))
+        self.receive('PAINTREADY')
+        self.assertTrue(self.lua.eval('XPHotspots.paintPending==nil'))
+
+    def test_trace_replaces_only_when_released(self):
+        self.snapshot(kind='polygon', draft=True)
+        self.lua.execute("""
+XPHotspots.ShowPaintTools();XPHotspots.SetPaintMode("Trace");XPHotspots.queue={};control=true
+WorldMapButton.scripts.OnMouseDown(WorldMapButton,"LeftButton")
+function GetCursorPosition() return 75,75 end
+XPHotspots.SamplePaint()
+function GetCursorPosition() return 75,25 end
+XPHotspots.SamplePaint()
+""")
+        self.assertEqual(self.lua.eval('#XPHotspots.queue'), 0)
+        self.lua.execute('WorldMapButton.scripts.OnMouseUp(WorldMapButton,"LeftButton")')
+        self.assertEqual(self.lua.eval('XPHotspots.queue[1]'), 'tracebegin')
+        self.assertTrue(self.lua.eval('XPHotspots.queue[2]:match("^tracepoints ")~=nil'))
+        self.assertEqual(self.lua.eval('XPHotspots.queue[3]'), 'traceend')
+        self.assertEqual(self.lua.eval('#XPHotspots.queue'), 4)
+
+    def test_paint_rejects_wrong_map_and_pending_requests(self):
+        self.snapshot(kind='polygon', draft=True)
+        self.lua.execute('XPHotspots.ShowPaintTools();XPHotspots.SetPaintMode("Brush");XPHotspots.queue={"sync"};control=true')
+        self.lua.execute('WorldMapButton.scripts.OnMouseDown(WorldMapButton,"LeftButton")')
+        self.assertTrue(self.lua.eval('XPHotspots.stroke==nil'))
+        self.lua.execute('XPHotspots.queue={};function GetCurrentMapAreaID() return 0 end')
+        self.lua.execute('WorldMapButton.scripts.OnMouseDown(WorldMapButton,"LeftButton")')
+        self.assertEqual(self.lua.eval('#XPHotspots.queue'), 0)
+
+    def test_saved_shape_conversion_preserves_identity(self):
+        self.snapshot(kind='polygon', draft=True)
+        self.lua.execute('XPHotspots.queue={};XPHotspots.StartShape("circle")')
+        self.assertEqual(self.lua.eval('XPHotspots.queue[1]'), 'shape circle')
 
     def test_server_snapshot_positions_and_hover_coverage(self):
         self.snapshot()

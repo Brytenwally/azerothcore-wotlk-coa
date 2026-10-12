@@ -7,10 +7,22 @@
 #include <cstdint>
 #include <cstddef>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace XPHotspots
 {
+inline bool CanManage(uint32_t security, std::string_view action)
+{
+    if (security >= 3)
+        return true;
+    if (security < 2)
+        return false;
+    return action == "general" || action == "edit" || action == "settings" || action == "save" ||
+        action == "preview" || action == "enable" || action == "disable" || action == "next" ||
+        action == "stop" || action == "announce" || action == "teleport" || action == "cancel";
+}
+
 enum Setting : size_t
 {
     Announcements, ActiveCount, DefaultBonus, DefaultDuration, DefaultCooldown,
@@ -47,6 +59,8 @@ inline bool QuotaAvailable(GeneralSettings const& settings, std::array<uint32_t,
     return counts[ActiveCount] < settings.Values[ActiveCount] &&
         counts[continent] < settings.Values[continent] && counts[faction] < settings.Values[faction];
 }
+
+constexpr size_t MaxPolygonPoints = 256;
 
 struct Point
 {
@@ -104,7 +118,7 @@ inline bool Intersects(Point a, Point b, Point c, Point d)
 
 inline bool ValidPolygon(std::vector<Point> const& points)
 {
-    if (points.size() < 3 || points.size() > 64)
+    if (points.size() < 3 || points.size() > MaxPolygonPoints)
         return false;
     double area = 0;
     for (size_t i = 0; i < points.size(); ++i)

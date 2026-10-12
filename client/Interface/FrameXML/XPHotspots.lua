@@ -12,6 +12,7 @@ local function Send(text)
     if #text > 240 then Notify("Request too long."); return end
     if #H.queue >= 64 then Notify("Please wait for pending hotspot requests.");return end
     H.queue[#H.queue + 1] = text
+    return true
 end
 local function Now() return time() + clockOffset end
 local function View()
@@ -260,6 +261,7 @@ function H.Draw()
                     end)
                     H.pins[count]=p
                 end
+                p:EnableMouse(not (H.paintMode and H.paintMode~="Points"))
                 p.row=r
                 local chosen=selected and N(selected.id)==N(r.id)
                 p:SetSize(24,24)
@@ -399,11 +401,11 @@ local function SelectedCommand(action)
 end
 local function ApplyFields()
     if not draft or selected and N(selected.id)~=N(draft.id) then Notify("Click Edit selected first.");return false end
-    Send("name "..fields.Name:GetText())
+    if H.canDesign then Send("name "..fields.Name:GetText()) end
     Send("settings "..fields["XP bonus %"]:GetText().." "..N(fields.Minutes:GetText())*60 .." "..
         fields.Weight:GetText().." "..N(fields["Cooldown min"]:GetText())*60 .." "..
         (fields.icon:GetChecked() and "1" or "0").." "..(fields.fill:GetChecked() and "1" or "0"))
-    if draft.kind=="circle" then Send("radius "..fields["Radius yards"]:GetText()) end
+    if H.canDesign and draft.kind=="circle" then Send("radius "..fields["Radius yards"]:GetText()) end
     return true
 end
 local generalLabels={
@@ -538,15 +540,19 @@ function H.ShowPanel()
         local fillText=panel:CreateFontString(nil,"OVERLAY","GameFontNormalSmall")
         fillText:SetPoint("LEFT",fill,"RIGHT",0,0);fillText:SetText("Show highlight")
         fields.icon,fields.fill=icon,fill
-        Button(panel,"New Draft",12,-65,150,function() H.NewDraft() end)
-        Button(panel,"Circle",12,-255,102,function() H.StartShape("circle") end)
-        Button(panel,"Whole zone",126,-255,102,function() H.StartShape("zone") end)
-        Button(panel,"Polygon",240,-255,102,function() H.StartShape("polygon") end)
+        H.designButtons={}
+        local function DesignButton(...)
+            local b=Button(panel,...);H.designButtons[#H.designButtons+1]=b;return b
+        end
+        DesignButton("New Draft",12,-65,150,function() H.NewDraft() end)
+        DesignButton("Circle",12,-255,102,function() H.StartShape("circle") end)
+        DesignButton("Whole zone",126,-255,102,function() H.StartShape("zone") end)
+        DesignButton("Polygon",240,-255,102,function() H.StartShape("polygon") end)
         Button(panel,"Edit selected",12,-285,150,function()
             H.vertex=nil;H.newKind=nil
             if selected then Send("edit "..N(selected.id)) end
         end)
-        Button(panel,"Merge selection",180,-285,165,function()
+        DesignButton("Merge selection",180,-285,165,function()
             local ids={};for id in pairs(H.merge) do ids[#ids+1]=id end;table.sort(ids)
             if #ids<2 or #ids>8 then Notify("SHIFT-click 2 to 8 area markers or browser rows to merge.");return end
             local command="merge"
@@ -555,6 +561,7 @@ function H.ShowPanel()
         end)
         Button(panel,"Apply settings",12,-315,150,ApplyFields)
         Button(panel,"Save draft",180,-65,165,function()
+            if H.stroke or H.paintPending then Notify("Wait for the drawing preview before saving.");return end
             if not draft or selected and N(selected.id)~=N(draft.id) then Notify("Click Edit selected first.");return end
             Send("save "..fields["XP bonus %"]:GetText().." "..N(fields.Minutes:GetText())*60 .." "..
                 fields.Weight:GetText().." "..N(fields["Cooldown min"]:GetText())*60 .." "..
@@ -566,7 +573,7 @@ function H.ShowPanel()
         Button(panel,"Move to next",12,-375,150,function() SelectedCommand("next") end)
         Button(panel,"Stop selected",180,-375,165,function() SelectedCommand("stop") end)
         Button(panel,"Teleport to center",12,-465,333,function() SelectedCommand("teleport") end)
-        Button(panel,"Delete selected",180,-405,165,function()
+        DesignButton("Delete selected",180,-405,165,function()
             if not selected or B(selected.draft) or N(selected.id)==0 then
                 Notify("Select a saved hotspot first.");return
             end
@@ -589,12 +596,13 @@ function H.ShowPanel()
             if selected then selected=H.rows[N(selected.id)] end
             draft=nil;H.newKind=nil;H.newCenter=nil;H.vertex=nil;H.merge={};Send("cancel");H.Draw();H.DrawBrowser()
         end)
-        Button(panel,"Refresh",12,-435,333,H.Refresh)
+        Button(panel,"Refresh",12,-435,150,H.Refresh)
+        DesignButton("Drawing tools",180,-435,165,function() H.ShowPaintTools() end)
         local hint=panel:CreateFontString(nil,"OVERLAY","GameFontHighlightSmall")
         hint:SetPoint("TOPLEFT",12,-555);hint:SetWidth(333)
         panel.hint=hint
         hint:SetText("CTRL-click starts a circle. Choose Polygon to map its boundary. Editing: CTRL-click moves center/adds vertex; "..
-            "ALT-click selects vertex; CTRL-right undoes. SHIFT-click to merge. Save, then Enable.")
+            "ALT-click selects vertex; CTRL-right undoes. Drawing tools: CTRL-drag to trace or brush. Save, then Enable.")
     end
     local r=selected or draft
     panel.title:SetText(r and ("Selected Hotspot #"..N(r.id)) or "XP Hotspot Manager")
@@ -605,11 +613,14 @@ function H.ShowPanel()
         fields["Radius yards"]:SetText(N(r.radius))
         fields.icon:SetChecked(B(r.icon));fields.fill:SetChecked(B(r.highlight))
     end
+    H.UpdateDesignAccess()
     panel:Show()
     fields.announce:SetText(announcements and "Announce: ON" or "Announce: OFF")
     ShowBrowser()
 end
 function H.NewDraft()
+    if not H.canDesign then Notify("Level 3 GM required to create hotspots.");return end
+    H.stroke=nil
     selected=nil;draft=nil;H.newKind=nil;H.newCenter=nil;H.vertex=nil;H.merge={}
     H.ShowPanel()
     fields.Name:SetText("New Hotspot")
@@ -621,6 +632,10 @@ function H.NewDraft()
     H.Draw();Notify("CTRL-click a zone map to start a circular draft. Choose Polygon to map a boundary.")
 end
 function H.StartShape(kind)
+    if not H.canDesign then Notify("Level 3 GM required to change boundaries.");return end
+    if draft and N(draft.id)~=0 and (kind=="circle" or kind=="polygon") then
+        if Send("shape "..kind) then H.paintPending=true end;return
+    end
     if draft then
         if N(draft.id)~=0 then Notify("Click New Draft before creating a different shape.");return end
         H.newCenter={map=N(draft.map),zone=N(draft.zone),x=N(draft.x),y=N(draft.y)}
@@ -636,7 +651,130 @@ function H.StartShape(kind)
     if kind=="polygon" then Send("point "..c.x.." "..c.y)
     elseif kind=="circle" then Send("radius "..fields["Radius yards"]:GetText()) end
 end
+function H.SetPaintMode(mode)
+    H.stroke=nil;H.paintMode=mode;H.Draw()
+    if H.paintLabel then H.paintLabel:SetText("Mode: "..mode.." | CTRL-drag on a zone map") end
+end
+function H.ShowPaintTools()
+    if not gm or not H.canDesign then return end
+    if not H.paintPanel then
+        local f=CreateFrame("Frame",nil,WorldMapFrame);H.paintPanel=f
+        f:SetSize(330,190);f:SetPoint("CENTER",WorldMapFrame,"CENTER",-170,100)
+        f:SetFrameStrata("DIALOG");f:SetFrameLevel(WorldMapFrame:GetFrameLevel()+15)
+        f:SetBackdrop({bgFile="Interface\\Buttons\\WHITE8X8",edgeFile="Interface\\Buttons\\WHITE8X8",edgeSize=1})
+        f:SetBackdropColor(0.025,0.07,0.11,0.98);f:SetBackdropBorderColor(0.8,0.6,0.2,1)
+        f:EnableMouse(true);f:SetMovable(true);f:RegisterForDrag("LeftButton")
+        f:SetScript("OnDragStart",function(self) self:StartMoving() end)
+        f:SetScript("OnDragStop",function(self) self:StopMovingOrSizing() end)
+        local title=f:CreateFontString(nil,"OVERLAY","GameFontNormal")
+        title:SetPoint("TOPLEFT",10,-10);title:SetText("Polygon drawing tools")
+        Button(f,"X",292,-4,28,function() f:Hide();H.SetPaintMode("Points") end)
+        Button(f,"Points",10,-35,96,function() H.SetPaintMode("Points") end)
+        Button(f,"Trace perimeter",112,-35,105,function() H.SetPaintMode("Trace") end)
+        Button(f,"Brush / fill",223,-35,96,function() H.SetPaintMode("Brush") end)
+        H.brushKind="round";H.brushRadius=75
+        local shape
+        shape=Button(f,"Brush: Round",10,-70,145,function()
+            H.brushKind=H.brushKind=="round" and "square" or "round"
+            shape:SetText("Brush: "..(H.brushKind=="round" and "Round" or "Square"))
+        end)
+        local label=f:CreateFontString(nil,"OVERLAY","GameFontHighlightSmall")
+        label:SetPoint("TOPLEFT",165,-72);label:SetText("Radius (yards)")
+        local radius=CreateFrame("EditBox",nil,f,"InputBoxTemplate")
+        radius:SetSize(55,20);radius:SetPoint("TOPLEFT",255,-70);radius:SetAutoFocus(false)
+        radius:SetText("75");radius:SetMaxLetters(4)
+        radius:SetScript("OnTextChanged",function(self) H.brushRadius=math.max(5,math.min(1000,N(self:GetText()))) end)
+        Button(f,"Undo stroke",10,-105,145,function() if not H.stroke then Send("paintundo") end end)
+        H.paintLabel=f:CreateFontString(nil,"OVERLAY","GameFontHighlightSmall")
+        H.paintLabel:SetPoint("TOPLEFT",10,-138);H.paintLabel:SetWidth(305)
+        local hint=f:CreateFontString(nil,"OVERLAY","GameFontHighlightSmall")
+        hint:SetPoint("TOPLEFT",10,-158);hint:SetWidth(305)
+        hint:SetText("Brush adds area. Trace replaces the boundary. Save Draft commits changes.")
+    end
+    H.paintPanel:Show();H.SetPaintMode(H.paintMode or "Points")
+end
+local function PaintCursor(x,y)
+    H.brushDots=H.brushDots or {}
+    for _,t in ipairs(H.brushDots) do t:Hide() end
+    if not x or H.paintMode~="Brush" then return end
+    local map=View()
+    for i=1,48 do
+        local a=i*math.pi*2/48;local dx,dy=math.cos(a),math.sin(a)
+        if H.brushKind=="square" then local m=math.max(math.abs(dx),math.abs(dy));dx,dy=dx/m,dy/m end
+        local px,py=Position(x+dx*(H.brushRadius or 75),y+dy*(H.brushRadius or 75),map)
+        if px and px>=0 and px<=1 and py>=0 and py<=1 then
+            local t=H.brushDots[i]
+            if not t then t=WorldMapButton:CreateTexture(nil,"OVERLAY");H.brushDots[i]=t end
+            t:SetTexture(1,0.75,0.15,0.9);t:ClearAllPoints()
+            t:SetPoint("CENTER",WorldMapButton,"TOPLEFT",px*WorldMapButton:GetWidth(),-py*WorldMapButton:GetHeight())
+            t:SetSize(3,3);t:Show()
+        end
+    end
+end
+local function PaintPosition()
+    if not gm or not H.canDesign or not draft or draft.kind~="polygon" or not H.paintPanel or not H.paintPanel:IsShown() or
+        not WorldMapFrame:IsShown() or Overview() then return end
+    local map,zone,top,bottom,left,right=View()
+    if map~=N(draft.map) or zone~=N(draft.zone) then return end
+    local x,y=AtCursor()
+    if x and x>=math.min(top,bottom) and x<=math.max(top,bottom) and
+        y>=math.min(left,right) and y<=math.max(left,right) then return x,y end
+end
+function H.EndPaint()
+    local stroke=H.stroke
+    if not stroke then return end
+    H.stroke=nil
+    if stroke.mode=="Trace" then
+        if #stroke.points<3 then Notify("Trace at least three distinct boundary points.");H.Draw();return end
+        if #H.queue>0 then Notify("Wait for pending requests before tracing again.");H.Draw();return end
+        Send("tracebegin")
+        local command="tracepoints"
+        for _,p in ipairs(stroke.points) do
+            local point=string.format(" %.3f %.3f",p.x,p.y)
+            if #command+#point>220 then Send(command);command="tracepoints" end
+            command=command..point
+        end
+        Send(command);Send("traceend")
+        Notify("Boundary traced. Review the preview, then Save Draft.")
+    end
+    Send("paintend");H.paintPending=true
+end
+function H.SamplePaint()
+    local x,y=PaintPosition();PaintCursor(x,y)
+    local stroke=H.stroke
+    if not stroke then return end
+    if not x or not IsControlKeyDown() then H.EndPaint();return end
+    local last=stroke.points[#stroke.points]
+    local distance=last and math.sqrt((x-last.x)^2+(y-last.y)^2) or 999999
+    local spacing=stroke.mode=="Brush" and stroke.radius/3 or 5
+    if distance<spacing then return end
+    if stroke.mode=="Brush" then
+        if #H.queue>=8 then return end
+        if Send(string.format("brush %.3f %.3f %.3f %.3f %.2f %s",last and last.x or x,
+            last and last.y or y,x,y,stroke.radius,stroke.kind)) then stroke.points={{x=x,y=y}} end
+    else
+        if #stroke.points>=60 then H.EndPaint();Notify("Trace reached 60 points. Review or use a shorter outline.");return end
+        stroke.points[#stroke.points+1]={x=x,y=y}
+        H.Highlight({kind="polygon",map=draft.map,points=stroke.points,highlight=true})
+    end
+end
+function H.UpdateDesignAccess()
+    if not panel then return end
+    for _,key in ipairs({"Name","Radius yards"}) do
+        if fields[key] then fields[key]:EnableMouse(H.canDesign==true);fields[key]:EnableKeyboard(H.canDesign==true) end
+    end
+    for _,button in ipairs(H.designButtons or {}) do
+        if H.canDesign then button:Enable() else button:Disable() end
+    end
+    if not H.canDesign then
+        H.stroke=nil;H.paintMode="Points"
+        if H.paintPanel then H.paintPanel:Hide() end
+    end
+end
 local function Receive(text)
+    if text=="PAINTREADY" then H.paintPending=nil;return end
+    local access=text:match("^ACCESS|(%d+)$")
+    if access then H.canDesign=N(access)>=3;H.UpdateDesignAccess();return end
     if text:sub(1,13)=="DRAFTCLEARED|" then
         if selected and B(selected.draft) then selected=nil end
         draft=nil;H.merge={};H.newKind=nil;H.newCenter=nil;H.vertex=nil
@@ -662,7 +800,7 @@ local function Receive(text)
     end
     if text:sub(1,6)=="BRAND|" then return end
     if text=="OFF" then
-        enabled=false;gm=false;H.rows={};H.queue={};H.refreshPending=false;H.refreshAgain=false
+        enabled=false;gm=false;H.canDesign=false;H.UpdateDesignAccess();H.rows={};H.queue={};H.refreshPending=false;H.refreshAgain=false
         selected=nil;draft=nil;hovered=nil;snapshot=nil;incoming=nil;chunks=nil
         if panel then panel:Hide() end
         if browser then browser:Hide() end
@@ -723,6 +861,7 @@ local function Receive(text)
         if generalFields then generalFields.apply:SetChecked(false) end
         PopulateGeneral()
     end
+    if text:match("^ERROR|") then H.stroke=nil;H.paintPending=nil end
     if text:match("^ERROR|") or text:match("^OK|") then Notify(text:sub(text:find("|",1,true)+1)) end
 end
 frame:RegisterEvent("PLAYER_LOGIN");frame:RegisterEvent("CHAT_MSG_ADDON");frame:RegisterEvent("WORLD_MAP_UPDATE")
@@ -749,9 +888,27 @@ frame:SetScript("OnEvent",function(_,event,prefix,text,channel,sender)
                 H.filterInstalled=true
             end
         end
+        WorldMapFrame:HookScript("OnHide",function()
+            H.stroke=nil;PaintCursor();if H.paintPanel then H.paintPanel:Hide() end;H.paintMode="Points"
+        end)
+        local priorMouseDown=WorldMapButton:GetScript("OnMouseDown")
+        WorldMapButton:SetScript("OnMouseDown",function(self,button,...)
+            if gm and IsControlKeyDown() and button=="LeftButton" and
+                (H.paintMode=="Brush" or H.paintMode=="Trace") then
+                local x=PaintPosition()
+                if not x then Notify("Create or edit a polygon on its zone map first.");H.paintConsumed=true;return end
+                if #H.queue>0 or H.paintPending then Notify("Wait for pending hotspot requests.");H.paintConsumed=true;return end
+                H.paintConsumed=true
+                H.stroke={mode=H.paintMode,points={},radius=H.brushRadius or 75,kind=H.brushKind or "round"}
+                if H.paintMode=="Brush" then Send("paintbegin") end
+                H.SamplePaint();return
+            end
+            if priorMouseDown then priorMouseDown(self,button,...) end
+        end)
         local priorMouseUp=WorldMapButton:GetScript("OnMouseUp")
         WorldMapButton:SetScript("OnMouseUp",function(self,button,...)
-            if gm and not draft and IsControlKeyDown() and button=="LeftButton" then
+            if H.paintConsumed then H.SamplePaint();H.EndPaint();H.paintConsumed=nil;return end
+            if gm and H.canDesign and not draft and IsControlKeyDown() and button=="LeftButton" then
                 local map,zone=View();local x,y=AtCursor()
                 if not x or not zone or zone==0 or Overview() then Notify("Open a zone map first.");return end
                 if selected then H.NewDraft() else H.ShowPanel() end
@@ -759,7 +916,7 @@ frame:SetScript("OnEvent",function(_,event,prefix,text,channel,sender)
                 H.StartShape(H.newKind or "circle")
                 return
             end
-            if gm and draft and draft.kind=="polygon" and IsAltKeyDown() and button=="LeftButton" then
+            if gm and H.canDesign and draft and draft.kind=="polygon" and IsAltKeyDown() and button=="LeftButton" then
                 local map=View();local x,y=AtCursor();local best
                 if map~=N(draft.map) or not x then return end
                 for i,p in ipairs(type(draft.points)=="table" and draft.points or {}) do
@@ -769,10 +926,10 @@ frame:SetScript("OnEvent",function(_,event,prefix,text,channel,sender)
                 if best then Notify("Vertex "..H.vertex.." selected. CTRL-click its new position.") end
                 return
             end
-            if gm and draft and IsControlKeyDown() and button=="RightButton" and draft.kind=="polygon" then
+            if gm and H.canDesign and draft and IsControlKeyDown() and button=="RightButton" and draft.kind=="polygon" then
                 H.vertex=nil;Send("undo");return
             end
-            if gm and draft and IsControlKeyDown() and button=="LeftButton" then
+            if gm and H.canDesign and draft and IsControlKeyDown() and button=="LeftButton" then
                 local map=View()
                 if map~=N(draft.map) then
                     Notify("Open the map where this draft belongs.");return
@@ -786,10 +943,15 @@ frame:SetScript("OnEvent",function(_,event,prefix,text,channel,sender)
             end
             if priorMouseUp then priorMouseUp(self,button,...) end
         end)
-    elseif enabled then H.Refresh() end
+    elseif enabled then H.stroke=nil;H.Refresh() end
 end)
-local elapsed=0
+local elapsed,paintElapsed=0,0
 frame:SetScript("OnUpdate",function(_,diff)
+    paintElapsed=paintElapsed+diff
+    if paintElapsed>=0.06 then
+        paintElapsed=0;H.SamplePaint()
+        if H.stroke and IsMouseButtonDown and not IsMouseButtonDown("LeftButton") then H.EndPaint() end
+    end
     elapsed=elapsed+diff
     if elapsed<0.3 then return end
     elapsed=0
