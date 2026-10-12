@@ -1,0 +1,26 @@
+--- a/src/server/coa/Area52BlockProficiency.h
++++ b/src/server/coa/Area52BlockProficiency.h
+@@ -9,13 +9,18 @@
+ {
+ inline bool Synchronize(Player* player)
+ {
+-    constexpr uint32 Block = 107;
+-    if (!AscensionFreePick::Applies(player) || player->HasSpell(Block) || !sSpellMgr->GetSpellInfo(Block))
++    if (!AscensionFreePick::Applies(player))
+         return false;
+-    std::set<std::uint32_t> const spells = { Block };
++    std::set<std::uint32_t> const spells = { 107, 674 };
+     AscensionFreePick::SpellLearningScope learning(player, spells);
+-    player->learnSpell(Block, false);
+-    return player->HasSpell(Block);
++    bool changed = false;
++    for (uint32 spell : spells)
++        if (!player->HasSpell(spell) && sSpellMgr->GetSpellInfo(spell))
++        {
++            player->learnSpell(spell, false);
++            changed = player->HasSpell(spell) || changed;
++        }
++    return changed;
+ }
+ }
+ 

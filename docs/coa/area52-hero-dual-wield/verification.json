@@ -1,0 +1,76 @@
+{
+  "schema": 1,
+  "status": "passed",
+  "stages": {
+    "source": {
+      "status": "skipped",
+      "seconds": 0.0,
+      "summary": {},
+      "log": null
+    },
+    "build": {
+      "status": "passed",
+      "seconds": 24.557,
+      "summary": {
+        "steps": [
+          "build"
+        ],
+        "build_directory": "/workspace/build-freepick",
+        "configuration": null,
+        "path_prefix": "/usr/bin"
+      },
+      "log": "/results/verification/build.log"
+    },
+    "unit": {
+      "status": "skipped",
+      "seconds": 0.0,
+      "summary": {},
+      "log": null
+    },
+    "harness": {
+      "status": "passed",
+      "seconds": 2.143,
+      "summary": {
+        "counts": {
+          "passed": 1,
+          "failed": 0,
+          "unavailable": 0
+        },
+        "scripts": {
+          "apps/coa-tests/freepick_advancement/run.py": {
+            "name": "freepick_advancement",
+            "status": "passed",
+            "seconds": 2.135,
+            "returncode": 0
+          }
+        }
+      },
+      "log": "/results/verification/harness.log"
+    },
+    "gameplay": {
+      "status": "skipped",
+      "seconds": 0.0,
+      "summary": {},
+      "log": null
+    }
+  },
+  "settings": {
+    "build_directory": "/workspace/build-freepick",
+    "worldserver": "/workspace/build-freepick/src/server/apps/worldserver",
+    "worldserver_config": "/workspace/env/freepick/etc/worldserver.conf",
+    "mysql": "/usr/bin/mysql",
+    "mysqldump": "/usr/bin/mysqldump",
+    "database_client_config": null,
+    "server_modules_dir": "/workspace/env/freepick/etc/modules",
+    "modules_config_dir": null,
+    "dbc_directory": "/data/dbc",
+    "workspace_tools": null,
+    "datamine_directory": null,
+    "mysql_server_bin": null,
+    "configuration": null,
+    "conf_dir": "/workspace/env/freepick/etc",
+    "mysql_client_bin": "/usr/bin"
+  },
+  "output": "/results/verification",
+  "seconds": 26.72
+}
