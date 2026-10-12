@@ -4,4 +4,4 @@ SELECT 990001, `type`, `displayId`, 'Boss Simulator - Goblin Teleporter Base (3x
 FROM `gameobject_template`
 WHERE `entry` = 188454
 AND NOT EXISTS (SELECT 1 FROM `gameobject_template` WHERE `entry` = 990001)
-ON DUPLICATE KEY UPDATE `entry` = `gameobject_template`.`entry`;
+ON DUPLICATE KEY UPDATE `entry` = 990001;
