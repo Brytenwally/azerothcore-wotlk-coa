@@ -1,0 +1,54 @@
+{
+  "status": "staged_not_active",
+  "map": 1,
+  "zone": 1637,
+  "area": 10228,
+  "phase": 1,
+  "back_center_guid": 9890204,
+  "positions": [
+    {
+      "guid": 9890200,
+      "x": 1538.435125535105,
+      "y": -4441.594070671641,
+      "z": 13.88309,
+      "orientation": 1.0648832
+    },
+    {
+      "guid": 9890201,
+      "x": 1538.3406450996422,
+      "y": -4443.828141719596,
+      "z": 13.88309,
+      "orientation": 1.0648832
+    },
+    {
+      "guid": 9890202,
+      "x": 1536.5911804354628,
+      "y": -4442.858928952044,
+      "z": 13.88309,
+      "orientation": 1.0648832
+    },
+    {
+      "guid": 9890203,
+      "x": 1538.2461646641796,
+      "y": -4446.062212767552,
+      "z": 13.88309,
+      "orientation": 1.0648832
+    },
+    {
+      "guid": 9890204,
+      "x": 1536.4967,
+      "y": -4445.093,
+      "z": 13.88309,
+      "orientation": 1.0648832
+    },
+    {
+      "guid": 9890205,
+      "x": 1534.7472353358203,
+      "y": -4444.123787232447,
+      "z": 13.88309,
+      "orientation": 1.0648832
+    }
+  ],
+  "source": "Owner GPS screenshot codex-clipboard-1caa53af-8323-40fb-80fa-1484e209fe54.png",
+  "limitation": "All-phase spawn clearance checked; terrain and static scenery need in-game acceptance."
+}
