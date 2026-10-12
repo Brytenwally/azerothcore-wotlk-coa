@@ -12,7 +12,7 @@ The census examined 1,836 transform effects in the union of installed client and
 
 All 59 client creature entries explicitly named as incarnations have valid display/model links. All 61 client shapeshift-form records have valid nonzero display/model links. These are structural checks, not proof of every incarnation's visual rendering or unlock behavior.
 
-Eleven effects remain unresolved and unchanged:
+The initial scan left eleven candidates unchanged. Follow-up review cleared 986317 as a non-transform visual-kit effect; ten actual transform cases remain. The historical census includes that one inert aura-field false positive. All 292 staged repairs use real apply-aura effects.
 
 | Spell | Reason |
 | --- | --- |
@@ -23,7 +23,7 @@ Eleven effects remain unresolved and unchanged:
 | 77776 Lavamans Stalker | No recovered mapping for creature 41624. |
 | 525072 Twisted Seal | Creature 190218 refers to display 840000 without a usable complete display/model chain. |
 | 955175 Plank morph | Referenced Warden bridge model file not found in installed archives. |
-| 986317 Death Visual Unused Aurastate | No recovered mapping for creature 10289. |
+| 986317 Death Visual Unused Aurastate | Cleared: effect 168 invokes EffectAscensionPlaySpellVisualKit; stale aura 56 does not run HandleAuraTransform. No creature mapping needed. |
 | 991034 Madness Transform #1 | Referenced Illidan Past model file not found in installed archives. |
 | 993948 Falling! | Referenced Ogre boulder model file not found in installed archives. |
 | 5011107 Transform | No recovered mapping for creature 49930. |
@@ -39,3 +39,15 @@ Eleven effects remain unresolved and unchanged:
 - In-game display, aura expiry and visual restoration remain tester acceptance checks. No live activation, source PR submission or launcher promotion occurred in this milestone.
 
 The pending SQL is the complete server repair and is staged for the next authorized Area 52 activation. It must be included explicitly alongside other pending packages; older immutable server packages do not contain it.
+
+## Follow-up community-data review
+
+The public archive homepage was reachable through web retrieval, but interactive query URLs were unavailable and direct HTTP retrieval returned 403. The published backing cache was therefore downloaded from the checksummed dataset manifest. Union snapshot cae550f1200ee16325bfda00fc322cb43731d9af2630509ad1d1476d9bb87643, creature-cache SHA-256 b8724297b681ad1032a61b92dc6da489a1d64ef6bbf9520a5b5d6a7e169c88b1.
+
+The union contains creature 6029 as Lava Spout Totem, display 1421, and creature 103200 as Past Illidan Transform, display 139183; both captures are attributed to Conquest of Azeroth. No other requested creature IDs were present. These confirm the identity conflict and Illidan mapping respectively, but do not supply the missing Illidan asset.
+
+The locally downloaded complete Exiles creature CSV had none of these requested creature IDs. Its spell CSV contains all eleven spells and corroborates their effect references, including the visual-kit effect for 986317. The older contributed DBC snapshot documents no differing Creature, CreatureDisplayInfo or CreatureModelData tables, so it provides no replacement mapping for these cases.
+
+Twisted Seal is now a concrete repair candidate: Creature.dbc calls creature 190218 `spells\\11fx_voidbolt01.m2`; that exact model is present in patch-N.MPQ, model-data entry 112314. Display 138338 uniquely references model 112314 in the installed CreatureDisplayInfo table. Display 840000, currently named by the creature record, is absent. A targeted mapping to 138338 is supported by the matching model path, but has not been implemented or visually validated in this review.
+
+No additional gameplay changes were made during this follow-up. The three missing model files remain missing after searching archive filenames as well as their exact DBC paths. Missing spell/creature links are not evidence that an entry is unused; usage and intended replacements remain unresolved for the remaining legacy/NPC-looking spells.
