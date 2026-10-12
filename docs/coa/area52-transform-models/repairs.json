@@ -1630,5 +1630,13 @@
       26250
     ],
     "row": 63813
+  },
+  "190218": {
+    "name": "Twisted Seal",
+    "displays": [
+      138338
+    ],
+    "row": 55731,
+    "resolution": "Creature model path spells/11fx_voidbolt01.m2 uniquely matches model 112314 and display 138338; replaces absent display 840000."
   }
 }

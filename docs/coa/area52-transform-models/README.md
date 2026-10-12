@@ -2,17 +2,17 @@
 
 Flame Ascendance (760000) and Air Ascendance (954831) referenced absent creature templates 173524 and 173525. Area 52 runtime logs confirmed the transform handler selected its pink-pig fallback, display 16358. The installed client Creature.dbc explicitly maps these entries to displays 42853 and 151196. Water Ascendant 173523 maps to 42854 and had the same structural gap.
 
-The pending migration supplies 218 missing creature/model mappings covering 292 transformation effects, including alternate spell IDs. It uses explicit client creature entries, preserves every distinct recorded display variant, and checks the complete display-to-model chain and model-file availability. It does not derive display IDs from creature IDs. All proposed display-to-model IDs match the server DBC. No client patch is required for these records in the reviewed client.
+The pending migration supplies 219 missing creature/model mappings covering 293 transformation effects, including alternate spell IDs. It uses explicit client creature entries, preserves every distinct recorded display variant, and checks the complete display-to-model chain and model-file availability. It does not derive display IDs from creature IDs. All proposed display-to-model IDs match the server DBC. No client patch is required for these records in the reviewed client.
 
 The migration only fills entries with no model rows and no world spawns. Existing templates and existing model mappings remain unchanged; newly created templates are visual references with no new spawns, scripts, loot or services. Reapplication does not duplicate or overwrite mappings. It intentionally leaves partly populated existing mappings alone.
 
 ## Audit scope and exceptions
 
-The census examined 1,836 transform effects in the union of installed client and server Spell.dbc, with SQL spell rows taking precedence and recovered native effective exports used where available. 1,466 already have valid model links; 292 receive repairs. The 67 zero-target effects use specialized/scripted handling and do not enter the missing-creature pig fallback. Their individual gameplay behavior is not certified by this audit.
+The census examined 1,836 transform effects in the union of installed client and server Spell.dbc, with SQL spell rows taking precedence and recovered native effective exports used where available. 1,466 already have valid model links; 293 receive repairs. The 67 zero-target effects use specialized/scripted handling and do not enter the missing-creature pig fallback. Their individual gameplay behavior is not certified by this audit.
 
 All 59 client creature entries explicitly named as incarnations have valid display/model links. All 61 client shapeshift-form records have valid nonzero display/model links. These are structural checks, not proof of every incarnation's visual rendering or unlock behavior.
 
-The initial scan left eleven candidates unchanged. Follow-up review cleared 986317 as a non-transform visual-kit effect; ten actual transform cases remain. The historical census includes that one inert aura-field false positive. All 292 staged repairs use real apply-aura effects.
+The initial scan left eleven candidates unchanged. Follow-up review cleared 986317 as a non-transform visual-kit effect; nine actual transform cases remain after the Twisted Seal follow-up. The historical census includes that one inert aura-field false positive. All 293 staged repairs use real apply-aura effects.
 
 | Spell | Reason |
 | --- | --- |
@@ -21,7 +21,7 @@ The initial scan left eleven candidates unchanged. Follow-up review cleared 9863
 | 68662 Goblinated | No recovered mapping for creature 37925. |
 | 73952 Motivate | Target is the invalid/sentinel value -1. |
 | 77776 Lavamans Stalker | No recovered mapping for creature 41624. |
-| 525072 Twisted Seal | Creature 190218 refers to display 840000 without a usable complete display/model chain. |
+| 525072 Twisted Seal | Resolved: staged creature 190218 to display 138338, model 112314, matching its exact named void-bolt asset. |
 | 955175 Plank morph | Referenced Warden bridge model file not found in installed archives. |
 | 986317 Death Visual Unused Aurastate | Cleared: effect 168 invokes EffectAscensionPlaySpellVisualKit; stale aura 56 does not run HandleAuraTransform. No creature mapping needed. |
 | 991034 Madness Transform #1 | Referenced Illidan Past model file not found in installed archives. |
@@ -48,6 +48,8 @@ The union contains creature 6029 as Lava Spout Totem, display 1421, and creature
 
 The locally downloaded complete Exiles creature CSV had none of these requested creature IDs. Its spell CSV contains all eleven spells and corroborates their effect references, including the visual-kit effect for 986317. The older contributed DBC snapshot documents no differing Creature, CreatureDisplayInfo or CreatureModelData tables, so it provides no replacement mapping for these cases.
 
-Twisted Seal is now a concrete repair candidate: Creature.dbc calls creature 190218 `spells\\11fx_voidbolt01.m2`; that exact model is present in patch-N.MPQ, model-data entry 112314. Display 138338 uniquely references model 112314 in the installed CreatureDisplayInfo table. Display 840000, currently named by the creature record, is absent. A targeted mapping to 138338 is supported by the matching model path, but has not been implemented or visually validated in this review.
+Twisted Seal is now a concrete repair candidate: Creature.dbc calls creature 190218 `spells\\11fx_voidbolt01.m2`; that exact model is present in patch-N.MPQ, model-data entry 112314. Display 138338 uniquely references model 112314 in the installed CreatureDisplayInfo table. Display 840000, currently named by the creature record, is absent. The pending migration now maps creature 190218 to display 138338. Both server and client agree on model 112314. Visual acceptance remains pending.
 
-No additional gameplay changes were made during this follow-up. The three missing model files remain missing after searching archive filenames as well as their exact DBC paths. Missing spell/creature links are not evidence that an entry is unused; usage and intended replacements remain unresolved for the remaining legacy/NPC-looking spells.
+Twisted Seal was added after authorization to implement the established mapping. The three missing model files remain missing after searching archive filenames as well as their exact DBC paths. Missing spell/creature links are not evidence that an entry is unused; usage and intended replacements remain unresolved for the remaining legacy/NPC-looking spells.
+
+The follow-up checked direct DBC trigger references, effective SmartAI casts and linked spells, quest reward spells, and spell-bearing fields in Exiles quest/item/creature tables. No incoming links identifying replacements were recovered. Outgoing helper 991996 names Past Illidan Visual, corroborating that identity; Falling! triggers 993949 Meteor movement, corroborating its boulder/meteor theme without establishing an alternative asset. Absence of these links does not prove the spells are unused.

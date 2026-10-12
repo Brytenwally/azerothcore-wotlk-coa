@@ -12,6 +12,7 @@ repairs = json.loads((root / 'docs/coa/area52-transform-models/repairs.json').re
 assert repairs['173524']['displays'] == [42853]
 assert repairs['173525']['displays'] == [151196]
 assert repairs['173523']['displays'] == [42854]
+assert repairs['190218']['displays'] == [138338]
 entries = sorted(map(int, repairs))
 protected, spawned = [entry for entry in entries if entry not in (173523, 173524, 173525)][:2]
 schema = '''

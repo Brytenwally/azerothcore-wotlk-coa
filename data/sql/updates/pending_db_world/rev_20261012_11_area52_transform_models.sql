@@ -321,7 +321,8 @@ INSERT INTO area52_transform_models (entry, name, idx, display) VALUES
 (1083350, 'Blighted Zombie', 1, 10971),
 (3025022, 'Valhalas Vargul', 0, 266141),
 (3313900, 'Mortar Turret', 0, 288831),
-(5528037, 'Spindleweb Spider', 0, 955);
+(5528037, 'Spindleweb Spider', 0, 955),
+(190218, 'Twisted Seal', 0, 138338);
 CREATE TEMPORARY TABLE area52_transform_missing AS SELECT DISTINCT t.entry FROM area52_transform_models t WHERE NOT EXISTS (SELECT 1 FROM creature_template_model m WHERE m.CreatureID=t.entry) AND NOT EXISTS (SELECT 1 FROM creature c WHERE c.id=t.entry);
 INSERT INTO creature_template (entry, name, faction, unit_class, type) SELECT t.entry, t.name, 35, 1, 10 FROM area52_transform_models t JOIN area52_transform_missing x ON x.entry=t.entry WHERE t.idx=0 AND NOT EXISTS (SELECT 1 FROM creature_template c WHERE c.entry=t.entry);
 INSERT INTO creature_template_model (CreatureID, Idx, CreatureDisplayID, DisplayScale, Probability) SELECT t.entry, t.idx, t.display, 1, 1 FROM area52_transform_models t JOIN area52_transform_missing x ON x.entry=t.entry;

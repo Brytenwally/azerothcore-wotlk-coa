@@ -4,7 +4,7 @@
   "harness": "area52_transform_models",
   "sqlite": "passed",
   "mysql": "passed against isolated fixture tables",
-  "checked_mappings": 218,
+  "checked_mappings": 219,
   "idempotency": "passed",
   "existing_models_preserved": "passed",
   "spawn_exclusion": "passed",

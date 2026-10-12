@@ -4,12 +4,13 @@
     "mapped": 1466,
     "name-conflict": 1,
     "scripted-zero-target": 67,
-    "staged-repair": 292,
-    "unresolved": 7,
-    "model-file-unresolved": 3
+    "staged-repair": 293,
+    "unresolved": 5,
+    "model-file-unresolved": 3,
+    "not-a-transform": 1
   },
-  "creature_repairs": 218,
-  "model_rows": 321,
+  "creature_repairs": 219,
+  "model_rows": 322,
   "incarnations": 59,
   "incarnation_statuses": {
     "display-linked": 59
