@@ -6,6 +6,7 @@
 #include "Player.h"
 #include "Timer.h"
 #include "TrainingDummyDefines.h"
+#include "TrainingDummyImmunities.h"
 #include <unordered_map>
 #include <vector>
 
@@ -42,6 +43,7 @@ struct npc_advanced_training_dummy : ScriptedAI
     {
         me->SetCombatMovement(false);
         me->SetReactState(REACT_PASSIVE);
+        ApplyTrainingDummyMovementImmunity(me);
     }
 
     bool IsDynamic() const

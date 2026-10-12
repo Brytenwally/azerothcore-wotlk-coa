@@ -19,17 +19,22 @@ def method(text, name):
 
 def main():
     source = (ROOT / 'src/server/scripts/World/npc_advanced_training_dummy.cpp').read_text()
+    standard = (ROOT / 'src/server/scripts/World/npcs_special.cpp').read_text()
+    assert 'ApplyTrainingDummyMovementImmunity(me);' in method(source, 'explicit npc_advanced_training_dummy(')
+    assert 'ApplyTrainingDummyMovementImmunity(me);' in method(standard, 'npc_training_dummy(Creature*')
+    movement = (ROOT / 'src/server/scripts/World/TrainingDummyImmunities.h').read_text()
     methods = '\n'.join(method(source, name) for name in (
         'bool UpdateBossSession()', 'void SetBossCounterImmunity(', 'void HandleBossEvent(',
-        'void EnsureBossVisual()'))
+        'void EnsureBossVisual()', 'void SetCrowdControlImmunity('))
     code = (Path(__file__).parent / 'scenario.cpp.in').read_text().replace('ACTUAL_METHODS', methods)
+    code = code.replace('MOVEMENT_HELPER', method(movement, 'inline void ApplyTrainingDummyMovementImmunity('))
     with tempfile.TemporaryDirectory() as directory:
         path = Path(directory)
         (path / 'test.cpp').write_text(code)
         subprocess.run([os.environ.get('CXX', 'c++'), '-std=c++20', str(path / 'test.cpp'),
                         '-o', str(path / 'test')], check=True)
         subprocess.run([str(path / 'test')], check=True)
-    print('PASS: boss rotation, counter windows, lockout, range, reset and melee modifier restoration')
+    print('PASS: permanent movement immunities, configurable CC, boss counter windows, rotation, range and reset')
 
 
 if __name__ == '__main__':

@@ -3,6 +3,7 @@
 #include <map>
 #include <set>
 #include <string>
+#include <tuple>
 #include <vector>
 using namespace std::chrono_literals;
 using uint32 = unsigned;
@@ -12,7 +13,13 @@ enum { EVENT_BOSS_SPELL=2, EVENT_BOSS_WARNING, EVENT_BOSS_HEAVY_HIT,
     SPELL_AURA_MOD_STUN, SPELL_AURA_MOD_DISARM, LANG_UNIVERSAL,
     SPELL_SCHOOL_MASK_SHADOW, SPELL_PRACTICE_SHADOW_BOLT, SPELLVALUE_BASE_POINT0,
     BASE_ATTACK, MAXDAMAGE, TRIGGERED_IGNORE_POWER_AND_REAGENT_COST,
-    UNIT_MOD_DAMAGE_MAINHAND, TOTAL_PCT, SPELL_BOSS_HOLOGRAM };
+    UNIT_MOD_DAMAGE_MAINHAND, TOTAL_PCT, SPELL_BOSS_HOLOGRAM,
+    SPELL_EFFECT_KNOCK_BACK, SPELL_EFFECT_KNOCK_BACK_DEST, SPELL_EFFECT_PULL,
+    SPELL_EFFECT_PULL_TOWARDS, SPELL_EFFECT_PULL_TOWARDS_DEST,
+    MECHANIC_FEAR, MECHANIC_HORROR, MECHANIC_DISORIENTED, MECHANIC_CHARM,
+    MECHANIC_ROOT, MECHANIC_SLEEP, MECHANIC_POLYMORPH, MECHANIC_SAPPED,
+    SPELL_AURA_MOD_FEAR, SPELL_AURA_MOD_CONFUSE, SPELL_AURA_MOD_CHARM,
+    SPELL_AURA_MOD_POSSESS, SPELL_AURA_MOD_POSSESS_PET, IMMUNITY_EFFECT, IMMUNITY_STATE };
 constexpr unsigned UNIT_STATE_CASTING=1, UNIT_STATE_STUNNED=2;
 struct Guid { bool IsEmpty() const { return false; } };
 struct Player { bool alive=true; bool IsAlive() const { return alive; } };
@@ -21,6 +28,7 @@ struct Creature {
     unsigned state=0, casts=0, hits=0;
     float multiplier=1.25f, hitMultiplier=0;
     std::set<unsigned> auras, immunities;
+    std::set<std::tuple<unsigned,unsigned,unsigned>> immunitySources;
     std::vector<std::string> warnings;
     bool IsWithinDistInMap(Player*, float) { return near; }
     bool IsWithinMeleeRange(Player*) { return melee; }
@@ -30,8 +38,10 @@ struct Creature {
     void AddAura(unsigned id, Creature*) { auras.insert(id); ++auraAdds; }
     bool HasUnitState(unsigned flags) { return state & flags; }
     bool IsSpellProhibited(unsigned) { return locked; }
-    void ApplySpellImmune(unsigned, unsigned, unsigned id, bool enabled) {
-        if(enabled) immunities.insert(id); else immunities.erase(id);
+    void ApplySpellImmune(unsigned source, unsigned type, unsigned id, bool enabled) {
+        if(enabled) immunitySources.emplace(source,type,id); else immunitySources.erase({source,type,id});
+        immunities.clear();
+        for(auto const& key : immunitySources) immunities.insert(std::get<2>(key));
     }
     void Whisper(char const* text, unsigned, Player*, bool = false) { warnings.emplace_back(text); }
     void InterruptNonMeleeSpells(bool) { state=0; }
@@ -46,6 +56,7 @@ struct Creature {
     void AttackerStateUpdate(Player*, unsigned) { ++hits; hitMultiplier=multiplier; }
     void resetAttackTimer(unsigned) {}
 };
+MOVEMENT_HELPER
 namespace ObjectAccessor {
     Player player;
     bool present=true;
@@ -62,7 +73,7 @@ struct AI {
     Creature* me;
     Guid _owner;
     std::vector<int> _activity{1};
-    bool _heavyPending=false, reset=false;
+    bool _heavyPending=false, reset=false, _ccImmune=false;
     Events events;
     bool boss=true;
     bool IsBoss() { return boss; }
@@ -72,6 +83,22 @@ ACTUAL_METHODS
 int main() {
     Creature creature;
     AI ai{&creature};
+    ApplyTrainingDummyMovementImmunity(&creature);
+    auto assertStationary = [&]() {
+        for (unsigned id : {SPELL_EFFECT_KNOCK_BACK, SPELL_EFFECT_KNOCK_BACK_DEST, SPELL_EFFECT_PULL,
+            SPELL_EFFECT_PULL_TOWARDS, SPELL_EFFECT_PULL_TOWARDS_DEST,
+            MECHANIC_FEAR, MECHANIC_HORROR, MECHANIC_DISORIENTED, MECHANIC_CHARM,
+            SPELL_AURA_MOD_FEAR, SPELL_AURA_MOD_CONFUSE, SPELL_AURA_MOD_CHARM,
+            SPELL_AURA_MOD_POSSESS, SPELL_AURA_MOD_POSSESS_PET})
+            assert(creature.immunities.contains(id));
+    };
+    assertStationary();
+    assert(!creature.immunities.contains(MECHANIC_STUN));
+    assert(!creature.immunities.contains(MECHANIC_DISARM));
+    ai.SetCrowdControlImmunity(true);
+    ai.SetCrowdControlImmunity(false);
+    assertStationary();
+    assert(!creature.immunities.contains(MECHANIC_STUN));
     ai.EnsureBossVisual();
     ai.EnsureBossVisual();
     assert(creature.HasAura(SPELL_BOSS_HOLOGRAM) && creature.auraAdds==1);
@@ -87,6 +114,7 @@ int main() {
     assert(ai._heavyPending && ai.events.scheduled[EVENT_BOSS_HEAVY_HIT]==3000);
     assert(!creature.immunities.contains(MECHANIC_STUN));
     assert(!creature.immunities.contains(MECHANIC_DISARM));
+    assertStationary();
     ai.HandleBossEvent(EVENT_BOSS_SPELL);
     assert(creature.casts==0);
     ai.HandleBossEvent(EVENT_BOSS_HEAVY_HIT);
@@ -119,4 +147,5 @@ int main() {
     creature.near=false;
     ai.reset=false;
     assert(!ai.UpdateBossSession() && ai.reset);
+    assertStationary();
 }

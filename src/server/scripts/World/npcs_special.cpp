@@ -33,6 +33,7 @@
 #include "SmartAI.h"
 #include "SpellAuras.h"
 #include "TaskScheduler.h"
+#include "TrainingDummyImmunities.h"
 #include "WaypointMgr.h"
 #include "World.h"
 #include "WorldState.h"
@@ -308,7 +309,10 @@ public:
 
 struct npc_training_dummy : NullCreatureAI
 {
-    npc_training_dummy(Creature* creature) : NullCreatureAI(creature) { }
+    npc_training_dummy(Creature* creature) : NullCreatureAI(creature)
+    {
+        ApplyTrainingDummyMovementImmunity(me);
+    }
 
     void JustEnteredCombat(Unit* who) override
     {

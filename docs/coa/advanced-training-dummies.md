@@ -113,3 +113,21 @@ copies. The focused harness checks restoration and exclusion of other dummy role
 The expected blue translucent appearance still needs visual acceptance on O'mrogg; it is based on
 the client definition, not a rendered preview. The existing client already has these definitions.
 No mechanical projector-pad placement is included in this visual step.
+
+### Permanent movement protection
+
+Standard and advanced training-dummy constructors now apply effect immunities for knockback and
+pull variants, mechanic immunities for fear, horror, disorientation and charm, and aura immunities
+for fleeing, confusion, charm and possession. Disabling combat movement alone did not prevent these
+effects. The movement protection uses a separate immunity source from configurable crowd control,
+so `/clap` and the Boss Simulator's stun/disarm window cannot remove it. Damage-school immunity is
+not added; the damaging portion of abilities such as Thunderstorm remains eligible to hit.
+
+Reviewed upstream main: `b366fa8434d0a50a03c6d4cf0611eae37d99821e`. The Thunderstorm handler uses
+`SPELL_EFFECT_KNOCK_BACK`; the core stores immunity by effect/type and source. The new constructor
+regression fails against the previous source. Candidate **VERIFY ALL: PASSED** for the server build
+and `boss_dummy` harness; separate source and C++ style checks passed. Reports are under
+`outputs/Area52_Dummy_Movement/{candidate,source}/report.json` in the working environment. The harness
+checks retained movement immunity across configurable CC toggles and boss counter windows, alongside
+existing rotation and reset checks. Live spell casts were not run; runtime flakiness is unmeasured.
+No SQL or client update is required. This source repair is staged for the next server activation.
