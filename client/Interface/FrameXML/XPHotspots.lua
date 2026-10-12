@@ -27,7 +27,24 @@ local function View()
 end
 local function Overview()
     local area=GetCurrentMapAreaID()
-    return area==0 or area==14 or area==15 or area==467 or area==486
+    return area==0 or GetCurrentMapZone()==0
+end
+local function VisibleOnMap(r, map)
+    local continent=GetCurrentMapContinent()
+    if continent==-1 then return false end
+    if not Overview() then return N(r.map)==map end
+    local sourceMap,zone=N(r.map),N(r.zone)
+    local destination
+    if sourceMap==0 then destination=2
+    elseif sourceMap==1 then destination=1
+    elseif sourceMap==571 then destination=4
+    elseif sourceMap==530 then
+        if zone==3430 or zone==3433 or zone==3487 then destination=2
+        elseif zone==3524 or zone==3525 or zone==3557 then destination=1
+        else destination=3 end
+    end
+    if continent==0 then return destination==1 or destination==2 or destination==4 end
+    return destination==continent
 end
 local function Position(x, y, sourceMap)
     local map, zone, top, bottom, left, right = View()
@@ -217,7 +234,7 @@ function H.Draw()
     if draft then rows[#rows+1]=draft end
     local count=0
     for _,r in ipairs(rows) do
-        if (N(r.map)==map or Overview()) and (B(r.icon) or gm and H.catalog or B(r.draft)) then
+        if VisibleOnMap(r,map) and (B(r.icon) or gm and H.catalog or B(r.draft)) then
             local x,y=Position(N(r.x),N(r.y),N(r.map))
             if x and x>=0 and x<=1 and y>=0 and y<=1 then
                 count=count+1

@@ -60,6 +60,8 @@ function OpenFilters(level,menuList)
  menuEntries={};WorldMapButton.Filters.DropDown:initialize(level,menuList)
 end
 function GetCurrentMapAreaID() return 37 end
+function GetCurrentMapZone() return 1 end
+function GetCurrentMapContinent() return 2 end
 C_WorldMap={GetMapIDByAreaID=function() return 0 end,GetZoneIDByAreaID=function() return 44 end,
  GetWorldPosition=function(area,x,y) return 100-y*100,100-x*100 end}
 C_Serialize={FromJSON=function(self,value) return testRow end}
@@ -267,6 +269,7 @@ clock=1000.7;driver.scripts.OnUpdate(driver,0.3)
         self.lua.execute('''
 p=XPHotspots.pins[1];p.scripts.OnClick(p)
 GetCurrentMapAreaID=function() return 0 end
+GetCurrentMapContinent=function() return 0 end
 C_WorldMap.GetMapPosition=function(map,x,y,z)
  projected={map,x,y,z};return 0.2,0.3
 end
@@ -375,6 +378,8 @@ b.scripts.OnClick(b)
     def test_continent_projects_expansion_islands_and_rejects_absent_projection(self):
         self.lua.execute('''
 GetCurrentMapAreaID=function() return 14 end
+GetCurrentMapZone=function() return 0 end
+GetCurrentMapContinent=function() return 1 end
 C_WorldMap.GetMapIDByAreaID=function() return 1 end
 C_WorldMap.GetZoneIDByAreaID=function() return 0 end
 C_WorldMap.GetMapPosition=function(map,x,y,z)
@@ -386,6 +391,28 @@ end
         self.assertEqual(self.lua.eval('projected[1]'), 530)
         self.lua.execute('C_WorldMap.GetMapPosition=function() return 0,0 end;XPHotspots.Draw()')
         self.assertFalse(self.lua.eval('XPHotspots.pins[1].shown'))
+
+    def test_overview_filters_physical_map_530_by_zone_before_projection(self):
+        cases = [(0, 44, {0, 2}), (1, 17, {0, 1}), (571, 495, {0, 4}),
+                 (530, 3483, {3}), (530, 3518, {3}), (530, 3520, {3}),
+                 (530, 3430, {0, 2}), (530, 3433, {0, 2}), (530, 3487, {0, 2}),
+                 (530, 3524, {0, 1}), (530, 3525, {0, 1}), (530, 3557, {0, 1}),
+                 (389, 2437, set())]
+        self.lua.execute('''
+GetCurrentMapAreaID=function() return 999 end
+GetCurrentMapZone=function() return 0 end
+C_WorldMap.GetMapPosition=function() projections=projections+1;return 0.4,0.5 end
+''')
+        for continent in (-1, 0, 1, 2, 3, 4):
+            self.lua.globals().continent = continent
+            self.lua.execute('GetCurrentMapContinent=function() return continent end')
+            for map_id, zone, visible in cases:
+                with self.subTest(continent=continent, map=map_id, zone=zone):
+                    self.lua.execute('projections=0')
+                    self.snapshot(map=map_id, zone=zone)
+                    self.assertEqual(self.lua.eval('projections>0'), continent in visible)
+                    self.assertEqual(self.lua.eval('XPHotspots.pins[1]~=nil and XPHotspots.pins[1]:IsShown()'),
+                                     continent in visible)
 
     def test_ctrl_click_creates_circle_then_new_draft_can_change_to_polygon(self):
         self.snapshot()

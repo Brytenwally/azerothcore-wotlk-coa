@@ -306,3 +306,7 @@ Continent and world overview markers use the client map projection, including ex
 islands such as Bloodmyst on Kalimdor. Locations and General Settings share the same panel dimensions
 and continuous input borders. Delete confirmations appear above the map and restore their original
 frame layer when dismissed.
+
+Overview markers are filtered by geographic continent before projection. Azeroth excludes actual
+Outland locations; expansion-map blood elf and draenei starting zones remain on Eastern Kingdoms
+and Kalimdor respectively. Outland and Northrend overviews show only their own locations.
