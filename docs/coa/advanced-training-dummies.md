@@ -139,3 +139,6 @@ Entry `990001`, Boss Simulator - Goblin Teleporter Base (3x), is a separate deco
 clone of `188454` at three times its template scale. The original stays unchanged.
 After loading the template at server startup, stand at the intended center and use
 `.gobject add 990001`. No spawn is included; placement remains a GM choice.
+
+Boss Simulator model 18031 uses DisplayScale 0.75 (75% of its previous scale 1).
+The model choice and training mechanics are unchanged.
