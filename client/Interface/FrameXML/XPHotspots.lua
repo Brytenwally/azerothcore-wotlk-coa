@@ -7,7 +7,38 @@ local chunks, chunkNext, chunkCount
 local snapshot, incoming
 local function N(v) return tonumber(v) or 0 end
 local function B(v) return v == true or v == "true" or v == 1 or v == "1" end
-local function Notify(text) DEFAULT_CHAT_FRAME:AddMessage("|cffb080ffHotspots:|r " .. text) end
+function H.ShowFeedback()
+    if not gm or not WorldMapFrame:IsShown() then return end
+    if not H.feedback then
+        local f=CreateFrame("Frame",nil,WorldMapFrame);H.feedback=f
+        f:SetSize(390,150);f:SetPoint("BOTTOMLEFT",WorldMapFrame,"BOTTOMLEFT",20,35)
+        f:SetFrameStrata("DIALOG");f:SetFrameLevel(WorldMapFrame:GetFrameLevel()+25)
+        f:SetBackdrop({bgFile="Interface\\Buttons\\WHITE8X8",edgeFile="Interface\\Buttons\\WHITE8X8",edgeSize=1})
+        f:SetBackdropColor(0.025,0.07,0.11,0.95);f:SetBackdropBorderColor(0.8,0.6,0.2,1)
+        f:EnableMouse(true);f:SetMovable(true);f:RegisterForDrag("LeftButton")
+        f:SetScript("OnDragStart",function(self) self:StartMoving() end)
+        f:SetScript("OnDragStop",function(self) self:StopMovingOrSizing() end)
+        local title=f:CreateFontString(nil,"OVERLAY","GameFontNormal")
+        title:SetPoint("TOPLEFT",10,-8);title:SetText("XP Hotspot Messages")
+        local log=CreateFrame("ScrollingMessageFrame",nil,f);H.feedbackLog=log
+        log:SetPoint("TOPLEFT",10,-28);log:SetPoint("BOTTOMRIGHT",-10,10)
+        log:SetFontObject(GameFontHighlightSmall);log:SetJustifyH("LEFT")
+        log:SetMaxLines(100);log:SetFading(false);log:EnableMouseWheel(true)
+        log:SetScript("OnMouseWheel",function(self,delta)
+            if delta>0 then self:ScrollUp() else self:ScrollDown() end
+        end)
+        for _,message in ipairs(H.feedbackHistory or {}) do log:AddMessage(message) end
+    end
+    H.feedback:Show()
+end
+local function Notify(text)
+    DEFAULT_CHAT_FRAME:AddMessage("|cffb080ffHotspots:|r " .. text)
+    H.feedbackHistory=H.feedbackHistory or {}
+    H.feedbackHistory[#H.feedbackHistory+1]=text
+    if #H.feedbackHistory>100 then table.remove(H.feedbackHistory,1) end
+    if H.feedbackLog then H.feedbackLog:AddMessage(text) end
+    H.ShowFeedback()
+end
 local function Send(text)
     if #text > 240 then Notify("Request too long."); return end
     if #H.queue >= 64 then Notify("Please wait for pending hotspot requests.");return end
@@ -529,6 +560,7 @@ StaticPopupDialogs["XP_HOTSPOT_DELETE"]={
 }
 function H.ShowPanel()
     if not gm then return end
+    H.ShowFeedback()
     if generalPanel then generalPanel:Hide() end
     if not panel then
         panel=CreateFrame("Frame",nil,WorldMapFrame)
@@ -569,7 +601,7 @@ function H.ShowPanel()
         DesignButton("Whole zone",126,-255,102,function() H.StartShape("zone") end)
         DesignButton("Polygon",240,-255,102,function() H.StartShape("polygon") end)
         Button(panel,"Edit selected",12,-285,150,function()
-            H.vertex=nil;H.newKind=nil
+            H.vertex=nil;H.newKind=nil;H.awaitingNewDraft=nil;H.expectedDraft=nil
             if H.localSaving or H.localStrokes and #H.localStrokes>0 then Notify("Save or cancel the local drawing first.");return end
             if selected then Send("edit "..N(selected.id)) end
         end)
@@ -618,7 +650,7 @@ function H.ShowPanel()
             if H.localSaving then Notify("Wait for the save result.");return end
             H.ClearLocalPaint()
             if selected then selected=H.rows[N(selected.id)] end
-            draft=nil;H.newKind=nil;H.newCenter=nil;H.vertex=nil;H.merge={};Send("cancel");H.Draw();H.DrawBrowser()
+            draft=nil;H.awaitingNewDraft=nil;H.expectedDraft=nil;H.newKind=nil;H.newCenter=nil;H.vertex=nil;H.merge={};Send("cancel");H.Draw();H.DrawBrowser()
         end)
         Button(panel,"Refresh",12,-435,150,H.Refresh)
         DesignButton("Drawing tools",180,-435,165,function() H.ShowPaintTools() end)
@@ -645,7 +677,10 @@ end
 function H.NewDraft()
     if H.localSaving or H.localStrokes and #H.localStrokes>0 then Notify("Save or cancel the local drawing first.");return end
     if not H.canDesign then Notify("Level 2 GM required to create hotspots.");return end
-    H.stroke=nil
+    if draft then Send("cancel") end
+    H.stroke=nil;H.paintMode="Points";H.paintConsumed=nil;H.paintPending=nil
+    H.awaitingNewDraft=true;H.expectedDraft=nil
+    if H.paintPanel then H.paintPanel:Hide() end
     selected=nil;draft=nil;H.newKind=nil;H.newCenter=nil;H.vertex=nil;H.merge={}
     H.ShowPanel()
     fields.Name:SetText("New Hotspot")
@@ -673,6 +708,7 @@ function H.StartShape(kind)
     local c=H.newCenter
     if not c then Notify("CTRL-click a zone map to set the new center.");return end
     H.newKind=nil;H.newCenter=nil;H.vertex=nil
+    H.expectedDraft={map=c.map,zone=c.zone,x=c.x,y=c.y}
     Send("newmap "..kind.." "..c.map.." "..c.zone.." "..c.x.." "..c.y.." "..fields.Name:GetText())
     if kind=="polygon" then Send("point "..c.x.." "..c.y)
     elseif kind=="circle" then Send("radius "..fields["Radius yards"]:GetText()) end
@@ -935,6 +971,7 @@ local function Receive(text)
     if text=="OFF" then
         enabled=false;gm=false;H.canDesign=false;H.canDelete=false;H.UpdateDesignAccess();H.rows={};H.queue={};H.refreshPending=false;H.refreshAgain=false
         selected=nil;draft=nil;hovered=nil;snapshot=nil;incoming=nil;chunks=nil
+        if H.feedback then H.feedback:Hide() end
         if panel then panel:Hide() end
         if browser then browser:Hide() end
         if generalPanel then generalPanel:Hide() end
@@ -967,6 +1004,12 @@ local function Receive(text)
                     end
                     H.Draw()
                 elseif B(r.draft) then
+                    if H.awaitingNewDraft then
+                        local c=H.expectedDraft
+                        if not c or N(r.id)~=0 or N(r.map)~=c.map or N(r.zone)~=c.zone or
+                            math.abs(N(r.x)-c.x)>0.1 or math.abs(N(r.y)-c.y)>0.1 then return end
+                        H.awaitingNewDraft=nil;H.expectedDraft=nil
+                    end
                     if H.localStrokes and #H.localStrokes>0 then return end
                     draft=r;selected=r
                     if r.kind=="union" and N(r.id)>0 then H.merge={} end
@@ -1004,7 +1047,7 @@ frame:SetScript("OnEvent",function(_,event,prefix,text,channel,sender)
         if prefix=="XPHOT" and channel=="WHISPER" and sender==UnitName("player") then Receive(text) end
     elseif event=="PLAYER_LOGIN" then
         Send("sync")
-        WorldMapFrame:HookScript("OnShow",H.Refresh)
+        WorldMapFrame:HookScript("OnShow",function() H.Refresh();if panel and panel:IsShown() then H.ShowFeedback() end end)
         local filters=WorldMapButton.Filters
         if filters and filters.DropDown and not H.filterInstalled then
             local dropdown=filters.DropDown
@@ -1025,6 +1068,11 @@ frame:SetScript("OnEvent",function(_,event,prefix,text,channel,sender)
         WorldMapFrame:HookScript("OnHide",function()
             H.EndPaint();PaintCursor();if H.paintPanel then H.paintPanel:Hide() end;H.paintMode="Points"
         end)
+        local priorClick=WorldMapButton:GetScript("OnClick")
+        WorldMapButton:SetScript("OnClick",function(self,button,...)
+            if gm and H.canDesign and IsControlKeyDown() then return end
+            if priorClick then priorClick(self,button,...) end
+        end)
         local priorMouseDown=WorldMapButton:GetScript("OnMouseDown")
         WorldMapButton:SetScript("OnMouseDown",function(self,button,...)
             if gm and IsControlKeyDown() and button=="LeftButton" and
@@ -1038,6 +1086,7 @@ frame:SetScript("OnEvent",function(_,event,prefix,text,channel,sender)
                 H.localStrokes[#H.localStrokes+1]=H.stroke
                 H.SamplePaint();return
             end
+            if gm and H.canDesign and IsControlKeyDown() then return end
             if priorMouseDown then priorMouseDown(self,button,...) end
         end)
         local priorMouseUp=WorldMapButton:GetScript("OnMouseUp")

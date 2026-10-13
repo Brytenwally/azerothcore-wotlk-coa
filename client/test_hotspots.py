@@ -6,7 +6,7 @@ from lupa.lua51 import LuaRuntime
 
 ROOT = Path(__file__).resolve().parents[1]
 MOCK = r'''
-frames={};messages={};clock=1000;oldClicks=0;control=false
+frames={};messages={};clock=1000;oldClicks=0;nativeClicks=0;control=false
 StaticPopupDialogs={}
 function StaticPopup_Show(which,name)
  popup=CreateFrame("Frame");popup.which=which;popup.name=name;return popup
@@ -20,6 +20,7 @@ function methods:HookScript(k,v)
 end
 function methods:SetText(t) self.text=tostring(t) end
 function methods:GetText() return self.text or "" end
+function methods:AddMessage(text) self.lines=self.lines or {};self.lines[#self.lines+1]=text end
 function methods:SetChecked(t) self.checked=t end
 function methods:GetChecked() return self.checked end
 function methods:Show() self.shown=true end
@@ -47,6 +48,7 @@ function CreateFrame(kind,name,parent,template)
 end
 WorldMapFrame=CreateFrame("Frame");WorldMapButton=CreateFrame("Button")
 WorldMapButton:SetScript("OnMouseUp",function() oldClicks=oldClicks+1 end)
+WorldMapButton:SetScript("OnClick",function() nativeClicks=nativeClicks+1 end)
 WorldMapTooltip=CreateFrame("Tooltip");GameTooltip=CreateFrame("Tooltip")
 DEFAULT_CHAT_FRAME=CreateFrame("Chat")
 menuEntries={}
@@ -105,6 +107,38 @@ class HotspotClientTests(unittest.TestCase):
         self.receive(f'B|1|{gm}|1|1000|1|1')
         self.row(**values)
         self.receive('E')
+
+    def test_new_draft_exits_brush_and_ignores_old_server_draft(self):
+        self.snapshot(kind='polygon', draft=True)
+        self.lua.execute('XPHotspots.ShowPaintTools();XPHotspots.SetPaintMode("Brush");XPHotspots.NewDraft();XPHotspots.queue={}')
+        self.row(kind='polygon', draft=True)
+        self.lua.execute('control=true;WorldMapButton.scripts.OnMouseDown(WorldMapButton,"LeftButton");WorldMapButton.scripts.OnMouseUp(WorldMapButton,"LeftButton")')
+        self.assertEqual(self.lua.eval('XPHotspots.paintMode'), 'Points')
+        self.assertEqual(self.lua.eval('XPHotspots.queue[1]'), 'newmap circle 0 44 75 75 New Hotspot')
+        self.row(id=0, draft=True, x=75, y=75)
+        self.assertFalse(self.lua.eval('XPHotspots.awaitingNewDraft or false'))
+        self.lua.execute('XPHotspots.queue={};WorldMapButton.scripts.OnMouseUp(WorldMapButton,"LeftButton")')
+        self.assertEqual(self.lua.eval('XPHotspots.queue[1]'), 'center 75 75')
+
+    def test_feedback_visible_for_tool_errors_and_history_bounded(self):
+        self.snapshot()
+        self.receive('ERROR|Choose a zone map.')
+        self.assertTrue(self.lua.eval('XPHotspots.feedback:IsShown()'))
+        self.assertEqual(self.lua.eval('XPHotspots.feedbackLog.lines[1]'), 'Choose a zone map.')
+        for i in range(105):
+            self.receive('OK|Saved '+str(i))
+        self.assertEqual(self.lua.eval('#XPHotspots.feedbackHistory'), 100)
+        self.assertEqual(self.lua.eval('XPHotspots.feedbackHistory[100]'), 'Saved 104')
+        self.assertGreater(self.lua.eval('XPHotspots.feedback:GetFrameLevel()'), self.lua.eval('WorldMapFrame:GetFrameLevel()'))
+        self.receive('OFF')
+        self.assertFalse(self.lua.eval('XPHotspots.feedback:IsShown()'))
+
+    def test_ctrl_click_does_not_run_native_map_click(self):
+        self.snapshot()
+        self.lua.execute('control=true;WorldMapButton.scripts.OnClick(WorldMapButton,"LeftButton")')
+        self.assertEqual(self.lua.eval('nativeClicks'), 0)
+        self.lua.execute('control=false;WorldMapButton.scripts.OnClick(WorldMapButton,"LeftButton")')
+        self.assertEqual(self.lua.eval('nativeClicks'), 1)
 
     def test_level_two_can_design_but_cannot_delete(self):
         self.snapshot(kind='polygon', draft=True)
