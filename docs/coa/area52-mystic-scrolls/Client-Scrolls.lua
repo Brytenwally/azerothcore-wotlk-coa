@@ -4,6 +4,10 @@ local function IsArea52ScrollRealm()
 end
 
 local function ConfirmArea52Scroll(bag, slot)
+    for _, name in ipairs({"MerchantFrame", "AuctionFrame", "AuctionHouseFrame", "TradeFrame", "MailFrame", "BankFrame"}) do
+        local frame = _G[name]
+        if frame and frame:IsShown() then return end
+    end
     if not IsArea52ScrollRealm() or not C_MysticEnchant or not EnchantCollectionUtil then return end
     local entries = C_MysticEnchant.GetMysticScrolls()
     for _, scroll in ipairs(entries or {}) do
