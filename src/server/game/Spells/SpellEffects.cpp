@@ -4935,7 +4935,13 @@ void Spell::EffectFeedPet(SpellEffIndex effIndex)
     player->DestroyItemCount(foodItem, count, true);
     /// @todo: fix crash when a spell has two effects, both pointed at the same item target
 
-    m_caster->CastCustomSpell(pet, m_spellInfo->Effects[effIndex].TriggerSpell, &benefit, nullptr, nullptr, true);
+    uint32 const triggerId = m_spellInfo->Effects[effIndex].TriggerSpell;
+    SpellInfo const* trigger = sSpellMgr->GetSpellInfo(triggerId);
+    if (trigger && trigger->Effects[EFFECT_0].ApplyAuraName == SPELL_AURA_PERIODIC_ENERGIZE &&
+        trigger->Effects[EFFECT_0].MiscValue == POWER_HAPPINESS)
+        m_caster->CastCustomSpell(pet, triggerId, &benefit, nullptr, nullptr, true);
+    else
+        m_caster->CastSpell(pet, triggerId, true);
 }
 
 void Spell::EffectDismissPet(SpellEffIndex effIndex)
