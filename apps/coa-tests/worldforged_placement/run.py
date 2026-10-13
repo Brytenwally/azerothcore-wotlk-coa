@@ -1,45 +1,43 @@
 from pathlib import Path
+import json
+import math
 import sqlite3
 
 root = Path(__file__).resolve().parents[3]
-sql = (root / 'data/sql/updates/pending_db_world/rev_20261012_06_area52_flameburst_cache.sql').read_text()
+batch = json.loads((root / 'docs/coa/area52-worldforged-placement-batch.json').read_text())
+sql = (root / 'data/sql/updates/pending_db_world/rev_20261012_07_area52_worldforged_cache_placements.sql').read_text()
+sql = sql.replace('ON DUPLICATE KEY UPDATE `entry` = VALUES(`entry`)', 'ON CONFLICT(entry) DO NOTHING')
+rows = batch['placements']
+assert len(rows) == 16
+assert len({r['entry'] for r in rows}) == len(rows)
+assert len({r['guid'] for r in rows}) == len(rows)
+assert batch['bind_on_pickup'] and not batch['permanent_claim']
+for r in rows:
+    a, p = r['anchor'], r['placement']
+    assert a['map'] == p['map'] and p['spawn_mask'] == 1 and p['phase_mask'] == 1
+    assert abs(math.hypot(a['x'] - p['x'], a['y'] - p['y']) - 3) < 0.001
+    assert 'reconstructed' in r['provenance']
 
-def database():
-    db = sqlite3.connect(':memory:')
-    db.executescript('''
-        CREATE TABLE gameobject (
-            guid INTEGER PRIMARY KEY, id INTEGER, map INTEGER, zoneId INTEGER, areaId INTEGER,
-            spawnMask INTEGER, phaseMask INTEGER, position_x REAL, position_y REAL, position_z REAL,
-            orientation REAL, rotation0 REAL, rotation1 REAL, rotation2 REAL, rotation3 REAL,
-            spawntimesecs INTEGER, animprogress INTEGER, state INTEGER, ScriptName TEXT, Comment TEXT);
-        CREATE TABLE gameobject_template (entry INTEGER, ScriptName TEXT);
-        CREATE TABLE gameobject_loot_template (Entry INTEGER, Item INTEGER, Chance REAL);
-        CREATE TABLE item_template (entry INTEGER, ScriptName TEXT);
-        INSERT INTO gameobject_template VALUES (1345173, 'worldforged_pickup');
-        INSERT INTO gameobject_loot_template VALUES (1345173, 100369, 100);
-        INSERT INTO item_template VALUES (100369, 'item_area52_identified_mystic');
-    ''')
-    return db
-
-db = database()
+db = sqlite3.connect(':memory:')
+db.executescript('''
+    CREATE TABLE gameobject_template (
+        entry INTEGER PRIMARY KEY, type INTEGER, displayId INTEGER, name TEXT,
+        size REAL, data0 INTEGER, data1 INTEGER, ScriptName TEXT);
+    CREATE TABLE gameobject (
+        guid INTEGER PRIMARY KEY, id INTEGER, map INTEGER, spawnMask INTEGER, phaseMask INTEGER,
+        position_x REAL, position_y REAL, position_z REAL, orientation REAL,
+        rotation2 REAL, rotation3 REAL, spawntimesecs INTEGER, state INTEGER,
+        ScriptName TEXT, Comment TEXT);
+    INSERT INTO gameobject_template (entry, ScriptName) VALUES (990100, 'unrelated');
+    INSERT INTO gameobject (guid, id, Comment) VALUES (9791001, 42, 'unrelated');
+''')
 db.executescript(sql)
-first = db.execute('SELECT * FROM gameobject').fetchall()
-assert len(first) == 1 and first[0][:3] == (6910429, 1345173, 389)
+assert db.execute('SELECT COUNT(*) FROM gameobject').fetchone()[0] == 15
+assert db.execute('SELECT ScriptName FROM gameobject_template WHERE entry=990100').fetchone()[0] == 'unrelated'
+assert db.execute('SELECT id FROM gameobject WHERE guid=9791001').fetchone()[0] == 42
+before = db.execute('SELECT * FROM gameobject ORDER BY guid').fetchall()
 db.executescript(sql)
-assert db.execute('SELECT * FROM gameobject').fetchall() == first
-
-for table in ('gameobject_template', 'gameobject_loot_template', 'item_template'):
-    db = database()
-    db.execute('DELETE FROM ' + table)
-    db.executescript(sql)
-    assert db.execute('SELECT COUNT(*) FROM gameobject').fetchone()[0] == 0
-
-for guid, entry, location in ((6910429, 42, 1), (7000000, 1345173, 389)):
-    db = database()
-    db.execute('INSERT INTO gameobject (guid,id,map,Comment) VALUES (?,?,?,?)',
-               (guid, entry, location, 'existing content'))
-    before = db.execute('SELECT * FROM gameobject').fetchall()
-    db.executescript(sql)
-    assert db.execute('SELECT * FROM gameobject').fetchall() == before
-
-print('Placement SQL: stable identity, idempotency, binding gates and existing-spawn preservation passed')
+assert db.execute('SELECT * FROM gameobject ORDER BY guid').fetchall() == before
+assert all(r[0] == batch['required_handler'] for r in db.execute(
+    'SELECT ScriptName FROM gameobject WHERE id != 42'))
+print('16 reconstructed placements: mappings, normal-mode scope, collision protection and idempotency passed')

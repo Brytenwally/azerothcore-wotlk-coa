@@ -1,5 +1,8 @@
 # Area 52 Worldforged acquisition
 
+Current construction status: see the [16-cache batch](area52-worldforged-batch16.md).
+The original Flameburst-only SQL described below was superseded before activation.
+
 This package is for the Area 52 reconstruction, not a universal import for all realms.
 It does not change enchant verification status or claim original live-server behavior was tested.
 

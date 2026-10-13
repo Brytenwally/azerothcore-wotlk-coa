@@ -76,13 +76,15 @@ The owner confirmed the intended Area 52 contract on October 12, 2026:
 - Each boss with a scroll drop also has a cache offering the same scroll as an alternative route.
 - Combining five Worldforged Key Fragments creates one Worldforged Key.
 - Opening a cache consumes one key and awards that cache's mapped scroll.
+- Worldforged scrolls bind on pickup and cannot be auctioned. The owner confirmed repeat cache
+  collection is allowed with another key, even when the enchant is already collected.
 
 The live world contains Worldforged Key 97729 and Fragment 97730. Inspect their existing combine
 spell and Lock.dbc before implementing the contract. Do not inherit the gear pickup module's
 permanent once-per-character claim restriction. Keyed acquisitions need their own handling.
 Do not extend the boss-cache rule to bypass unrelated quest or event prerequisites.
-Flameburst's current `worldforged_pickup` binding is therefore an implementation mismatch:
-its SQL remains a placement prototype and must not be activated until the keyed handler replaces it.
+Flameburst's original `worldforged_pickup` prototype was removed before activation. The new
+16-cache batch requires a dedicated keyed handler and must not be activated until that is implemented.
 Key consumption and reward delivery must handle full bags, concurrent users, retries and failures
 without losing a key or duplicating a reward. Fragment drop sources/rates are a separate research task.
 

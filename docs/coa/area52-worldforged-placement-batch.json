@@ -1,0 +1,506 @@
+{
+  "key": 97729,
+  "fragment": 97730,
+  "fragments_per_key": 5,
+  "bind_on_pickup": true,
+  "permanent_claim": false,
+  "required_handler": "area52_worldforged_scroll_cache",
+  "placements": [
+    {
+      "name": "Flameburst",
+      "entry": 990100,
+      "guid": 9791000,
+      "item": 100369,
+      "spell": 92659,
+      "source": "https://ascension.help/mystic/e944c2dc-0f8c-4b41-87b3-041a829b5fee",
+      "anchor": {
+        "entry": 11518,
+        "name": "Jergosh the Invoker",
+        "guid": 48740,
+        "map": 389,
+        "x": -376.811,
+        "y": 209.224,
+        "z": -21.801,
+        "o": 5.91667,
+        "spawn_mask": 1,
+        "phase_mask": 1
+      },
+      "placement": {
+        "map": 389,
+        "x": -375.7359,
+        "y": 212.0247,
+        "z": -21.801,
+        "o": 5.91667,
+        "spawn_mask": 1,
+        "phase_mask": 1
+      },
+      "provenance": "reconstructed: 3 yards beside normal-mode boss anchor; not an observed cache coordinate",
+      "status": "staged; floor, obstruction and interaction tests required"
+    },
+    {
+      "name": "Ragefire Cleave",
+      "entry": 990101,
+      "guid": 9791001,
+      "item": 132623,
+      "spell": 982838,
+      "source": "https://ascension.help/mystic/f89265ad-91a9-4150-994d-e4cdaa13732e",
+      "anchor": {
+        "entry": 11517,
+        "name": "Oggleflint",
+        "guid": 48644,
+        "map": 389,
+        "x": -147.548,
+        "y": 38.7127,
+        "z": -38.8039,
+        "o": 4.39823,
+        "spawn_mask": 7,
+        "phase_mask": 1
+      },
+      "placement": {
+        "map": 389,
+        "x": -144.6948,
+        "y": 37.7856,
+        "z": -38.8039,
+        "o": 4.39823,
+        "spawn_mask": 1,
+        "phase_mask": 1
+      },
+      "provenance": "reconstructed: 3 yards beside normal-mode boss anchor; not an observed cache coordinate",
+      "status": "staged; floor, obstruction and interaction tests required"
+    },
+    {
+      "name": "Ragefire Nova",
+      "entry": 990102,
+      "guid": 9791002,
+      "item": 132624,
+      "spell": 982850,
+      "source": "https://ascension.help/mystic/593ce304-ed46-4d2c-b55c-11fa2b286c32",
+      "anchor": {
+        "entry": 11520,
+        "name": "Taragaman the Hungerer",
+        "guid": 48706,
+        "map": 389,
+        "x": -244.743,
+        "y": 150.085,
+        "z": -18.7494,
+        "o": 4.28461,
+        "spawn_mask": 7,
+        "phase_mask": 1
+      },
+      "placement": {
+        "map": 389,
+        "x": -242.0133,
+        "y": 148.8404,
+        "z": -18.7494,
+        "o": 4.28461,
+        "spawn_mask": 1,
+        "phase_mask": 1
+      },
+      "provenance": "reconstructed: 3 yards beside normal-mode boss anchor; not an observed cache coordinate",
+      "status": "staged; floor, obstruction and interaction tests required"
+    },
+    {
+      "name": "Piercing Cleaver",
+      "entry": 990103,
+      "guid": 9791003,
+      "item": 132635,
+      "spell": 982965,
+      "source": "https://ascension.help/mystic/6e5ed5b6-2a6f-460b-98c9-48d6ac8c800c",
+      "anchor": {
+        "entry": 3886,
+        "name": "Razorclaw the Butcher",
+        "guid": 16253,
+        "map": 33,
+        "x": -202.596,
+        "y": 2257.96,
+        "z": 76.2846,
+        "o": 3.97935,
+        "spawn_mask": 7,
+        "phase_mask": 1
+      },
+      "placement": {
+        "map": 33,
+        "x": -200.3666,
+        "y": 2255.9526,
+        "z": 76.2846,
+        "o": 3.97935,
+        "spawn_mask": 1,
+        "phase_mask": 1
+      },
+      "provenance": "reconstructed: 3 yards beside normal-mode boss anchor; not an observed cache coordinate",
+      "status": "staged; floor, obstruction and interaction tests required"
+    },
+    {
+      "name": "Herod's Legacy",
+      "entry": 990104,
+      "guid": 9791004,
+      "item": 132595,
+      "spell": 982650,
+      "source": "https://ascension.help/mystic/7245ec0b-0011-4443-8eb9-edc253e28a89",
+      "anchor": {
+        "entry": 3975,
+        "name": "Herod",
+        "guid": 89097,
+        "map": 189,
+        "x": 1965.09,
+        "y": -431.607,
+        "z": 6.26076,
+        "o": 2.98451,
+        "spawn_mask": 7,
+        "phase_mask": 1
+      },
+      "placement": {
+        "map": 189,
+        "x": 1964.6207,
+        "y": -434.5701,
+        "z": 6.26076,
+        "o": 2.98451,
+        "spawn_mask": 1,
+        "phase_mask": 1
+      },
+      "provenance": "reconstructed: 3 yards beside normal-mode boss anchor; not an observed cache coordinate",
+      "status": "staged; floor, obstruction and interaction tests required"
+    },
+    {
+      "name": "Interrogator's Immolation",
+      "entry": 990105,
+      "guid": 9791005,
+      "item": 132583,
+      "spell": 982582,
+      "source": "https://ascension.help/mystic/b05dfc9c-ba7f-42cb-a23b-f64eade60eb8",
+      "anchor": {
+        "entry": 3983,
+        "name": "Interrogator Vishas",
+        "guid": 27443,
+        "map": 189,
+        "x": 1786.55,
+        "y": 1124.44,
+        "z": 7.57362,
+        "o": 4.81711,
+        "spawn_mask": 7,
+        "phase_mask": 1
+      },
+      "placement": {
+        "map": 189,
+        "x": 1789.5336,
+        "y": 1124.7536,
+        "z": 7.57362,
+        "o": 4.81711,
+        "spawn_mask": 1,
+        "phase_mask": 1
+      },
+      "provenance": "reconstructed: 3 yards beside normal-mode boss anchor; not an observed cache coordinate",
+      "status": "staged; floor, obstruction and interaction tests required"
+    },
+    {
+      "name": "Veil of Shadows",
+      "entry": 990106,
+      "guid": 9791006,
+      "item": 132690,
+      "spell": 997168,
+      "source": "https://ascension.help/mystic/ce69241b-e774-4096-8afa-cabf04beba77",
+      "anchor": {
+        "entry": 4543,
+        "name": "Bloodmage Thalnos",
+        "guid": 39934,
+        "map": 189,
+        "x": 1820.34,
+        "y": 1416.71,
+        "z": -7.91731,
+        "o": 3.15905,
+        "spawn_mask": 7,
+        "phase_mask": 1
+      },
+      "placement": {
+        "map": 189,
+        "x": 1820.3924,
+        "y": 1413.7105,
+        "z": -7.91731,
+        "o": 3.15905,
+        "spawn_mask": 1,
+        "phase_mask": 1
+      },
+      "provenance": "reconstructed: 3 yards beside normal-mode boss anchor; not an observed cache coordinate",
+      "status": "staged; floor, obstruction and interaction tests required"
+    },
+    {
+      "name": "Hydra's Venom",
+      "entry": 990107,
+      "guid": 9791007,
+      "item": 132701,
+      "spell": 997242,
+      "source": "https://ascension.help/mystic/45edd7c2-ea6a-4186-9b7d-a8d1911c17fb",
+      "anchor": {
+        "entry": 4829,
+        "name": "Aku'mai",
+        "guid": 27433,
+        "map": 48,
+        "x": -848.446,
+        "y": -453.865,
+        "z": -33.8922,
+        "o": 1.5708,
+        "spawn_mask": 7,
+        "phase_mask": 1
+      },
+      "placement": {
+        "map": 48,
+        "x": -851.446,
+        "y": -453.865,
+        "z": -33.8922,
+        "o": 1.5708,
+        "spawn_mask": 1,
+        "phase_mask": 1
+      },
+      "provenance": "reconstructed: 3 yards beside normal-mode boss anchor; not an observed cache coordinate",
+      "status": "staged; floor, obstruction and interaction tests required"
+    },
+    {
+      "name": "Twilight Shock",
+      "entry": 990108,
+      "guid": 9791008,
+      "item": 132709,
+      "spell": 997305,
+      "source": "https://ascension.help/mystic/12d32761-7e00-4f0b-b4cc-1579a4599258",
+      "anchor": {
+        "entry": 4832,
+        "name": "Twilight Lord Kelris",
+        "guid": 27424,
+        "map": 48,
+        "x": -818.832,
+        "y": -155.576,
+        "z": -25.7923,
+        "o": 4.74729,
+        "spawn_mask": 7,
+        "phase_mask": 1
+      },
+      "placement": {
+        "map": 48,
+        "x": -815.8338,
+        "y": -155.4713,
+        "z": -25.7923,
+        "o": 4.74729,
+        "spawn_mask": 1,
+        "phase_mask": 1
+      },
+      "provenance": "reconstructed: 3 yards beside normal-mode boss anchor; not an observed cache coordinate",
+      "status": "staged; floor, obstruction and interaction tests required"
+    },
+    {
+      "name": "Knifestorm",
+      "entry": 990109,
+      "guid": 9791009,
+      "item": 132702,
+      "spell": 997260,
+      "source": "https://ascension.help/mystic/67e365fe-8642-4a79-941a-a82a34433715",
+      "anchor": {
+        "entry": 1716,
+        "name": "Bazil Thredd",
+        "guid": 79124,
+        "map": 34,
+        "x": 89.5518,
+        "y": -136.922,
+        "z": -33.9396,
+        "o": 5.00727,
+        "spawn_mask": 7,
+        "phase_mask": 1
+      },
+      "placement": {
+        "map": 34,
+        "x": 92.4223,
+        "y": -136.0501,
+        "z": -33.9396,
+        "o": 5.00727,
+        "spawn_mask": 1,
+        "phase_mask": 1
+      },
+      "provenance": "reconstructed: 3 yards beside normal-mode boss anchor; not an observed cache coordinate",
+      "status": "staged; floor, obstruction and interaction tests required"
+    },
+    {
+      "name": "Shadow Word: Gore",
+      "entry": 990110,
+      "guid": 9791010,
+      "item": 132638,
+      "spell": 983020,
+      "source": "https://ascension.help/mystic/cfceafe0-7f63-40a2-97a0-a6aeb648166d",
+      "anchor": {
+        "entry": 7354,
+        "name": "Ragglesnout",
+        "guid": 247108,
+        "map": 129,
+        "x": 2364.75,
+        "y": 904.524,
+        "z": 28.7671,
+        "o": 0.304753,
+        "spawn_mask": 1,
+        "phase_mask": 1
+      },
+      "placement": {
+        "map": 129,
+        "x": 2363.8498,
+        "y": 907.3858,
+        "z": 28.7671,
+        "o": 0.304753,
+        "spawn_mask": 1,
+        "phase_mask": 1
+      },
+      "provenance": "reconstructed: 3 yards beside normal-mode boss anchor; not an observed cache coordinate",
+      "status": "staged; floor, obstruction and interaction tests required"
+    },
+    {
+      "name": "Shield Of The Emperor",
+      "entry": 990111,
+      "guid": 9791011,
+      "item": 132598,
+      "spell": 982670,
+      "source": "https://ascension.help/mystic/b900a20f-4e87-434c-a840-75e5d04c86f7",
+      "anchor": {
+        "entry": 9019,
+        "name": "Emperor Dagran Thaurissan",
+        "guid": 47613,
+        "map": 230,
+        "x": 1380.18,
+        "y": -831.645,
+        "z": -87.59,
+        "o": 1.32645,
+        "spawn_mask": 7,
+        "phase_mask": 1
+      },
+      "placement": {
+        "map": 230,
+        "x": 1377.2691,
+        "y": -830.9192,
+        "z": -87.59,
+        "o": 1.32645,
+        "spawn_mask": 1,
+        "phase_mask": 1
+      },
+      "provenance": "reconstructed: 3 yards beside normal-mode boss anchor; not an observed cache coordinate",
+      "status": "staged; floor, obstruction and interaction tests required"
+    },
+    {
+      "name": "Shadow Dagger",
+      "entry": 990112,
+      "guid": 9791012,
+      "item": 132432,
+      "spell": 982465,
+      "source": "https://ascension.help/mystic/151a8381-eb1d-4b60-a422-1be7df2001bc",
+      "anchor": {
+        "entry": 10432,
+        "name": "Vectus",
+        "guid": 48805,
+        "map": 289,
+        "x": 143.481,
+        "y": 99.0964,
+        "z": 104.659,
+        "o": 3.26377,
+        "spawn_mask": 7,
+        "phase_mask": 1
+      },
+      "placement": {
+        "map": 289,
+        "x": 143.8466,
+        "y": 96.1188,
+        "z": 104.659,
+        "o": 3.26377,
+        "spawn_mask": 1,
+        "phase_mask": 1
+      },
+      "provenance": "reconstructed: 3 yards beside normal-mode boss anchor; not an observed cache coordinate",
+      "status": "staged; floor, obstruction and interaction tests required"
+    },
+    {
+      "name": "Bone Spear",
+      "entry": 990113,
+      "guid": 9791013,
+      "item": 132609,
+      "spell": 982748,
+      "source": "https://ascension.help/mystic/0e276452-408a-451c-982b-1abf4e7af43d",
+      "anchor": {
+        "entry": 11622,
+        "name": "Rattlegore",
+        "guid": 48910,
+        "map": 289,
+        "x": 137.145,
+        "y": 171.676,
+        "z": 95.9664,
+        "o": 3.28122,
+        "spawn_mask": 7,
+        "phase_mask": 1
+      },
+      "placement": {
+        "map": 289,
+        "x": 137.5625,
+        "y": 168.7052,
+        "z": 95.9664,
+        "o": 3.28122,
+        "spawn_mask": 1,
+        "phase_mask": 1
+      },
+      "provenance": "reconstructed: 3 yards beside normal-mode boss anchor; not an observed cache coordinate",
+      "status": "staged; floor, obstruction and interaction tests required"
+    },
+    {
+      "name": "Razorlash",
+      "entry": 990114,
+      "guid": 9791014,
+      "item": 132431,
+      "spell": 982448,
+      "source": "https://ascension.help/mystic/f8ab3aac-a65a-400d-891b-0f48bd15b208",
+      "anchor": {
+        "entry": 12258,
+        "name": "Razorlash",
+        "guid": 54474,
+        "map": 349,
+        "x": 978.887,
+        "y": -10.152,
+        "z": -62.5035,
+        "o": 4.60767,
+        "spawn_mask": 7,
+        "phase_mask": 1
+      },
+      "placement": {
+        "map": 349,
+        "x": 981.8706,
+        "y": -10.4656,
+        "z": -62.5035,
+        "o": 4.60767,
+        "spawn_mask": 1,
+        "phase_mask": 1
+      },
+      "provenance": "reconstructed: 3 yards beside normal-mode boss anchor; not an observed cache coordinate",
+      "status": "staged; floor, obstruction and interaction tests required"
+    },
+    {
+      "name": "Lunar Aspiration",
+      "entry": 990115,
+      "guid": 9791015,
+      "item": 132689,
+      "spell": 997152,
+      "source": "https://ascension.help/mystic/57c213dc-5b5c-44de-90b8-d8caac74b945",
+      "anchor": {
+        "entry": 11957,
+        "name": "Great Cat Spirit",
+        "guid": 42347,
+        "map": 1,
+        "x": 7359.77,
+        "y": -2729.17,
+        "z": 461.309,
+        "o": 6.21553,
+        "spawn_mask": 1,
+        "phase_mask": 1
+      },
+      "placement": {
+        "map": 1,
+        "x": 7359.9728,
+        "y": -2726.1769,
+        "z": 461.309,
+        "o": 6.21553,
+        "spawn_mask": 1,
+        "phase_mask": 1
+      },
+      "provenance": "reconstructed: 3 yards beside normal-mode boss anchor; not an observed cache coordinate",
+      "status": "staged; floor, obstruction and interaction tests required"
+    }
+  ]
+}
