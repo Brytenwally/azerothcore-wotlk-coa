@@ -1,0 +1,14 @@
+{
+  "kind": "advancement",
+  "id": 502,
+  "name": "Remorseless Attacks",
+  "spells": [
+    14143,
+    14144,
+    14148,
+    14149
+  ],
+  "status": "VERIFIED",
+  "certified": false,
+  "activation": "Merge into latest engineering/certification ledgers only with the matching repair; never downgrade CERTIFIED."
+}
