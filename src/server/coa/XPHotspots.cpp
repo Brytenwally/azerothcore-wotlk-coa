@@ -49,7 +49,7 @@ struct LocalPaintUpload
 std::map<ObjectGuid, LocalPaintUpload> LocalPaint;
 std::map<ObjectGuid, std::vector<Point>> TraceDrafts;
 std::map<ObjectGuid, std::vector<std::pair<uint32, uint32>>> MergeSources;
-std::map<ObjectGuid, uint64> Requests;
+std::map<ObjectGuid, RequestWindow> Requests;
 std::map<ObjectGuid, uint32> Seen;
 std::map<ObjectGuid, uint32> Timers;
 std::map<uint32, std::vector<std::string>> Masks;
@@ -576,13 +576,20 @@ void Execute(Player* player, std::string const& command)
         if (action == "newmap")
         {
             if (!(input >> r.Map >> r.Zone >> r.Center.X >> r.Center.Y))
+            {
+                Send(player, "ERROR|Draft creation failed: invalid map coordinates. Reopen a zone map and try again.");
                 return;
+            }
             auto entry = sMapStore.LookupEntry(r.Map);
             auto area = GetAreaEntryByAreaID(r.Zone);
             if (!entry || entry->Instanceable() || !area || area->mapid != r.Map || area->zone ||
                 !std::isfinite(r.Center.X) || !std::isfinite(r.Center.Y) ||
                 std::abs(r.Center.X) > 20000 || std::abs(r.Center.Y) > 20000)
+            {
+                Send(player, "ERROR|Draft creation rejected for map " + std::to_string(r.Map) +
+                    ", zone " + std::to_string(r.Zone) + ". Choose an outdoor zone map.");
                 return;
+            }
             r.Continent = Continent(r.Map, r.Zone);
         }
         std::getline(input >> std::ws, r.Name);
@@ -1316,9 +1323,13 @@ public:
         std::lock_guard lock(Mutex);
         ObjectGuid owner = p->GetGUID();
         uint64 now = GameTime::GetGameTimeMS().count();
-        if (message.size() > 255 || (Requests.contains(owner) && now - Requests[owner] < 200))
+        if (message.size() > 255)
             return false;
-        Requests[owner] = now;
+        if (!Requests[owner].Accept(now))
+        {
+            Send(p, "ERROR|Too many hotspot requests. Wait a moment and retry the last action.");
+            return false;
+        }
         if (!Enabled)
         {
             Send(p, "OFF");

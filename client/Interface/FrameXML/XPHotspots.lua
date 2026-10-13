@@ -708,10 +708,12 @@ function H.StartShape(kind)
     local c=H.newCenter
     if not c then Notify("CTRL-click a zone map to set the new center.");return end
     H.newKind=nil;H.newCenter=nil;H.vertex=nil
-    H.expectedDraft={map=c.map,zone=c.zone,x=c.x,y=c.y}
+    H.expectedDraft={map=c.map,zone=c.zone,x=c.x,y=c.y,kind=kind,radius=fields["Radius yards"]:GetText()}
+    H.awaitingNewDraft=true
+    H.draftRequestedAt=GetTime()
+    Notify("Requesting "..kind.." draft on map "..c.map..", zone "..c.zone..". Waiting for server response.")
     Send("newmap "..kind.." "..c.map.." "..c.zone.." "..c.x.." "..c.y.." "..fields.Name:GetText())
-    if kind=="polygon" then Send("point "..c.x.." "..c.y)
-    elseif kind=="circle" then Send("radius "..fields["Radius yards"]:GetText()) end
+
 end
 function H.SetPaintMode(mode)
     if H.stroke then H.EndPaint() end
@@ -1008,7 +1010,9 @@ local function Receive(text)
                         local c=H.expectedDraft
                         if not c or N(r.id)~=0 or N(r.map)~=c.map or N(r.zone)~=c.zone or
                             math.abs(N(r.x)-c.x)>0.1 or math.abs(N(r.y)-c.y)>0.1 then return end
-                        H.awaitingNewDraft=nil;H.expectedDraft=nil
+                        H.awaitingNewDraft=nil;H.expectedDraft=nil;H.draftRequestedAt=nil
+                        if c.kind=="polygon" then Send("point "..c.x.." "..c.y)
+                        elseif c.kind=="circle" then Send("radius "..c.radius) end
                     end
                     if H.localStrokes and #H.localStrokes>0 then return end
                     draft=r;selected=r
@@ -1038,7 +1042,7 @@ local function Receive(text)
         if generalFields then generalFields.apply:SetChecked(false) end
         PopulateGeneral()
     end
-    if text:match("^ERROR|") then H.stroke=nil;H.paintPending=nil;H.localSaving=nil end
+    if text:match("^ERROR|") then H.draftRequestedAt=nil;H.stroke=nil;H.paintPending=nil;H.localSaving=nil end
     if text:match("^ERROR|") or text:match("^OK|") then Notify(text:sub(text:find("|",1,true)+1)) end
 end
 frame:RegisterEvent("PLAYER_LOGIN");frame:RegisterEvent("CHAT_MSG_ADDON");frame:RegisterEvent("WORLD_MAP_UPDATE")
@@ -1095,6 +1099,9 @@ frame:SetScript("OnEvent",function(_,event,prefix,text,channel,sender)
             if H.localSaving or H.localStrokes and #H.localStrokes>0 and IsControlKeyDown() then
                 Notify("Save or cancel the local drawing before point editing.");return
             end
+            if H.draftRequestedAt and IsControlKeyDown() then
+                Notify("Waiting for the server to create the draft before editing.");return
+            end
             if gm and H.canDesign and not draft and IsControlKeyDown() and button=="LeftButton" then
                 local map,zone=View();local x,y=AtCursor()
                 if not x or not zone or zone==0 or Overview() then Notify("Open a zone map first.");return end
@@ -1145,6 +1152,10 @@ frame:SetScript("OnUpdate",function(_,diff)
     elapsed=elapsed+diff
     if elapsed<0.3 then return end
     elapsed=0
+    if H.draftRequestedAt and GetTime()-H.draftRequestedAt>15 and #H.queue==0 then
+        H.draftRequestedAt=nil
+        Notify("No draft response from server. Reopen a zone map and retry; report the map and zone shown above if it repeats.")
+    end
     if H.searchAt and GetTime()>=H.searchAt then
         H.searchAt=nil;H.search=H.searchBox:GetText();H.Refresh(1)
     end

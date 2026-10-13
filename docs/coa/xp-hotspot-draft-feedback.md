@@ -13,3 +13,20 @@ The Lua 5.1 map UI suite covers creation after brush mode, late old-draft respon
 and editing the new draft, feedback history and layer placement, and native click forwarding.
 Client-only change: no server restart is needed. Stage into the latest matching client archive
 before release, preserving unrelated pending files. Not installed or released by this commit.
+
+## Follow-up: creation acknowledgment
+
+A reported Durotar failure displayed "Create or edit a draft first" from the follow-up radius
+request. The prior client sent newmap and radius/point independently; the server silently
+rejected any request arriving within 200 ms of the previous request, including requests
+bunched together by network/server delays. The exact original packet trace was unavailable.
+
+Creation now waits for a matching draft acknowledgment before setting radius or its first
+polygon point. Additional map edits wait for that acknowledgment. The server permits a bounded
+burst of eight requests per second and returns an explicit error when exhausted. Invalid map
+creation also returns an error instead of disappearing. The client displays request context
+and a response timeout. Tests cover Durotar identities and coordinates, deferred radius/point,
+repeated acknowledgment, rapid clicks, same-timestamp bursts and rate-limit recovery.
+
+This follow-up requires matching client/server activation; it is not active merely because
+its source is published. In-game reproduction remains to be confirmed after installation.

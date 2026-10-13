@@ -26,6 +26,12 @@ int main()
     }
     assert(!CanManage(2, "delete"));
     assert(CanManage(3, "delete"));
+    RequestWindow requests;
+    for (int i = 0; i < 8; ++i)
+        assert(requests.Accept(5000));
+    assert(!requests.Accept(5000));
+    assert(!requests.Accept(5999));
+    assert(requests.Accept(6000));
     GeneralSettings settings;
     assert(ValidSettings(settings));
     std::array<uint32_t, SettingCount> counts{};

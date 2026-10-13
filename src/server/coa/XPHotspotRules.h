@@ -17,6 +17,25 @@ inline bool CanManage(uint32_t security, std::string_view action)
     return security >= 2 && (action != "delete" || security >= 3);
 }
 
+struct RequestWindow
+{
+    uint64_t Started = 0;
+    uint32_t Count = 0;
+
+    bool Accept(uint64_t now)
+    {
+        if (now - Started >= 1000)
+        {
+            Started = now;
+            Count = 0;
+        }
+        if (Count >= 8)
+            return false;
+        ++Count;
+        return true;
+    }
+};
+
 enum Setting : size_t
 {
     Announcements, ActiveCount, DefaultBonus, DefaultDuration, DefaultCooldown,

@@ -120,6 +120,31 @@ class HotspotClientTests(unittest.TestCase):
         self.lua.execute('XPHotspots.queue={};WorldMapButton.scripts.OnMouseUp(WorldMapButton,"LeftButton")')
         self.assertEqual(self.lua.eval('XPHotspots.queue[1]'), 'center 75 75')
 
+    def test_create_waits_for_ack_before_sending_radius(self):
+        self.snapshot()
+        self.lua.execute('XPHotspots.NewDraft();XPHotspots.queue={};control=true;WorldMapButton.scripts.OnMouseUp(WorldMapButton,"LeftButton")')
+        self.assertEqual(self.lua.eval('#XPHotspots.queue'), 1)
+        self.lua.execute('WorldMapButton.scripts.OnMouseUp(WorldMapButton,"LeftButton")')
+        self.assertEqual(self.lua.eval('#XPHotspots.queue'), 1)
+        self.row(id=0, draft=True, x=75, y=75)
+        self.assertEqual(self.lua.eval('XPHotspots.queue[2]'), 'radius 150')
+        self.row(id=0, draft=True, x=75, y=75)
+        self.assertEqual(self.lua.eval('#XPHotspots.queue'), 2)
+
+    def test_durotar_creation_queues_only_create_until_ack(self):
+        self.snapshot()
+        self.lua.execute('''
+C_WorldMap.GetMapIDByAreaID=function() return 1 end
+C_WorldMap.GetZoneIDByAreaID=function() return 14 end
+C_WorldMap.GetWorldPosition=function(area,x,y) return 1808-y*3524,-1962-x*5288 end
+XPHotspots.NewDraft();XPHotspots.queue={};control=true
+WorldMapButton.scripts.OnMouseUp(WorldMapButton,"LeftButton")
+''')
+        self.assertEqual(self.lua.eval('XPHotspots.queue[1]'), 'newmap circle 1 14 927 -3284 New Hotspot')
+        self.assertEqual(self.lua.eval('#XPHotspots.queue'), 1)
+        self.row(id=0, map=1, zone=14, draft=True, x=927, y=-3284)
+        self.assertEqual(self.lua.eval('XPHotspots.queue[2]'), 'radius 150')
+
     def test_feedback_visible_for_tool_errors_and_history_bounded(self):
         self.snapshot()
         self.receive('ERROR|Choose a zone map.')
@@ -549,6 +574,8 @@ WorldMapButton.scripts.OnMouseUp(WorldMapButton,"LeftButton")
         self.row(id=0, draft=True, x=75, y=75, name='New Hotspot')
         self.lua.execute('XPHotspots.queue={};b=ButtonNamed("Polygon");b.scripts.OnClick(b)')
         self.assertEqual(self.lua.eval('XPHotspots.queue[1]'), 'newmap polygon 0 44 75 75 New Hotspot')
+        self.assertEqual(self.lua.eval('#XPHotspots.queue'), 1)
+        self.row(id=0, kind='polygon', draft=True, x=75, y=75)
         self.assertEqual(self.lua.eval('XPHotspots.queue[2]'), 'point 75 75')
 
     def test_manager_layout_inputs_and_popup_above_map(self):
@@ -596,6 +623,8 @@ b=ButtonNamed("Polygon");b.scripts.OnClick(b)
 control=true;WorldMapButton.scripts.OnMouseUp(WorldMapButton,"LeftButton")
 ''')
         self.assertEqual(self.lua.eval('XPHotspots.queue[1]'), 'newmap polygon 0 44 75 75 New Hotspot')
+        self.assertEqual(self.lua.eval('#XPHotspots.queue'), 1)
+        self.row(id=0, kind='polygon', draft=True, x=75, y=75)
         self.assertEqual(self.lua.eval('XPHotspots.queue[2]'), 'point 75 75')
 
     def test_merge_uses_revisions_and_union_highlight_preserves_gap(self):
