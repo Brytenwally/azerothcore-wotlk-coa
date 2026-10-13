@@ -5,6 +5,11 @@ import subprocess
 import tempfile
 
 root = Path(__file__).resolve().parents[3]
+hotspots = (root/'src/server/coa/XPHotspots.cpp').read_text()
+assert 'GetAreaEntryByAreaID(r.Zone)' not in hotspots
+assert hotspots.count('sAreaTableStore.LookupEntry(r.Zone)') == 3
+assert 'AreaTableEntryfmt[] = "n' in (root/'src/server/shared/DataStores/DBCfmt.h').read_text()
+
 source = r'''
 #include "XPHotspotRules.h"
 #include "XPHotspotPainting.h"

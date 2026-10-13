@@ -30,3 +30,7 @@ repeated acknowledgment, rapid clicks, same-timestamp bursts and rate-limit reco
 
 This follow-up requires matching client/server activation; it is not active merely because
 its source is published. In-game reproduction remains to be confirmed after installation.
+
+## Area identity lookup
+
+Durotar draft rejection was reproduced from effective AreaTable data: area 14 is on map 1 with exploration flag 127. The legacy helper looks up row 127, which is a subarea of Stranglethorn on map 0. The current area store uses the area ID as its index. Draft validation, saved-location validation and faction quotas now use direct area-ID lookup. Outdoor-map, parent-zone and coordinate restrictions remain in effect. Reviewed upstream: a65be06ec62f4a72002f5f73d61cca38d9f475da. In-game acceptance remains to be tested after activation.
