@@ -1,0 +1,52 @@
+--- a/src/server/coa/AscensionHeroPets.cpp
++++ b/src/server/coa/AscensionHeroPets.cpp
+@@ -1,6 +1,7 @@
+ /* Copyright (C) 2016+ AzerothCore, GNU AGPL v3. */
+ 
+ #include "AscensionHeroPets.h"
++#include "AscensionRemovedSpellActionBars.h"
+ #include "Config.h"
+ #include "Pet.h"
+ #include "Player.h"
+@@ -24,7 +25,7 @@
+ };
+ 
+ constexpr std::array<PetPackage, 5> Packages = {{
+-    { 965200, { 1515, 883, 2641, 6991, 982, 1462 } },
++    { 965200, { 1515, 883, 2641, 982, 1462 } },
+     { 891, { 885, 889, 893, 109980 } },
+     { 890, { 884, 887, 892, 109981 } },
+     { 91634, { 91631, 91633, 91652, 109982 } },
+@@ -35,6 +36,10 @@
+ {
+     if (!Applies(player))
+         return;
++    for (uint32 spell : {6991u, 1106991u, 1356991u})
++        if (player->HasSpell(spell))
++            player->removeSpell(spell, SPEC_MASK_ALL, false);
++    AscensionRemovedSpellActionBars::Reconcile(player, {6991, 1106991, 1356991});
+     std::set<uint32> spells;
+     for (PetPackage const& package : Packages)
+         if (player->HasSpell(package.Parent))
+--- a/src/server/coa/AscensionFreePickLinkedSpells.h
++++ b/src/server/coa/AscensionFreePickLinkedSpells.h
+@@ -18,7 +18,7 @@
+     {84867, {92842, 92843}},
+     {129243, {129245, 129246}},
+     {965202, {75}},
+-    {965200, {1515, 883, 2641, 6991, 982, 1462}},
++    {965200, {1515, 883, 2641, 982, 1462}},
+     {891, {885, 889, 893, 109980}},
+     {890, {884, 887, 892, 109981}},
+     {91634, {91631, 91633, 91652, 109982}},
+--- a/src/server/coa/AscensionFreePick.cpp
++++ b/src/server/coa/AscensionFreePick.cpp
+@@ -186,6 +186,8 @@
+ 
+ bool CanLearnSpell(Player const* player, std::uint32_t spell, bool temporary, bool alreadyOwned)
+ {
++    if (Applies(player) && (spell == 6991 || spell == 1106991 || spell == 1356991))
++        return false;
+     bool const companion = std::any_of(LinkedSpellGroups.begin(), LinkedSpellGroups.end(),
+         [spell](auto const& group)
+         {
