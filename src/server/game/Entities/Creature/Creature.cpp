@@ -2433,6 +2433,15 @@ void Creature::LoadTemplateImmunities(int32 creatureImmunitiesId)
         _creatureImmunitiesId = 0;
 }
 
+// CoA: Ascension bosses cannot be stunned on any difficulty (#7287), so a class stun cannot cut a boss mechanic
+// short. Stuns the boss puts on itself or gets from its allies still land.
+static bool IsStunImmuneBoss(Creature const* creature, Unit const* caster)
+{
+    if (creature->GetOwnerGUID().IsPlayer() || (caster && (caster == creature || creature->IsFriendlyTo(caster))))
+        return false;
+    return creature->IsDungeonBoss() || creature->isWorldBoss() || creature->GetCreatureTemplate()->rank == CREATURE_ELITE_WORLDBOSS;
+}
+
 // CoA: poisons that count as bleeds still hit bleed-immune NPCs.
 static bool IsIgnoredTemplateMechanicImmunity(Creature const* creature, SpellInfo const* spellInfo, uint32 mechanic)
 {
@@ -2456,13 +2465,17 @@ bool Creature::IsImmunedToSpell(SpellInfo const* spellInfo, Spell const* spell)
         !IsIgnoredTemplateMechanicImmunity(this, spellInfo, spellInfo->Mechanic))
         return true;
 
+    Unit const* caster = spell ? spell->GetCaster() : nullptr;
+    if (spellInfo->Mechanic == MECHANIC_STUN && IsStunImmuneBoss(this, caster))
+        return true;
+
     // The above helper uses the creature_immunities table rather than a
     // simple mask on creature_template.  We can't rely on the old mask field
     // (which has been removed) because it no longer exists and did not always
     // match the runtime immunity set stored in m_spellImmune.
     bool immunedToAllEffects = true;
     for (uint8 i = 0; i < MAX_SPELL_EFFECTS; ++i)
-        if (spellInfo->Effects[i].IsEffect() && !IsImmunedToSpellEffect(spellInfo, i))
+        if (spellInfo->Effects[i].IsEffect() && !IsImmunedToSpellEffect(spellInfo, i, caster))
         {
             immunedToAllEffects = false;
             break;
@@ -2479,6 +2492,10 @@ bool Creature::IsImmunedToSpellEffect(SpellInfo const* spellInfo, uint32 index, 
     uint32 mechanic = spellInfo->Effects[index].Mechanic;
     if (mechanic > MECHANIC_NONE && HasMechanicTemplateImmunity(1ULL << mechanic) &&
         !IsIgnoredTemplateMechanicImmunity(this, spellInfo, mechanic))
+        return true;
+
+    if ((mechanic == MECHANIC_STUN || spellInfo->Effects[index].ApplyAuraName == SPELL_AURA_MOD_STUN) &&
+        IsStunImmuneBoss(this, caster))
         return true;
 
     // Tinker heals are designed to repair player-owned mechanical pets and devices
