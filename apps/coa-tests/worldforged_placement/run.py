@@ -8,7 +8,7 @@ batch = json.loads((root / 'docs/coa/area52-worldforged-placement-batch.json').r
 sql = (root / 'data/sql/updates/pending_db_world/rev_20261012_07_area52_worldforged_cache_placements.sql').read_text()
 sql = sql.replace('ON DUPLICATE KEY UPDATE `entry` = VALUES(`entry`)', 'ON CONFLICT(entry) DO NOTHING')
 rows = batch['placements']
-assert len(rows) == 16
+assert len(rows) == 22
 assert len({r['entry'] for r in rows}) == len(rows)
 assert len({r['guid'] for r in rows}) == len(rows)
 assert batch['bind_on_pickup'] and not batch['permanent_claim']
@@ -32,7 +32,7 @@ db.executescript('''
     INSERT INTO gameobject (guid, id, Comment) VALUES (9791001, 42, 'unrelated');
 ''')
 db.executescript(sql)
-assert db.execute('SELECT COUNT(*) FROM gameobject').fetchone()[0] == 15
+assert db.execute('SELECT COUNT(*) FROM gameobject').fetchone()[0] == 21
 assert db.execute('SELECT ScriptName FROM gameobject_template WHERE entry=990100').fetchone()[0] == 'unrelated'
 assert db.execute('SELECT id FROM gameobject WHERE guid=9791001').fetchone()[0] == 42
 before = db.execute('SELECT * FROM gameobject ORDER BY guid').fetchall()
@@ -40,4 +40,4 @@ db.executescript(sql)
 assert db.execute('SELECT * FROM gameobject ORDER BY guid').fetchall() == before
 assert all(r[0] == batch['required_handler'] for r in db.execute(
     'SELECT ScriptName FROM gameobject WHERE id != 42'))
-print('16 reconstructed placements: mappings, normal-mode scope, collision protection and idempotency passed')
+print('22 reconstructed placements: mappings, normal-mode scope, collision protection and idempotency passed')

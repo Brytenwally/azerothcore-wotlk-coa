@@ -1,5 +1,7 @@
 # First placement construction batch
 
+Current implementation: [33 drops and 22 caches](area52-worldforged-current.md). Earlier milestone descriptions below are historical.
+
 Sixteen cache templates and spawns are prepared in
 `rev_20261012_07_area52_worldforged_cache_placements.sql`.
 The [manifest](area52-worldforged-placement-batch.json) includes reward item/spell mappings,

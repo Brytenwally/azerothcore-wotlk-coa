@@ -257,3 +257,99 @@ SELECT 9791015, 990115, 1, 1, 1,
 WHERE EXISTS (SELECT 1 FROM `gameobject_template` WHERE `entry` = 990115
     AND `ScriptName` = 'area52_worldforged_scroll_cache')
     AND NOT EXISTS (SELECT 1 FROM `gameobject` WHERE `guid` = 9791015);
+
+INSERT INTO `gameobject_template` (`entry`, `type`, `displayId`, `name`, `size`, `data0`, `data1`, `ScriptName`)
+SELECT 990116, 10, 259, 'Worldforged Cache: Arcanist''s Explosion', 1, 0, 0, 'area52_worldforged_scroll_cache'
+WHERE NOT EXISTS (SELECT 1 FROM `gameobject_template` WHERE `entry` = 990116)
+ON DUPLICATE KEY UPDATE `entry` = VALUES(`entry`);
+DELETE FROM `gameobject` WHERE `guid` = 9791016 AND `id` = 990116;
+INSERT INTO `gameobject` (`guid`, `id`, `map`, `spawnMask`, `phaseMask`,
+    `position_x`, `position_y`, `position_z`, `orientation`, `rotation2`, `rotation3`,
+    `spawntimesecs`, `state`, `ScriptName`, `Comment`)
+SELECT 9791016, 990116, 189, 1, 1,
+    148.4247, -425.6938, 18.4864, 6.24828, 0.0174518, -0.9998477,
+    0, 1, 'area52_worldforged_scroll_cache',
+    'Area52 reconstructed test cache: Arcanist''s Explosion; reward 132580'
+WHERE EXISTS (SELECT 1 FROM `gameobject_template` WHERE `entry` = 990116
+    AND `ScriptName` = 'area52_worldforged_scroll_cache')
+    AND NOT EXISTS (SELECT 1 FROM `gameobject` WHERE `guid` = 9791016);
+
+INSERT INTO `gameobject_template` (`entry`, `type`, `displayId`, `name`, `size`, `data0`, `data1`, `ScriptName`)
+SELECT 990117, 10, 259, 'Worldforged Cache: Fire And Fury', 1, 0, 0, 'area52_worldforged_scroll_cache'
+WHERE NOT EXISTS (SELECT 1 FROM `gameobject_template` WHERE `entry` = 990117)
+ON DUPLICATE KEY UPDATE `entry` = VALUES(`entry`);
+DELETE FROM `gameobject` WHERE `guid` = 9791017 AND `id` = 990117;
+INSERT INTO `gameobject` (`guid`, `id`, `map`, `spawnMask`, `phaseMask`,
+    `position_x`, `position_y`, `position_z`, `orientation`, `rotation2`, `rotation3`,
+    `spawntimesecs`, `state`, `ScriptName`, `Comment`)
+SELECT 9791017, 990117, 1, 1, 1,
+    316.5332, -2238.9516, 212.109, 2.75762, 0.9816272, 0.1908091,
+    0, 1, 'area52_worldforged_scroll_cache',
+    'Area52 reconstructed test cache: Fire And Fury; reward 132724'
+WHERE EXISTS (SELECT 1 FROM `gameobject_template` WHERE `entry` = 990117
+    AND `ScriptName` = 'area52_worldforged_scroll_cache')
+    AND NOT EXISTS (SELECT 1 FROM `gameobject` WHERE `guid` = 9791017);
+
+INSERT INTO `gameobject_template` (`entry`, `type`, `displayId`, `name`, `size`, `data0`, `data1`, `ScriptName`)
+SELECT 990118, 10, 259, 'Worldforged Cache: Serpent Form', 1, 0, 0, 'area52_worldforged_scroll_cache'
+WHERE NOT EXISTS (SELECT 1 FROM `gameobject_template` WHERE `entry` = 990118)
+ON DUPLICATE KEY UPDATE `entry` = VALUES(`entry`);
+DELETE FROM `gameobject` WHERE `guid` = 9791018 AND `id` = 990118;
+INSERT INTO `gameobject` (`guid`, `id`, `map`, `spawnMask`, `phaseMask`,
+    `position_x`, `position_y`, `position_z`, `orientation`, `rotation2`, `rotation3`,
+    `spawntimesecs`, `state`, `ScriptName`, `Comment`)
+SELECT 9791018, 990118, 43, 1, 1,
+    -151.9659, 417.2508, -72.6294, 0.279253, 0.1391733, 0.9902680,
+    0, 1, 'area52_worldforged_scroll_cache',
+    'Area52 reconstructed test cache: Serpent Form; reward 132424'
+WHERE EXISTS (SELECT 1 FROM `gameobject_template` WHERE `entry` = 990118
+    AND `ScriptName` = 'area52_worldforged_scroll_cache')
+    AND NOT EXISTS (SELECT 1 FROM `gameobject` WHERE `guid` = 9791018);
+
+INSERT INTO `gameobject_template` (`entry`, `type`, `displayId`, `name`, `size`, `data0`, `data1`, `ScriptName`)
+SELECT 990119, 10, 259, 'Worldforged Cache: Consumed By Shadows', 1, 0, 0, 'area52_worldforged_scroll_cache'
+WHERE NOT EXISTS (SELECT 1 FROM `gameobject_template` WHERE `entry` = 990119)
+ON DUPLICATE KEY UPDATE `entry` = VALUES(`entry`);
+DELETE FROM `gameobject` WHERE `guid` = 9791019 AND `id` = 990119;
+INSERT INTO `gameobject` (`guid`, `id`, `map`, `spawnMask`, `phaseMask`,
+    `position_x`, `position_y`, `position_z`, `orientation`, `rotation2`, `rotation3`,
+    `spawntimesecs`, `state`, `ScriptName`, `Comment`)
+SELECT 9791019, 990119, 0, 1, 1,
+    1564.3761, -5609.9256, 114.273, 1.06465, 0.5075380, 0.8616294,
+    0, 1, 'area52_worldforged_scroll_cache',
+    'Area52 reconstructed test cache: Consumed By Shadows; reward 134409'
+WHERE EXISTS (SELECT 1 FROM `gameobject_template` WHERE `entry` = 990119
+    AND `ScriptName` = 'area52_worldforged_scroll_cache')
+    AND NOT EXISTS (SELECT 1 FROM `gameobject` WHERE `guid` = 9791019);
+
+INSERT INTO `gameobject_template` (`entry`, `type`, `displayId`, `name`, `size`, `data0`, `data1`, `ScriptName`)
+SELECT 990120, 10, 259, 'Worldforged Cache: Void Zone', 1, 0, 0, 'area52_worldforged_scroll_cache'
+WHERE NOT EXISTS (SELECT 1 FROM `gameobject_template` WHERE `entry` = 990120)
+ON DUPLICATE KEY UPDATE `entry` = VALUES(`entry`);
+DELETE FROM `gameobject` WHERE `guid` = 9791020 AND `id` = 990120;
+INSERT INTO `gameobject` (`guid`, `id`, `map`, `spawnMask`, `phaseMask`,
+    `position_x`, `position_y`, `position_z`, `orientation`, `rotation2`, `rotation3`,
+    `spawntimesecs`, `state`, `ScriptName`, `Comment`)
+SELECT 9791020, 990120, 429, 1, 1,
+    -35.0812, 812.3877, -29.4525, 4.69494, 0.7132489, -0.7009108,
+    0, 1, 'area52_worldforged_scroll_cache',
+    'Area52 reconstructed test cache: Void Zone; reward 132713'
+WHERE EXISTS (SELECT 1 FROM `gameobject_template` WHERE `entry` = 990120
+    AND `ScriptName` = 'area52_worldforged_scroll_cache')
+    AND NOT EXISTS (SELECT 1 FROM `gameobject` WHERE `guid` = 9791020);
+
+INSERT INTO `gameobject_template` (`entry`, `type`, `displayId`, `name`, `size`, `data0`, `data1`, `ScriptName`)
+SELECT 990121, 10, 259, 'Worldforged Cache: Megafrost', 1, 0, 0, 'area52_worldforged_scroll_cache'
+WHERE NOT EXISTS (SELECT 1 FROM `gameobject_template` WHERE `entry` = 990121)
+ON DUPLICATE KEY UPDATE `entry` = VALUES(`entry`);
+DELETE FROM `gameobject` WHERE `guid` = 9791021 AND `id` = 990121;
+INSERT INTO `gameobject` (`guid`, `id`, `map`, `spawnMask`, `phaseMask`,
+    `position_x`, `position_y`, `position_z`, `orientation`, `rotation2`, `rotation3`,
+    `spawntimesecs`, `state`, `ScriptName`, `Comment`)
+SELECT 9791021, 990121, 1, 1, 1,
+    5209.1326, -4813.2206, 701.077, 0.733038, 0.3583678, 0.9335805,
+    0, 1, 'area52_worldforged_scroll_cache',
+    'Area52 reconstructed test cache: Megafrost; reward 132602'
+WHERE EXISTS (SELECT 1 FROM `gameobject_template` WHERE `entry` = 990121
+    AND `ScriptName` = 'area52_worldforged_scroll_cache')
+    AND NOT EXISTS (SELECT 1 FROM `gameobject` WHERE `guid` = 9791021);

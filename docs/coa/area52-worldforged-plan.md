@@ -1,5 +1,7 @@
 # Area 52 acquisition restoration plan
 
+Current implementation: [33 drops and 22 caches](area52-worldforged-current.md). Earlier milestone descriptions below are historical.
+
 The target is broad coverage of static acquisitions and reconstruction of the interaction-based
 routes, not a single-cache demonstration. Missing coordinates are research tasks; they are not a
 reason to abandon a supported acquisition. Work continues on independent entries while gaps remain.

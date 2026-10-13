@@ -501,6 +501,192 @@
       },
       "provenance": "reconstructed: 3 yards beside normal-mode boss anchor; not an observed cache coordinate",
       "status": "staged; floor, obstruction and interaction tests required"
+    },
+    {
+      "name": "Arcanist's Explosion",
+      "entry": 990116,
+      "guid": 9791016,
+      "item": 132580,
+      "spell": 982545,
+      "source": "https://ascension.help/mystic/978c926a-87a3-408e-9ea7-47af2d70c975",
+      "anchor": {
+        "entry": 6487,
+        "name": "Arcanist Doan",
+        "guid": 40124,
+        "map": 189,
+        "x": 148.32,
+        "y": -428.692,
+        "z": 18.4864,
+        "o": 6.24828,
+        "spawn_mask": 7,
+        "phase_mask": 1
+      },
+      "placement": {
+        "map": 189,
+        "x": 148.4247,
+        "y": -425.6938,
+        "z": 18.4864,
+        "o": 6.24828,
+        "spawn_mask": 1,
+        "phase_mask": 1
+      },
+      "provenance": "reconstructed: 3 yards beside normal-mode boss anchor; not an observed cache coordinate",
+      "status": "staged; floor, obstruction and interaction tests required"
+    },
+    {
+      "name": "Fire And Fury",
+      "entry": 990117,
+      "guid": 9791017,
+      "item": 132724,
+      "spell": 997298,
+      "source": "https://ascension.help/mystic/9489fd05-6ef0-4dd4-b09a-a39e26d80e8b",
+      "anchor": {
+        "entry": 3470,
+        "name": "Rathorian",
+        "guid": 15079,
+        "map": 1,
+        "x": 317.657,
+        "y": -2236.17,
+        "z": 212.109,
+        "o": 2.75762,
+        "spawn_mask": 1,
+        "phase_mask": 1
+      },
+      "placement": {
+        "map": 1,
+        "x": 316.5332,
+        "y": -2238.9516,
+        "z": 212.109,
+        "o": 2.75762,
+        "spawn_mask": 1,
+        "phase_mask": 1
+      },
+      "provenance": "reconstructed: 3 yards beside normal-mode boss anchor; not an observed cache coordinate",
+      "status": "staged; floor, obstruction and interaction tests required"
+    },
+    {
+      "name": "Serpent Form",
+      "entry": 990118,
+      "guid": 9791018,
+      "item": 132424,
+      "spell": 982400,
+      "source": "https://ascension.help/mystic/21da34bc-8a92-44d7-b46e-8371649a8ded",
+      "anchor": {
+        "entry": 3669,
+        "name": "Lord Cobrahn",
+        "guid": 27380,
+        "map": 43,
+        "x": -151.139,
+        "y": 414.367,
+        "z": -72.6294,
+        "o": 0.279253,
+        "spawn_mask": 7,
+        "phase_mask": 1
+      },
+      "placement": {
+        "map": 43,
+        "x": -151.9659,
+        "y": 417.2508,
+        "z": -72.6294,
+        "o": 0.279253,
+        "spawn_mask": 1,
+        "phase_mask": 1
+      },
+      "provenance": "reconstructed: 3 yards beside normal-mode boss anchor; not an observed cache coordinate",
+      "status": "staged; floor, obstruction and interaction tests required"
+    },
+    {
+      "name": "Consumed By Shadows",
+      "entry": 990119,
+      "guid": 9791019,
+      "item": 134409,
+      "spell": 997217,
+      "source": "https://ascension.help/mystic/09f7b8fd-fb88-4e16-81f5-2a8409e78438",
+      "anchor": {
+        "entry": 10828,
+        "name": "High General Abbendis",
+        "guid": 92657,
+        "map": 0,
+        "x": 1567.0,
+        "y": -5611.38,
+        "z": 114.273,
+        "o": 1.06465,
+        "spawn_mask": 1,
+        "phase_mask": 1
+      },
+      "placement": {
+        "map": 0,
+        "x": 1564.3761,
+        "y": -5609.9256,
+        "z": 114.273,
+        "o": 1.06465,
+        "spawn_mask": 1,
+        "phase_mask": 1
+      },
+      "provenance": "reconstructed: 3 yards beside normal-mode boss anchor; not an observed cache coordinate",
+      "status": "staged; floor, obstruction and interaction tests required"
+    },
+    {
+      "name": "Void Zone",
+      "entry": 990120,
+      "guid": 9791020,
+      "item": 132713,
+      "spell": 92556,
+      "source": "https://ascension.help/mystic/f2036d53-dfbc-4c9b-87b7-5232f8ed12e0",
+      "anchor": {
+        "entry": 11496,
+        "name": "Immol'thar",
+        "guid": 248037,
+        "map": 429,
+        "x": -38.0807,
+        "y": 812.44,
+        "z": -29.4525,
+        "o": 4.69494,
+        "spawn_mask": 7,
+        "phase_mask": 1
+      },
+      "placement": {
+        "map": 429,
+        "x": -35.0812,
+        "y": 812.3877,
+        "z": -29.4525,
+        "o": 4.69494,
+        "spawn_mask": 1,
+        "phase_mask": 1
+      },
+      "provenance": "reconstructed: 3 yards beside normal-mode boss anchor; not an observed cache coordinate",
+      "status": "staged; floor, obstruction and interaction tests required"
+    },
+    {
+      "name": "Megafrost",
+      "entry": 990121,
+      "guid": 9791021,
+      "item": 132602,
+      "spell": 982695,
+      "source": "https://ascension.help/mystic/a8211429-1d65-44d3-b154-b9b8558cd01a",
+      "anchor": {
+        "entry": 10198,
+        "name": "Kashoch the Reaver",
+        "guid": 42305,
+        "map": 1,
+        "x": 5211.14,
+        "y": -4815.45,
+        "z": 701.077,
+        "o": 0.733038,
+        "spawn_mask": 1,
+        "phase_mask": 1
+      },
+      "placement": {
+        "map": 1,
+        "x": 5209.1326,
+        "y": -4813.2206,
+        "z": 701.077,
+        "o": 0.733038,
+        "spawn_mask": 1,
+        "phase_mask": 1
+      },
+      "provenance": "reconstructed: 3 yards beside normal-mode boss anchor; not an observed cache coordinate",
+      "status": "staged; floor, obstruction and interaction tests required"
     }
   ]
 }

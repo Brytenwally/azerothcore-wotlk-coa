@@ -746,10 +746,13 @@
     {
       "name": "Nesingwary's Big",
       "zone": "Stranglethorn",
-      "items": [],
+      "items": [
+        132420
+      ],
       "route": "location-review",
       "source": "https://ascension.help/mystic/536d1bfc-78f6-4aa4-89d1-d0b2f18925ec",
-      "reference_status": "unverified"
+      "reference_status": "unverified",
+      "identity_resolution": "Reference name truncated; matched Worldforged Scroll: Nesingwary's Big Game Shot (982375)."
     },
     {
       "name": "Oil Dipped Arrows",

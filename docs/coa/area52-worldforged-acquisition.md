@@ -1,5 +1,7 @@
 # Area 52 Worldforged acquisition
 
+Current implementation: [33 drops and 22 caches](area52-worldforged-current.md). Earlier milestone descriptions below are historical.
+
 Current construction status: see the [16-cache batch](area52-worldforged-batch16.md).
 The original Flameburst-only SQL described below was superseded before activation.
 

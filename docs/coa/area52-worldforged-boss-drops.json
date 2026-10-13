@@ -1,0 +1,299 @@
+[
+  {
+    "name": "Flameburst",
+    "boss": 11518,
+    "item": 100369,
+    "spell": 92659,
+    "chance": 50,
+    "source": "https://ascension.help/mystic/e944c2dc-0f8c-4b41-87b3-041a829b5fee",
+    "rate_source": "Owner default: 50%"
+  },
+  {
+    "name": "Ragefire Cleave",
+    "boss": 11517,
+    "item": 132623,
+    "spell": 982838,
+    "chance": 50,
+    "source": "https://ascension.help/mystic/f89265ad-91a9-4150-994d-e4cdaa13732e",
+    "rate_source": "Owner default: 50%"
+  },
+  {
+    "name": "Ragefire Nova",
+    "boss": 11520,
+    "item": 132624,
+    "spell": 982850,
+    "chance": 50,
+    "source": "https://ascension.help/mystic/593ce304-ed46-4d2c-b55c-11fa2b286c32",
+    "rate_source": "Owner default: 50%"
+  },
+  {
+    "name": "Piercing Cleaver",
+    "boss": 3886,
+    "item": 132635,
+    "spell": 982965,
+    "chance": 50,
+    "source": "https://ascension.help/mystic/6e5ed5b6-2a6f-460b-98c9-48d6ac8c800c",
+    "rate_source": "Owner default: 50%"
+  },
+  {
+    "name": "Herod's Legacy",
+    "boss": 3975,
+    "item": 132595,
+    "spell": 982650,
+    "chance": 50,
+    "source": "https://ascension.help/mystic/7245ec0b-0011-4443-8eb9-edc253e28a89",
+    "rate_source": "Owner default: 50%"
+  },
+  {
+    "name": "Interrogator's Immolation",
+    "boss": 3983,
+    "item": 132583,
+    "spell": 982582,
+    "chance": 50,
+    "source": "https://ascension.help/mystic/b05dfc9c-ba7f-42cb-a23b-f64eade60eb8",
+    "rate_source": "Owner default: 50%"
+  },
+  {
+    "name": "Veil of Shadows",
+    "boss": 4543,
+    "item": 132690,
+    "spell": 997168,
+    "chance": 50,
+    "source": "https://ascension.help/mystic/ce69241b-e774-4096-8afa-cabf04beba77",
+    "rate_source": "Owner default: 50%"
+  },
+  {
+    "name": "Hydra's Venom",
+    "boss": 4829,
+    "item": 132701,
+    "spell": 997242,
+    "chance": 50,
+    "source": "https://ascension.help/mystic/45edd7c2-ea6a-4186-9b7d-a8d1911c17fb",
+    "rate_source": "Owner default: 50%"
+  },
+  {
+    "name": "Twilight Shock",
+    "boss": 4832,
+    "item": 132709,
+    "spell": 997305,
+    "chance": 50,
+    "source": "https://ascension.help/mystic/12d32761-7e00-4f0b-b4cc-1579a4599258",
+    "rate_source": "Owner default: 50%"
+  },
+  {
+    "name": "Knifestorm",
+    "boss": 1716,
+    "item": 132702,
+    "spell": 997260,
+    "chance": 50,
+    "source": "https://ascension.help/mystic/67e365fe-8642-4a79-941a-a82a34433715",
+    "rate_source": "Owner default: 50%"
+  },
+  {
+    "name": "Shadow Word: Gore",
+    "boss": 7354,
+    "item": 132638,
+    "spell": 983020,
+    "chance": 100,
+    "source": "https://ascension.help/mystic/cfceafe0-7f63-40a2-97a0-a6aeb648166d",
+    "rate_source": "https://ascension.gg/fr/changelog/1?page=115"
+  },
+  {
+    "name": "Shield Of The Emperor",
+    "boss": 9019,
+    "item": 132598,
+    "spell": 982670,
+    "chance": 50,
+    "source": "https://ascension.help/mystic/b900a20f-4e87-434c-a840-75e5d04c86f7",
+    "rate_source": "Owner default: 50%"
+  },
+  {
+    "name": "Shadow Dagger",
+    "boss": 10432,
+    "item": 132432,
+    "spell": 982465,
+    "chance": 50,
+    "source": "https://ascension.help/mystic/151a8381-eb1d-4b60-a422-1be7df2001bc",
+    "rate_source": "Owner default: 50%"
+  },
+  {
+    "name": "Bone Spear",
+    "boss": 11622,
+    "item": 132609,
+    "spell": 982748,
+    "chance": 50,
+    "source": "https://ascension.help/mystic/0e276452-408a-451c-982b-1abf4e7af43d",
+    "rate_source": "Owner default: 50%"
+  },
+  {
+    "name": "Razorlash",
+    "boss": 12258,
+    "item": 132431,
+    "spell": 982448,
+    "chance": 50,
+    "source": "https://ascension.help/mystic/f8ab3aac-a65a-400d-891b-0f48bd15b208",
+    "rate_source": "Owner default: 50%"
+  },
+  {
+    "name": "Lunar Aspiration",
+    "boss": 11957,
+    "item": 132689,
+    "spell": 997152,
+    "chance": 100,
+    "source": "https://ascension.help/mystic/57c213dc-5b5c-44de-90b8-d8caac74b945",
+    "rate_source": "https://ascension.gg/fr/changelog/1?page=115"
+  },
+  {
+    "name": "Arcanist's Explosion",
+    "boss": 6487,
+    "item": 132580,
+    "spell": 982545,
+    "chance": 50,
+    "source": "https://ascension.help/mystic/978c926a-87a3-408e-9ea7-47af2d70c975",
+    "rate_source": "Owner default: 50%"
+  },
+  {
+    "name": "Fire And Fury",
+    "boss": 3470,
+    "item": 132724,
+    "spell": 997298,
+    "chance": 50,
+    "source": "https://ascension.help/mystic/9489fd05-6ef0-4dd4-b09a-a39e26d80e8b",
+    "rate_source": "Owner default: 50%"
+  },
+  {
+    "name": "Serpent Form",
+    "boss": 3669,
+    "item": 132424,
+    "spell": 982400,
+    "chance": 50,
+    "source": "https://ascension.help/mystic/21da34bc-8a92-44d7-b46e-8371649a8ded",
+    "rate_source": "Owner default: 50%"
+  },
+  {
+    "name": "Consumed By Shadows",
+    "boss": 10828,
+    "item": 134409,
+    "spell": 997217,
+    "chance": 50,
+    "source": "https://ascension.help/mystic/09f7b8fd-fb88-4e16-81f5-2a8409e78438",
+    "rate_source": "Owner default: 50%"
+  },
+  {
+    "name": "Void Zone",
+    "boss": 11496,
+    "item": 132713,
+    "spell": 92556,
+    "chance": 50,
+    "source": "https://ascension.help/mystic/f2036d53-dfbc-4c9b-87b7-5232f8ed12e0",
+    "rate_source": "Owner default: 50%"
+  },
+  {
+    "name": "Megafrost",
+    "boss": 10198,
+    "item": 132602,
+    "spell": 982695,
+    "chance": 100,
+    "source": "https://ascension.help/mystic/a8211429-1d65-44d3-b154-b9b8558cd01a",
+    "rate_source": "https://ascension.gg/fr/changelog/1?page=115"
+  },
+  {
+    "name": "Arugal's Blink",
+    "boss": 4275,
+    "item": 132703,
+    "spell": 997270,
+    "chance": 50,
+    "source": "https://ascension.help/mystic/7848f0b3-15b0-4a96-a312-2483c73efbb1",
+    "rate_source": "Owner default: 50%"
+  },
+  {
+    "name": "Carrion Swarm",
+    "boss": 10813,
+    "item": 132715,
+    "spell": 92574,
+    "chance": 50,
+    "source": "https://ascension.help/mystic/295df25a-d288-4e40-bb32-7f7a9e832b18",
+    "rate_source": "Owner default: 50%"
+  },
+  {
+    "name": "Devour Mind",
+    "boss": 3654,
+    "item": 132649,
+    "spell": 983120,
+    "chance": 50,
+    "source": "https://ascension.help/mystic/65b7ab84-52e7-4f25-bbdc-fc82e442ba34",
+    "rate_source": "Owner default: 50%"
+  },
+  {
+    "name": "Firefall",
+    "boss": 11502,
+    "item": 132693,
+    "spell": 982536,
+    "chance": 50,
+    "source": "https://ascension.help/mystic/16b3e9ef-7791-415f-a5b0-4e2e1f816e59",
+    "rate_source": "Owner default: 50%"
+  },
+  {
+    "name": "Flesh Hook",
+    "boss": 10439,
+    "item": 132717,
+    "spell": 92580,
+    "chance": 50,
+    "source": "https://ascension.help/mystic/56a4b39b-1878-4404-9fac-b4d64d94365b",
+    "rate_source": "Owner default: 50%"
+  },
+  {
+    "name": "Ghostly Blow",
+    "boss": 3887,
+    "item": 132658,
+    "spell": 983240,
+    "chance": 50,
+    "source": "https://ascension.help/mystic/9e52ce82-b963-43db-a8af-14b81a8f59d7",
+    "rate_source": "Owner default: 50%"
+  },
+  {
+    "name": "Mayhem",
+    "boss": 11502,
+    "item": 132633,
+    "spell": 982940,
+    "chance": 50,
+    "source": "https://ascension.help/mystic/642cfacf-7afd-437e-be25-aea0d1ac68a7",
+    "rate_source": "Owner default: 50%"
+  },
+  {
+    "name": "Spiderbite",
+    "boss": 7355,
+    "item": 132634,
+    "spell": 982950,
+    "chance": 50,
+    "source": "https://ascension.help/mystic/bc6b2932-1411-41b3-9895-f3bcfeca12fd",
+    "rate_source": "Owner default: 50%"
+  },
+  {
+    "name": "Venom Belch",
+    "boss": 10439,
+    "item": 120573,
+    "spell": 92582,
+    "chance": 50,
+    "source": "https://ascension.help/mystic/538709ed-61a5-426f-b671-9ea7d47f94d8",
+    "rate_source": "Owner default: 50%"
+  },
+  {
+    "name": "Water Geyser",
+    "boss": 12876,
+    "item": 132636,
+    "spell": 982968,
+    "chance": 50,
+    "source": "https://ascension.help/mystic/fbac3d2f-ad44-4889-964a-cecde566420c",
+    "rate_source": "Owner default: 50%"
+  },
+  {
+    "name": "Darkmaster",
+    "boss": 1853,
+    "item": 132652,
+    "spell": 983180,
+    "chance": 50,
+    "source": "https://ascension.help/mystic/98da1d63-c7f7-4010-b37c-109feb9efa46",
+    "rate_source": "Owner default: 50%"
+  }
+]
