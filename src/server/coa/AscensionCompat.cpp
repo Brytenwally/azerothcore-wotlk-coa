@@ -37,6 +37,7 @@
 #include "Pet.h"
 #include "SpellAuraEffects.h"
 #include "AscensionAmmunitionData.h"
+#include "AscensionAverageItemLevel.h"
 #include "AscensionPersonalBank.h"
 #include "AscensionCollectibleSpellData.h"
 #include "AscensionCustomClassData.h"
@@ -5267,29 +5268,11 @@ void SendBankPermissions(Player* player, uint8 kind)
     AscensionPersonalBank::SendKindHint(player, uint8(kind));
 }
 
-[[nodiscard]] float AverageEquippedItemLevel(Player* player, uint8 emptiedSlot)
-{
-    float sum = 0.0f;
-    uint32 count = 0;
-    for (uint8 slot = EQUIPMENT_SLOT_START; slot < EQUIPMENT_SLOT_END; ++slot)
-    {
-        if (slot == EQUIPMENT_SLOT_TABARD || slot == EQUIPMENT_SLOT_RANGED || slot == EQUIPMENT_SLOT_OFFHAND ||
-            slot == EQUIPMENT_SLOT_BODY)
-            continue;
-
-        ++count;
-        if (Item* item = slot == emptiedSlot ? nullptr : player->GetItemByPos(INVENTORY_SLOT_BAG_0, slot))
-            sum += item->GetTemplate()->Quality == ITEM_QUALITY_HEIRLOOM ? player->GetLevel()
-                                                                        : item->GetTemplate()->ItemLevel;
-    }
-    return sum / count;
-}
-
 [[nodiscard]] WorldPacket BuildAverageItemLevel(Player* player, uint8 emptiedSlot = EQUIPMENT_SLOT_END)
 {
     WorldPacket data(SMSG_UPDATE_OBJECT_ADDON, 16);
     data << player->GetGUID() << PLAYER_ADDON_FIELD_AVERAGE_ITEM_LEVEL
-         << AverageEquippedItemLevel(player, emptiedSlot);
+         << AscensionAverageItemLevel::Equipped(player, emptiedSlot);
     return data;
 }
 
@@ -5985,7 +5968,7 @@ public:
              PLAYERHOOK_ON_AFTER_SET_VISIBLE_ITEM_SLOT, PLAYERHOOK_ON_EQUIP, PLAYERHOOK_ON_DELETE,
              PLAYERHOOK_ON_STORE_NEW_ITEM, PLAYERHOOK_ON_CREATE_ITEM, PLAYERHOOK_ON_TAKE_MAIL_ITEM,
              PLAYERHOOK_ON_PLAYER_COMPLETE_QUEST,
-             PLAYERHOOK_ON_PLAYER_IS_CLASS, PLAYERHOOK_ON_LEVEL_CHANGED,
+             PLAYERHOOK_ON_PLAYER_IS_CLASS, PLAYERHOOK_ON_LEVEL_CHANGED, PLAYERHOOK_ON_MAP_CHANGED,
              PLAYERHOOK_ON_LEARN_SPELL, PLAYERHOOK_ON_LEARN_TRAINER_SPELL, PLAYERHOOK_ON_FORGOT_SPELL,
              PLAYERHOOK_ON_AFTER_SPEC_SLOT_CHANGED,
              PLAYERHOOK_ON_CREATE_INITIAL_ITEMS,
@@ -6176,6 +6159,12 @@ public:
       RefreshScaledQuestQueries(player);
     }
   }
+
+    void OnPlayerMapChanged(Player* player) override
+    {
+        if (ascensionCompatConfig.GetConfigValue<bool>(AscensionCompatConfig::ENABLED) && player->IsInWorld())
+            SendAverageItemLevel(player);
+    }
 
   void OnPlayerLearnSpell(Player *player, uint32 spellId) override {
     if (AscensionFreePick::IsLinkedSpellParent(spellId))
