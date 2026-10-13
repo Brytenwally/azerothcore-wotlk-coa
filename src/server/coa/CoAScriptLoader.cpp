@@ -43,6 +43,7 @@ void AddSC_AscensionBloodforged();
 void AddSC_AscensionPvpPower();
 void AddSC_AscensionGlory();
 void AddSC_AscensionDifficultyRelease();
+void AddSC_AscensionLfgRandomDungeonRequirements();
 void AddSC_AscensionQuestLog();
 void AddSC_AscensionRestingBuff();
 void AddSC_AscensionClosestResurrection();
@@ -652,6 +653,7 @@ void AddCoAScripts()
     AddSC_AscensionPvpPower();
     AddSC_AscensionGlory();
     AddSC_AscensionDifficultyRelease();
+    AddSC_AscensionLfgRandomDungeonRequirements();
     AddSC_AscensionQuestLog();
     AddSC_AscensionRestingBuff();
     AddSC_AscensionClosestResurrection();
