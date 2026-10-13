@@ -66,14 +66,25 @@ the standing restriction against learning unrelated class abilities through ques
 Research the staff pickup, NPC launch interactions, four distinct elemental sphere credits and final
 reward. Model progress per player; one player's sequence must not consume or complete another's.
 
-## Cache contract: activation hold
+## Cache contract: owner-confirmed acquisition rules
 
 The official [Season 8 Chapter 2 announcement](https://ascension.gg/es/news/season-8-chapter-2-overview/398)
 describes five fragments forming a key for a chosen Worldforged cache, alongside expansion to Area 52.
-The live world contains Worldforged Key 97729 and Fragment 97730. This is evidence to investigate,
-not proof every later Area 52 cache used unchanged rules. Inspect Lock.dbc, the current object lock,
-key spell and later updates before activation. Also verify whether the inherited once-per-character
-gear pickup contract is appropriate for enchant caches. Flameburst remains staged, not release-ready.
+The owner confirmed the intended Area 52 contract on October 12, 2026:
+
+- Boss scroll drops remain an acquisition route.
+- Each boss with a scroll drop also has a cache offering the same scroll as an alternative route.
+- Combining five Worldforged Key Fragments creates one Worldforged Key.
+- Opening a cache consumes one key and awards that cache's mapped scroll.
+
+The live world contains Worldforged Key 97729 and Fragment 97730. Inspect their existing combine
+spell and Lock.dbc before implementing the contract. Do not inherit the gear pickup module's
+permanent once-per-character claim restriction. Keyed acquisitions need their own handling.
+Do not extend the boss-cache rule to bypass unrelated quest or event prerequisites.
+Flameburst's current `worldforged_pickup` binding is therefore an implementation mismatch:
+its SQL remains a placement prototype and must not be activated until the keyed handler replaces it.
+Key consumption and reward delivery must handle full bags, concurrent users, retries and failures
+without losing a key or duplicating a reward. Fragment drop sources/rates are a separate research task.
 
 An [official changelog](https://ascension.gg/fr/changelog/1?page=115) independently confirms caches
 near the sources of Flameburst and Ragefire Cleave and an off-path Earthborer Acid cache in its instance.

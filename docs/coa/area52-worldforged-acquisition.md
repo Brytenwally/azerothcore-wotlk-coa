@@ -21,6 +21,10 @@ not counts of validated placements. The accompanying audit preserves per-enchant
 
 ## First staged cache: Flameburst
 
+Activation hold: the owner-confirmed key contract in [the plan](area52-worldforged-plan.md)
+supersedes the prototype's inherited once-per-character gear pickup behavior. Replace its handler
+with key-consuming scroll acquisition before deployment; the current SQL is only a location prototype.
+
 [Area 52 record](https://ascension.help/mystic/e944c2dc-0f8c-4b41-87b3-041a829b5fee)
 places a cache near Jergosh in Ragefire Chasm. The upstream pickup migration independently has
 object 1345173 at map 389, -371.200 / 191.000 / -21.130, facing 0.624764.
