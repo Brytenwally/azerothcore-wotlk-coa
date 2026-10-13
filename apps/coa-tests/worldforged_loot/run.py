@@ -6,7 +6,7 @@ root = Path(__file__).resolve().parents[3]
 rows = json.loads((root / 'docs/coa/area52-worldforged-boss-drops.json').read_text())
 sql = (root / 'data/sql/updates/pending_db_world/rev_20261012_08_area52_worldforged_boss_drops.sql').read_text()
 assert len(rows) == 33
-assert all(r['chance'] == (100 if r['name'] in ('Shadow Word: Gore','Lunar Aspiration','Megafrost') else 50) for r in rows)
+assert all(r['chance'] == 100 for r in rows)
 db = sqlite3.connect(':memory:')
 db.executescript('''
     CREATE TABLE creature_template (entry INTEGER PRIMARY KEY, lootid INTEGER,
@@ -35,4 +35,4 @@ assert db.execute('SELECT lootid FROM creature_template WHERE entry=42').fetchon
 before = db.execute('SELECT * FROM creature_loot_template ORDER BY Entry,Item').fetchall()
 db.executescript(sql)
 assert db.execute('SELECT * FROM creature_loot_template ORDER BY Entry,Item').fetchall() == before
-print('33 drops: default/documented rates, difficulty loot reuse, generic-table isolation and idempotency passed')
+print('33 drops: guaranteed single-item rates, difficulty loot reuse, generic-table isolation and idempotency passed')

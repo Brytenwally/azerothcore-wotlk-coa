@@ -6,8 +6,10 @@ the live server, tester release and main PR have not been changed.
 ## Implemented
 
 - 33 source-to-scroll loot mappings, using the current base and difficulty-template loot IDs.
-  30 have the owner's 50% base chance. Shadow Word: Gore, Lunar Aspiration and Megafrost from
-  Kashoch use the [documented 100% chances](https://ascension.gg/fr/changelog/1?page=115).
+  All have a 100% chance and a quantity of one per mapped scroll in normal shared loot.
+  This is the owner's Area 52 policy, confirmed October 13; it does not establish historical rates
+  for all sources. Shadow Word: Gore, Lunar Aspiration and Megafrost from Kashoch have
+  [documented 100% chances](https://ascension.gg/fr/changelog/1?page=115).
   Core loot-rate configuration can still modify ordinary base chances.
 - 22 normal-mode reconstructed cache placements and dedicated scripted object templates.
   The latest additions are Arcanist's Explosion, Fire And Fury, Serpent Form, Consumed By Shadows,
@@ -58,7 +60,7 @@ of them. The full client contains many more Worldforged variants, including abil
 drops. No default rate for ordinary trash or ability-conditioned drops was authorized or invented.
 
 - Creature-family/ability-specific scrolls need their triggering spell, target-family and eligibility
-  rules plus rates. Boss 50% defaults are not applied to every creature in a family.
+  rules plus rates. Boss guaranteed-drop rules are not applied to every creature in a family.
 - Shady Dealer routes: no Shady Dealer templates were found in the current world. Restore vendor
   identities, faction access, locations and prices from attributable data before adding inventory.
 - Static landmark objects still need resolved positions, floors or scripted-spawn anchors.
