@@ -66,6 +66,7 @@ void RefreshWhiteWalker(Player* player)
     for (auto const& [root, replacement] : { std::pair<uint32, uint32>{ SliceAndDice, SliceAndIce },
              { WindsOfWinter, windsReplacement } })
     {
+        bool const rootKnown = player->HasActiveSpell(root);
         if (active)
             for (uint32 oldRank : WindsOfWinterRanks)
                 if (oldRank != replacement && granted.contains(oldRank))
@@ -74,10 +75,16 @@ void RefreshWhiteWalker(Player* player)
                         player->removeSpell(oldRank, SPEC_MASK_ALL, true);
                     granted.erase(oldRank);
                 }
-        if (active && replacement && player->HasActiveSpell(root) && !player->HasActiveSpell(replacement))
+        if (active && replacement && rootKnown && !player->HasActiveSpell(replacement))
         {
             player->learnSpell(replacement, true);
             granted.insert(replacement);
+        }
+        if (active && (!rootKnown || !replacement) && granted.contains(replacement))
+        {
+            if (player->GetSpellMap().find(replacement) != player->GetSpellMap().end())
+                player->removeSpell(replacement, SPEC_MASK_ALL, true);
+            granted.erase(replacement);
         }
         player->SetTemporarySpellReplacement(root, active ? replacement : 0);
     }
@@ -96,6 +103,12 @@ void RefreshWhiteWalker(Player* player)
     if (active && iceSpear != 0 && granted.contains(IceSpear))
     {
         if (iceSpear != IceSpear && player->GetSpellMap().find(IceSpear) != player->GetSpellMap().end())
+            player->removeSpell(IceSpear, SPEC_MASK_ALL, true);
+        granted.erase(IceSpear);
+    }
+    if (active && (!player->HasActiveSpell(IceLance) || iceSpear != 0) && granted.contains(IceSpear))
+    {
+        if (player->GetSpellMap().find(IceSpear) != player->GetSpellMap().end())
             player->removeSpell(IceSpear, SPEC_MASK_ALL, true);
         granted.erase(IceSpear);
     }
