@@ -250,7 +250,8 @@ class aura_area52_slice_and_ice : public AuraScript
     void Proc(ProcEventInfo& event)
     {
         PreventDefaultAction();
-        GetTarget()->CastSpell(GetTarget(), 978525, TRIGGERED_FULL_MASK);
+        GetTarget()->CastSpell(GetTarget(), AscensionWhiteWalkerSupport::WintersFury, TRIGGERED_FULL_MASK);
+        GetTarget()->CastSpell(GetTarget(), AscensionWhiteWalkerSupport::WintersVitality, TRIGGERED_FULL_MASK);
     }
 
     void Register() override

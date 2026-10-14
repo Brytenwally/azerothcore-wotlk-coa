@@ -17,6 +17,8 @@ constexpr std::uint32_t WindsOfWinter = 120;
 constexpr std::uint32_t WindsOfWinterReplacement = 978846;
 constexpr std::uint32_t IceLance = 30455;
 constexpr std::uint32_t IceSpear = 984935;
+constexpr std::uint32_t WintersFury = 984936;
+constexpr std::uint32_t WintersVitality = 978525;
 constexpr std::array<std::uint32_t, 8> WindsOfWinterRanks = { 978846, 978847, 978848, 978849,
     978850, 978851, 978852, 978853 };
 constexpr std::array<std::uint32_t, 7> IceSpearRanks = { 984935, 984970, 984971, 984972, 984973, 984974, 984975 };
