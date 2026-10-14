@@ -25,10 +25,6 @@ void ApplyFrozenPowerDamageContract(SpellInfo* spellInfo)
         effect.TargetB.GetTarget())
         return;
 
-    // Frozen Power's public contract is 3/6/9% for the three talent ranks and
-    // 2% per applied Mystic Enchant (up to three copies).  Convert the raw
-    // effect into the target-aware damage path; Unit.cpp supplies the
-    // caster-independent Frostbrand debuff predicate.
     if (spellInfo->Id == 63373) effect.BasePoints = AscensionWhiteWalkerSupport::FrozenPowerTalentPercent(0);
     else if (spellInfo->Id == 63374) effect.BasePoints = AscensionWhiteWalkerSupport::FrozenPowerTalentPercent(1);
     else if (spellInfo->Id == 263374) effect.BasePoints = AscensionWhiteWalkerSupport::FrozenPowerTalentPercent(2);

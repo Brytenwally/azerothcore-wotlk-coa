@@ -14,6 +14,15 @@ class RegistrationTests(unittest.TestCase):
     def test_valid_flat_loader(self):
         self.assertEqual(inspect(self.sources)['status'], 'passed')
 
+    def test_area52_entry_is_checked(self):
+        sources = {name: text.replace('AddSC_Example', 'AddArea52ActiveBuildScripts')
+                   for name, text in self.sources.items()}
+        self.assertEqual(inspect(sources)['status'], 'passed')
+        del sources['Example.cpp']
+        result = inspect(sources)
+        self.assertEqual(result['status'], 'failed')
+        self.assertEqual(result['issues'][0]['entry'], 'AddArea52ActiveBuildScripts')
+
     def test_worldserver_must_call_the_coa_loader_once(self):
         registered = 'sScriptMgr->SetScriptLoader([] { AddScripts(); AddCoAScripts(); });'
         self.assertEqual(inspect(self.sources, registered)['status'], 'passed')
