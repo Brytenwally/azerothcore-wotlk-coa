@@ -21,73 +21,30 @@ std::unordered_map<ObjectGuid::LowType, std::unordered_set<uint32>> WhiteWalkerG
 std::unordered_set<ObjectGuid::LowType> AbsoluteZeroGranted;
 std::unordered_map<ObjectGuid::LowType, uint32> FreezingBloodLastCooldown;
 
-bool IsWhiteWalkerManagedSpell(uint32 spellId)
-{
-    using namespace AscensionWhiteWalkerSupport;
-    if (spellId == SliceAndIce || spellId == IceSpear)
-        return true;
-    for (uint32 rank : WindsOfWinterRanks)
-        if (spellId == rank)
-            return true;
-    return false;
-}
-
-void RemoveGranted(Player* player, std::unordered_set<uint32>& granted, uint32 keep = 0)
-{
-    for (auto it = granted.begin(); it != granted.end();)
-    {
-        uint32 const spellId = *it;
-        if (spellId != keep && IsWhiteWalkerManagedSpell(spellId))
-        {
-            if (player->GetSpellMap().find(spellId) != player->GetSpellMap().end())
-                player->removeSpell(spellId, SPEC_MASK_ALL, true);
-            it = granted.erase(it);
-        }
-        else
-            ++it;
-    }
-}
-
 void RefreshWhiteWalker(Player* player)
 {
     using namespace AscensionWhiteWalkerSupport;
     bool const active = Area52Enabled && player->HasAura(WhiteWalker) && player->IsTwoHandUsed();
     auto& granted = WhiteWalkerGranted[player->GetGUID().GetCounter()];
-    uint32 windsReplacement = 0;
-    for (auto rank = WindsOfWinterRanks.rbegin(); rank != WindsOfWinterRanks.rend(); ++rank)
-        if (player->HasActiveSpell(*rank))
-        {
-            windsReplacement = *rank;
-            break;
-        }
-    if (!active)
-        RemoveGranted(player, granted);
-
-    for (auto const& [root, replacement] : { std::pair<uint32, uint32>{ SliceAndDice, SliceAndIce },
-             { WindsOfWinter, windsReplacement } })
+    std::unordered_set<uint32> desired;
+    auto replace = [&](uint32 root, uint32 replacement)
     {
-        bool const rootKnown = player->HasActiveSpell(root);
-        if (active)
-            for (uint32 oldRank : WindsOfWinterRanks)
-                if (oldRank != replacement && granted.contains(oldRank))
-                {
-                    if (player->GetSpellMap().find(oldRank) != player->GetSpellMap().end())
-                        player->removeSpell(oldRank, SPEC_MASK_ALL, true);
-                    granted.erase(oldRank);
-                }
-        if (active && replacement && rootKnown && !player->HasActiveSpell(replacement))
+        bool const eligible = active && player->HasActiveSpell(root);
+        if (eligible)
         {
-            player->learnSpell(replacement, true);
-            granted.insert(replacement);
+            desired.insert(replacement);
+            if (!player->HasActiveSpell(replacement))
+            {
+                player->learnSpell(replacement, true);
+                granted.insert(replacement);
+            }
         }
-        if (active && (!rootKnown || !replacement) && granted.contains(replacement))
-        {
-            if (player->GetSpellMap().find(replacement) != player->GetSpellMap().end())
-                player->removeSpell(replacement, SPEC_MASK_ALL, true);
-            granted.erase(replacement);
-        }
-        player->SetTemporarySpellReplacement(root, active ? replacement : 0);
-    }
+        player->SetTemporarySpellReplacement(root, eligible ? replacement : 0);
+    };
+    for (uint32 root : SliceAndDiceRanks)
+        replace(root, SliceAndIce);
+    for (std::size_t rank = 0; rank < ConeOfColdRanks.size(); ++rank)
+        replace(ConeOfColdRanks[rank], WindsOfWinterRanks[rank]);
     uint32 iceSpear = 0;
     for (auto rank = IceSpearRanks.rbegin(); rank != IceSpearRanks.rend(); ++rank)
         if (player->HasActiveSpell(*rank))
@@ -95,29 +52,34 @@ void RefreshWhiteWalker(Player* player)
             iceSpear = *rank;
             break;
         }
-    if (active && player->HasActiveSpell(IceLance) && iceSpear == 0)
+    bool const iceLanceKnown = std::any_of(IceLanceRanks.begin(), IceLanceRanks.end(),
+        [player](uint32 rank) { return player->HasActiveSpell(rank); });
+    if (active && iceLanceKnown && iceSpear == 0)
     {
         player->learnSpell(IceSpear, true);
         granted.insert(IceSpear);
     }
-    if (active && iceSpear != 0 && iceSpear != IceSpear && granted.contains(IceSpear))
+    if (active && iceLanceKnown && (!iceSpear || iceSpear == IceSpear))
+        desired.insert(IceSpear);
+    for (auto it = granted.begin(); it != granted.end();)
     {
-        if (iceSpear != IceSpear && player->GetSpellMap().find(IceSpear) != player->GetSpellMap().end())
-            player->removeSpell(IceSpear, SPEC_MASK_ALL, true);
-        granted.erase(IceSpear);
-    }
-    if (active && !player->HasActiveSpell(IceLance) && granted.contains(IceSpear))
-    {
-        if (player->GetSpellMap().find(IceSpear) != player->GetSpellMap().end())
-            player->removeSpell(IceSpear, SPEC_MASK_ALL, true);
-        granted.erase(IceSpear);
+        if (!desired.contains(*it))
+        {
+            if (player->GetSpellMap().find(*it) != player->GetSpellMap().end())
+                player->removeSpell(*it, SPEC_MASK_ALL, true);
+            it = granted.erase(it);
+        }
+        else
+            ++it;
     }
 }
 
 void RefreshAbsoluteZero(Player* player)
 {
     using namespace AscensionWhiteWalkerSupport;
-    bool const active = Area52Enabled && player->HasAura(AbsoluteZero) && player->HasActiveSpell(FrostNova);
+    bool const rootKnown = std::any_of(FrostNovaRanks.begin(), FrostNovaRanks.end(),
+        [player](uint32 rank) { return player->HasActiveSpell(rank); });
+    bool const active = Area52Enabled && player->HasAura(AbsoluteZero) && rootKnown;
     bool const knowsReplacement = player->HasActiveSpell(AbsoluteZeroReplacement);
     auto const guid = player->GetGUID().GetCounter();
     if (active && !knowsReplacement)
@@ -127,12 +89,14 @@ void RefreshAbsoluteZero(Player* player)
     }
     if (!active)
     {
-        player->SetTemporarySpellReplacement(FrostNova, 0);
+        for (uint32 rank : FrostNovaRanks)
+            player->SetTemporarySpellReplacement(rank, 0);
         if (AbsoluteZeroGranted.erase(guid) && player->GetSpellMap().find(AbsoluteZeroReplacement) != player->GetSpellMap().end())
             player->removeSpell(AbsoluteZeroReplacement, SPEC_MASK_ALL, true);
         return;
     }
-    player->SetTemporarySpellReplacement(FrostNova, AbsoluteZeroReplacement);
+    for (uint32 rank : FrostNovaRanks)
+        player->SetTemporarySpellReplacement(rank, player->HasActiveSpell(rank) ? AbsoluteZeroReplacement : 0);
 }
 
 class white_walker_player : public PlayerScript

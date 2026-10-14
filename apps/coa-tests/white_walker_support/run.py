@@ -131,6 +131,7 @@ GRANT_MOCKS = r'''
 #include "AscensionWhiteWalkerSupportRules.h"
 #include <cassert>
 #include <map>
+#include <algorithm>
 #include <unordered_map>
 #include <unordered_set>
 using uint32 = std::uint32_t;
@@ -142,6 +143,7 @@ struct ObjectGuid
 constexpr int SPEC_MASK_ALL = 0;
 bool Area52Enabled = true;
 std::unordered_map<uint32, std::unordered_set<uint32>> WhiteWalkerGranted;
+std::unordered_set<uint32> AbsoluteZeroGranted;
 struct Player
 {
     bool active = true;
@@ -184,6 +186,63 @@ int main()
     player.active = false;
     RefreshWhiteWalker(&player);
     assert(player.HasActiveSpell(IceSpear));
+    WhiteWalkerGranted.clear();
+    player = Player{};
+    for (std::size_t rank = 0; rank < ConeOfColdRanks.size(); ++rank)
+    {
+        if (rank)
+            player.spells.erase(ConeOfColdRanks[rank - 1]);
+        player.spells[ConeOfColdRanks[rank]] = true;
+        RefreshWhiteWalker(&player);
+        assert(player.HasActiveSpell(WindsOfWinterRanks[rank]));
+        assert(player.replacements[ConeOfColdRanks[rank]] == WindsOfWinterRanks[rank]);
+        RefreshWhiteWalker(&player);
+        assert(WhiteWalkerGranted[1].contains(WindsOfWinterRanks[rank]));
+        if (rank)
+            assert(!player.HasActiveSpell(WindsOfWinterRanks[rank - 1]));
+    }
+    player.twoHanded = false;
+    RefreshWhiteWalker(&player);
+    for (uint32 rank : WindsOfWinterRanks)
+        assert(!player.HasActiveSpell(rank));
+    for (uint32 rank : SliceAndDiceRanks)
+    {
+        player = Player{};
+        WhiteWalkerGranted.clear();
+        player.spells[rank] = true;
+        RefreshWhiteWalker(&player);
+        assert(player.HasActiveSpell(SliceAndIce));
+        assert(player.replacements[rank] == SliceAndIce);
+        player.spells.erase(rank);
+        RefreshWhiteWalker(&player);
+        assert(!player.HasActiveSpell(SliceAndIce));
+    }
+    for (uint32 rank : IceLanceRanks)
+    {
+        player = Player{};
+        WhiteWalkerGranted.clear();
+        player.spells[rank] = true;
+        RefreshWhiteWalker(&player);
+        assert(player.HasActiveSpell(IceSpear));
+        player.spells.erase(rank);
+        RefreshWhiteWalker(&player);
+        assert(!player.HasActiveSpell(IceSpear));
+    }
+    for (uint32 rank : FrostNovaRanks)
+    {
+        player = Player{};
+        AbsoluteZeroGranted.clear();
+        player.spells[rank] = true;
+        RefreshAbsoluteZero(&player);
+        assert(player.HasActiveSpell(AbsoluteZeroReplacement));
+        assert(player.replacements[rank] == AbsoluteZeroReplacement);
+        RefreshAbsoluteZero(&player);
+        assert(AbsoluteZeroGranted.contains(1));
+        player.spells.erase(rank);
+        RefreshAbsoluteZero(&player);
+        assert(!player.HasActiveSpell(AbsoluteZeroReplacement));
+        assert(player.replacements[rank] == 0);
+    }
 }
 '''
 
@@ -193,6 +252,7 @@ MAIN = r'''
 #include <algorithm>
 #include <vector>
 #include <map>
+#include <list>
 using namespace AscensionWhiteWalkerSupport;
 int main()
 {
@@ -237,24 +297,55 @@ FROSTBRAND_MOCKS = r'''
 using uint32 = std::uint32_t;
 struct Unit {};
 struct ObjectGuid { int value = 0; bool operator==(ObjectGuid const& other) const { return value == other.value; } };
-struct Item { ObjectGuid GetGUID() const { return {}; } };
+enum EnchantmentSlot { TEMP_ENCHANTMENT_SLOT, OTHER_SLOT };
+struct Item
+{
+    ObjectGuid guid;
+    uint32 enchantment = 2;
+    ObjectGuid GetGUID() const { return guid; }
+    uint32 GetEnchantmentId(EnchantmentSlot) const { return enchantment; }
+};
 struct SpellInfo { uint32 Id; };
 constexpr int TRIGGERED_FULL_MASK = 1;
 bool Area52Enabled = true;
-struct Aura { ObjectGuid GetCastItemGUID() const { return {}; } };
-struct AuraApplication { Aura* GetBase() const { static Aura aura; return &aura; } };
+struct Aura { ObjectGuid guid; ObjectGuid GetCastItemGUID() const { return guid; } };
+struct AuraApplication { Aura* aura; Aura* GetBase() const { return aura; } };
+struct PlayerScript
+{
+    explicit PlayerScript(char const*) {}
+    virtual bool OnPlayerCanApplyEnchantment(struct Player*, Item*, EnchantmentSlot, bool, bool, bool) { return true; }
+};
 struct AllItemScript
 {
     explicit AllItemScript(char const*) {}
     virtual bool OnItemCombatSpell(struct Player*, Unit*, SpellInfo const*, Item*) { return true; }
 };
-struct Player
+struct Player : Unit
 {
     struct Cast { Unit* target; uint32 spell; Item* item; };
     std::vector<Cast> casts;
     std::multimap<uint32, AuraApplication*> auras;
+    std::list<Aura> auraStorage;
+    std::list<AuraApplication> applicationStorage;
     auto const& GetAppliedAuras() const { return auras; }
-    void CastSpell(Unit* target, uint32 spell, int, Item* item) { casts.push_back({target, spell, item}); }
+    void CastSpell(Unit* target, uint32 spell, int, Item* item)
+    {
+        casts.push_back({target, spell, item});
+        if (target == this)
+        {
+            auraStorage.push_back({item->GetGUID()});
+            applicationStorage.push_back({&auraStorage.back()});
+            auras.emplace(spell, &applicationStorage.back());
+        }
+    }
+    void RemoveAurasDueToItemSpell(uint32 spell, ObjectGuid guid)
+    {
+        for (auto it = auras.begin(); it != auras.end();)
+            if (it->first == spell && it->second->GetBase()->GetCastItemGUID() == guid)
+                it = auras.erase(it);
+            else
+                ++it;
+    }
 };
 '''
 
@@ -286,6 +377,31 @@ FROSTBRAND_CASES = r'''
     Area52Enabled = false;
     assert(handler.OnItemCombatSpell(&player, &victim, &helper, &weapon));
     assert(player.casts.size() == 9);
+    Area52Enabled = true;
+    player_area52_frostbrand lifecycle;
+    Player equipped;
+    Item mainHand{{1}, 2}, offHand{{2}, 2};
+    for (std::size_t rank = 0; rank < FrostbrandEnchantments.size(); ++rank)
+    {
+        mainHand.enchantment = FrostbrandEnchantments[rank];
+        offHand.enchantment = FrostbrandEnchantments[rank];
+        assert(lifecycle.OnPlayerCanApplyEnchantment(&equipped, &mainHand, TEMP_ENCHANTMENT_SLOT, true, true, false));
+        assert(lifecycle.OnPlayerCanApplyEnchantment(&equipped, &offHand, TEMP_ENCHANTMENT_SLOT, true, true, false));
+        assert(equipped.auras.size() == 2);
+        assert(player_area52_frostbrand::HasItemHelper(&equipped, helpers[rank], mainHand.GetGUID()));
+        assert(player_area52_frostbrand::HasItemHelper(&equipped, helpers[rank], offHand.GetGUID()));
+        auto count = equipped.casts.size();
+        lifecycle.OnPlayerCanApplyEnchantment(&equipped, &mainHand, TEMP_ENCHANTMENT_SLOT, true, true, false);
+        assert(equipped.casts.size() == count);
+        lifecycle.OnPlayerCanApplyEnchantment(&equipped, &mainHand, TEMP_ENCHANTMENT_SLOT, false, true, false);
+        assert(equipped.auras.size() == 1);
+        assert(player_area52_frostbrand::HasItemHelper(&equipped, helpers[rank], offHand.GetGUID()));
+        lifecycle.OnPlayerCanApplyEnchantment(&equipped, &mainHand, TEMP_ENCHANTMENT_SLOT, true, true, false);
+        assert(equipped.auras.size() == 2);
+    }
+    auto count = equipped.casts.size();
+    lifecycle.OnPlayerCanApplyEnchantment(&equipped, &mainHand, OTHER_SLOT, true, true, false);
+    assert(equipped.casts.size() == count);
 '''
 
 def main():
@@ -303,8 +419,9 @@ def main():
         assert rows == [(20101, 'aura_area52_benediction'), (20101, 'unrelated'),
                         (20102, 'aura_area52_benediction'), (20103, 'aura_area52_benediction'),
                         (411116, 'spell_area52_benediction_party')]
-    grant_functions = source.split('bool IsWhiteWalkerManagedSpell', 1)[1].split('void RefreshAbsoluteZero', 1)[0]
-    grant_generated = GRANT_MOCKS + '\nbool IsWhiteWalkerManagedSpell' + grant_functions + GRANT_CASES
+    grant_functions = source.split('void RefreshWhiteWalker', 1)[1].split('void RefreshAbsoluteZero', 1)[0]
+    absolute_zero = source.split('void RefreshAbsoluteZero', 1)[1].split('class white_walker_player', 1)[0]
+    grant_generated = GRANT_MOCKS + '\nvoid RefreshWhiteWalker' + grant_functions + '\nvoid RefreshAbsoluteZero' + absolute_zero + GRANT_CASES
     benediction = source.split('class aura_area52_benediction :', 1)[1].split('void Register()', 1)[0]
     benediction_generated = BENEDICTION_MOCKS + 'class aura_area52_benediction :' + benediction + '};' + BENEDICTION_CASES
     party = source.split('class spell_area52_benediction_party :', 1)[1].split('void Register()', 1)[0]
@@ -317,8 +434,7 @@ def main():
     assert 'GetCastItemGUID() == itemGuid' in source
     assert 'HasItemHelper(player, helper, item->GetGUID())' in source
     assert 'AbsoluteZeroReplacement' in source
-    assert 'SetTemporarySpellReplacement(FrostNova, AbsoluteZeroReplacement)' in source
-    assert 'SetTemporarySpellReplacement(FrostNova, 0)' in source
+    assert 'SetTemporarySpellReplacement(rank, player->HasActiveSpell(rank) ? AbsoluteZeroReplacement : 0)' in source
     assert 'AbsoluteZeroGranted.erase(guid)' in source
     assert 'event.GetSpellInfo()->Id == AscensionWhiteWalkerSupport::ColdBlood' in source
     assert 'player->CastSpell(player, AscensionWhiteWalkerSupport::Frostbolt' in source
@@ -337,6 +453,8 @@ def main():
     assert '8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799' in (ROOT / 'src/server/game/Entities/Unit/Unit.cpp').read_text()
     handler = source.split('class item_area52_frostbrand :', 1)[1].split('class player_area52_frostbrand', 1)[0]
     handler = 'class item_area52_frostbrand :' + handler
+    lifecycle = source.split('class player_area52_frostbrand :', 1)[1].split('class aura_area52_slice_and_ice', 1)[0]
+    handler += '\nclass player_area52_frostbrand :' + lifecycle
     generated = MAIN.replace('int main()', FROSTBRAND_MOCKS + handler + '\nint main()')
     generated = generated.replace('    static_assert(AthleticCostPercent', FROSTBRAND_CASES + '\n    static_assert(AthleticCostPercent', 1)
     player_source = (ROOT / 'src/server/game/Entities/Player/Player.cpp').read_text()
