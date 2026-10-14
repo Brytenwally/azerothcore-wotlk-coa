@@ -7796,6 +7796,9 @@ void Player::CastItemCombatSpell(Unit* target, WeaponAttackType attType, uint32 
                         item->SetEnchantmentCharges(EnchantmentSlot(e_slot), charges);
                 }
 
+                if (!sScriptMgr->OnCastItemCombatSpell(this, target, spellInfo, item))
+                    continue;
+
                 Unit* unitTarget = spellInfo->IsPositive() ? this : target;
                 CastSpell(unitTarget, spellInfo, TriggerCastFlags(TRIGGERED_FULL_MASK & ~TRIGGERED_IGNORE_SPELL_AND_CATEGORY_CD), item);
             }

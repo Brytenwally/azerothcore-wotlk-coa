@@ -9,6 +9,8 @@ ROOT = Path(__file__).resolve().parents[3]
 MAIN = r'''
 #include "AscensionWhiteWalkerSupportRules.h"
 #include <cassert>
+#include <algorithm>
+#include <vector>
 using namespace AscensionWhiteWalkerSupport;
 int main()
 {
@@ -36,14 +38,74 @@ int main()
 }
 '''
 
+FROSTBRAND_MOCKS = r'''
+using uint32 = std::uint32_t;
+struct Unit {};
+struct Item {};
+struct SpellInfo { uint32 Id; };
+constexpr int TRIGGERED_FULL_MASK = 1;
+bool Area52Enabled = true;
+struct AllItemScript
+{
+    explicit AllItemScript(char const*) {}
+    virtual bool OnItemCombatSpell(struct Player*, Unit*, SpellInfo const*, Item*) { return true; }
+};
+struct Player
+{
+    struct Cast { Unit* target; uint32 spell; Item* item; };
+    std::vector<Cast> casts;
+    void CastSpell(Unit* target, uint32 spell, int, Item* item) { casts.push_back({target, spell, item}); }
+};
+'''
+
+FROSTBRAND_CASES = r'''
+    item_area52_frostbrand handler;
+    Player player;
+    Unit victim;
+    Item weapon;
+    constexpr std::array<uint32, 9> helpers = {965990,965991,965992,965993,965994,965995,965996,965997,965998};
+    constexpr std::array<uint32, 9> attacks = {8034,8037,10458,16352,16353,965999,58797,58798,58799};
+    for (std::size_t rank = 0; rank < helpers.size(); ++rank)
+    {
+        SpellInfo spell{helpers[rank]};
+        assert(handler.OnItemCombatSpell(&player, &victim, &spell, &weapon));
+        assert(player.casts.size() == rank + 1);
+        assert(player.casts.back().target == &victim);
+        assert(player.casts.back().spell == attacks[rank]);
+        assert(player.casts.back().item == &weapon);
+    }
+    for (uint32 id : {0u, 965989u, 965999u, 58799u})
+    {
+        SpellInfo unrelated{id};
+        assert(handler.OnItemCombatSpell(&player, &victim, &unrelated, &weapon));
+    }
+    SpellInfo helper{965990};
+    assert(handler.OnItemCombatSpell(nullptr, &victim, &helper, &weapon));
+    assert(handler.OnItemCombatSpell(&player, nullptr, &helper, &weapon));
+    assert(handler.OnItemCombatSpell(&player, &victim, nullptr, &weapon));
+    Area52Enabled = false;
+    assert(handler.OnItemCombatSpell(&player, &victim, &helper, &weapon));
+    assert(player.casts.size() == 9);
+'''
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--dbc-dir')
     parser.parse_args()
     source = (ROOT / 'src/server/coa/AscensionWhiteWalkerSupport.cpp').read_text()
-    sql = (ROOT / 'data/sql/updates/pending_db_world/rev_20261014000000_area52_white_walker_proc.sql').read_text()
-    assert 'item_area52_frostbrand' in source
-    assert 'FrostbrandSlowHelpers[rank]' in source
+    assert 'OnPlayerCanApplyEnchantment' in source
+    assert 'FrostbrandEnchantments' in source
+    assert 'RemoveAurasDueToItemSpell(helper, item->GetGUID())' in source
+    assert 'RemoveAurasDueToItemSpell(otherHelper, item->GetGUID())' in source
+    handler = source.split('class item_area52_frostbrand :', 1)[1].split('class player_area52_frostbrand', 1)[0]
+    handler = 'class item_area52_frostbrand :' + handler
+    generated = MAIN.replace('int main()', FROSTBRAND_MOCKS + handler + '\nint main()')
+    generated = generated.replace('    static_assert(AthleticCostPercent', FROSTBRAND_CASES + '\n    static_assert(AthleticCostPercent', 1)
+    player_source = (ROOT / 'src/server/game/Entities/Player/Player.cpp').read_text()
+    enchant_path = player_source.split('// item combat enchantments', 1)[1].split('void Player::CastItemUseSpell', 1)[0]
+    assert 'OnCastItemCombatSpell(this, target, spellInfo, item)' in enchant_path
+    dispatcher = (ROOT / 'src/server/game/Scripting/ScriptDefines/AllItemScript.cpp').read_text()
+    assert 'script->OnItemCombatSpell(player, victim, spellInfo, item)' in dispatcher
     compiler = shutil.which('c++') or shutil.which('g++')
     if not compiler:
         raise SystemExit('UNAVAILABLE: C++ compiler required')
@@ -51,11 +113,11 @@ def main():
         folder = Path(temporary)
         source = folder / 'rules.cpp'
         binary = folder / 'rules'
-        source.write_text(MAIN)
+        source.write_text(generated)
         subprocess.run([compiler, '-std=c++20', '-Wall', '-Wextra', '-Werror',
                         '-I', str(ROOT / 'src/server/coa'), str(source), '-o', str(binary)], check=True)
         subprocess.run([str(binary)], check=True)
-    print('PASS: White Walker support eligibility, source ownership and stack scaling')
+    print('PASS: White Walker support rules; production Frostbrand handler all ranks, victim/item ownership and exclusions')
 
 if __name__ == '__main__':
     main()

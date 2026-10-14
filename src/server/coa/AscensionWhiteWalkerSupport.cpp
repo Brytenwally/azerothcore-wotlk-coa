@@ -1,8 +1,9 @@
 /* Copyright (C) 2016+ AzerothCore, GNU AGPL v3. */
 #include "AscensionWhiteWalkerSupportRules.h"
 #include "Config.h"
-#include "ItemScript.h"
+#include "AllItemScript.h"
 #include "Player.h"
+#include "PlayerScript.h"
 #include "ScriptMgr.h"
 #include "SpellAuraEffects.h"
 #include "SpellAuras.h"
@@ -290,12 +291,12 @@ class aura_area52_white_walker : public AuraScript
     }
 };
 
-class item_area52_frostbrand : public ItemScript
+class item_area52_frostbrand : public AllItemScript
 {
 public:
-    item_area52_frostbrand() : ItemScript("item_area52_frostbrand") { }
+    item_area52_frostbrand() : AllItemScript("item_area52_frostbrand") { }
 
-    bool OnCastItemCombatSpell(Player* player, Unit* victim, SpellInfo const* spellInfo, Item*) override
+    bool OnItemCombatSpell(Player* player, Unit* victim, SpellInfo const* spellInfo, Item* item) override
     {
         if (!Area52Enabled || !player || !victim || !spellInfo)
             return true;
@@ -304,7 +305,39 @@ public:
         if (it == FrostbrandDamageHelpers.end())
             return true;
         std::size_t const rank = static_cast<std::size_t>(std::distance(FrostbrandDamageHelpers.begin(), it));
-        player->CastSpell(victim, FrostbrandSlowHelpers[rank], TRIGGERED_FULL_MASK);
+        player->CastSpell(victim, FrostbrandSlowHelpers[rank], TRIGGERED_FULL_MASK, item);
+        return true;
+    }
+};
+
+class player_area52_frostbrand : public PlayerScript
+{
+public:
+    player_area52_frostbrand() : PlayerScript("player_area52_frostbrand") { }
+
+    bool OnPlayerCanApplyEnchantment(Player* player, Item* item, EnchantmentSlot slot, bool apply, bool, bool) override
+    {
+        if (!Area52Enabled || !player || !item || slot != TEMP_ENCHANTMENT_SLOT)
+            return true;
+
+        using namespace AscensionWhiteWalkerSupport;
+        uint32 const enchantment = item->GetEnchantmentId(TEMP_ENCHANTMENT_SLOT);
+        auto const enchantmentIt = std::find(FrostbrandEnchantments.begin(), FrostbrandEnchantments.end(), enchantment);
+        if (enchantmentIt == FrostbrandEnchantments.end())
+            return true;
+
+        std::size_t const rank = static_cast<std::size_t>(std::distance(FrostbrandEnchantments.begin(), enchantmentIt));
+        uint32 const helper = FrostbrandDamageHelpers[rank];
+        if (apply)
+        {
+            for (uint32 otherHelper : FrostbrandDamageHelpers)
+                if (otherHelper != helper)
+                    player->RemoveAurasDueToItemSpell(otherHelper, item->GetGUID());
+            if (!player->HasAura(helper, player->GetGUID()))
+                player->CastSpell(player, helper, TRIGGERED_FULL_MASK, item);
+        }
+        else
+            player->RemoveAurasDueToItemSpell(helper, item->GetGUID());
         return true;
     }
 };
@@ -433,6 +466,7 @@ void AddSC_AscensionWhiteWalkerSupport()
 {
     new white_walker_support_metadata();
     new white_walker_player();
+    new player_area52_frostbrand();
     RegisterSpellScript(spell_area52_honed_ice);
     new item_area52_frostbrand();
     RegisterSpellScript(aura_area52_white_walker);
