@@ -16,6 +16,7 @@ namespace
 bool Area52Enabled = false;
 std::unordered_map<ObjectGuid::LowType, std::unordered_set<uint32>> WhiteWalkerGranted;
 std::unordered_set<ObjectGuid::LowType> AbsoluteZeroGranted;
+std::unordered_map<ObjectGuid::LowType, uint32> FreezingBloodLastCooldown;
 
 bool IsWhiteWalkerManagedSpell(uint32 spellId)
 {
@@ -139,6 +140,7 @@ public:
     {
         WhiteWalkerGranted.erase(player->GetGUID().GetCounter());
         AbsoluteZeroGranted.erase(player->GetGUID().GetCounter());
+        FreezingBloodLastCooldown.erase(player->GetGUID().GetCounter());
     }
 };
 
@@ -317,14 +319,32 @@ class aura_area52_freezing_blood : public AuraScript
     bool CheckProc(ProcEventInfo& event)
     {
         Player* player = GetTarget()->ToPlayer();
-        return Area52Enabled && player && event.GetSpellInfo() && event.GetSpellInfo()->Id == AscensionWhiteWalkerSupport::ColdBlood &&
-            player->HasActiveSpell(AscensionWhiteWalkerSupport::Frostbolt);
+        if (!Area52Enabled || !player || !event.GetSpellInfo())
+            return false;
+        if (event.GetSpellInfo()->Id == AscensionWhiteWalkerSupport::ColdBlood)
+            return player->HasActiveSpell(AscensionWhiteWalkerSupport::Frostbolt);
+        auto const* damage = event.GetDamageInfo();
+        return damage && damage->GetDamage() && (event.GetSchoolMask() & SPELL_SCHOOL_MASK_FROST) &&
+            !(event.GetTypeMask() & PROC_FLAG_DONE_PERIODIC);
     }
 
     void Proc(ProcEventInfo& event)
     {
         PreventDefaultAction();
-        GetTarget()->CastSpell(GetTarget(), AscensionWhiteWalkerSupport::Frostbolt, TRIGGERED_FULL_MASK);
+        Player* player = GetTarget()->ToPlayer();
+        if (!player)
+            return;
+        if (event.GetSpellInfo()->Id == AscensionWhiteWalkerSupport::ColdBlood)
+        {
+            player->CastSpell(player, AscensionWhiteWalkerSupport::Frostbolt, TRIGGERED_FULL_MASK);
+            return;
+        }
+        uint32 const now = getMSTime();
+        uint32& last = FreezingBloodLastCooldown[player->GetGUID().GetCounter()];
+        if (last && getMSTimeDiff(last, now) < 1000)
+            return;
+        last = now;
+        player->ModifySpellCooldown(AscensionWhiteWalkerSupport::ColdBlood, -10000);
     }
 
     void Register() override
