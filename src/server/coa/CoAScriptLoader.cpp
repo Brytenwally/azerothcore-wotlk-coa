@@ -72,6 +72,7 @@ void AddAscensionHeroPetScripts();
 void AddAscensionPlayerComboPointsScripts();
 void AddAscensionVictoryRushScripts();
 void AddAscensionPepeVanityScripts();
+void AddAscensionRaidMarkerScripts();
 void AddAscensionAchievementConditionScripts();
 void AddAscensionArea52AchievementScripts();
 void AddAscensionAccountInfoScripts();
@@ -641,6 +642,7 @@ void AddCoAScripts()
     AddAscensionPlayerComboPointsScripts();
     AddAscensionVictoryRushScripts();
     AddAscensionPepeVanityScripts();
+    AddAscensionRaidMarkerScripts();
     AddAscensionAchievementConditionScripts();
     AddAscensionArea52AchievementScripts();
     AddAscensionAccountInfoScripts();
