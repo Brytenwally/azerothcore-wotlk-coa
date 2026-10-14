@@ -23,6 +23,11 @@ constexpr std::uint32_t SinisterStrike = 1752;
 constexpr std::uint32_t TidesOfBattle = 978744;
 constexpr std::uint32_t Ebb = 978746;
 constexpr std::uint32_t Flow = 978747;
+
+constexpr std::int32_t EviscerateClientCoefficient(std::uint8_t comboPoints)
+{
+    return 2 * static_cast<std::int32_t>(comboPoints) * static_cast<std::int32_t>(comboPoints);
+}
 constexpr std::uint32_t SliceAndDice = 5171;
 constexpr std::uint32_t SliceAndIce = 978302;
 constexpr std::uint32_t WindsOfWinter = 120;
