@@ -40,6 +40,12 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--dbc-dir')
     parser.parse_args()
+    source = (ROOT / 'src/server/coa/AscensionWhiteWalkerSupport.cpp').read_text()
+    sql = (ROOT / 'data/sql/updates/pending_db_world/rev_20261014000000_area52_white_walker_proc.sql').read_text()
+    assert 'spell_area52_frostbrand_damage' in source
+    assert 'FrostbrandSlowHelpers[rank]' in source
+    for spell_id in range(965990, 965999):
+        assert f'({spell_id}, \'spell_area52_frostbrand_damage\')' in sql
     compiler = shutil.which('c++') or shutil.which('g++')
     if not compiler:
         raise SystemExit('UNAVAILABLE: C++ compiler required')
