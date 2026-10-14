@@ -187,6 +187,12 @@ public:
             info->ProcChance = 101;
             return;
         }
+        if (info->Id == 20101 || info->Id == 20102 || info->Id == 20103)
+        {
+            info->ProcFlags = PROC_FLAG_KILL;
+            info->ProcChance = 101;
+            return;
+        }
         if (info->Id != AscensionWhiteWalkerSupport::AthleticIcing)
             return;
 
