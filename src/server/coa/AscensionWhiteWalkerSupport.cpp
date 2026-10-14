@@ -100,13 +100,13 @@ void RefreshWhiteWalker(Player* player)
         player->learnSpell(IceSpear, true);
         granted.insert(IceSpear);
     }
-    if (active && iceSpear != 0 && granted.contains(IceSpear))
+    if (active && iceSpear != 0 && iceSpear != IceSpear && granted.contains(IceSpear))
     {
         if (iceSpear != IceSpear && player->GetSpellMap().find(IceSpear) != player->GetSpellMap().end())
             player->removeSpell(IceSpear, SPEC_MASK_ALL, true);
         granted.erase(IceSpear);
     }
-    if (active && (!player->HasActiveSpell(IceLance) || iceSpear != 0) && granted.contains(IceSpear))
+    if (active && !player->HasActiveSpell(IceLance) && granted.contains(IceSpear))
     {
         if (player->GetSpellMap().find(IceSpear) != player->GetSpellMap().end())
             player->removeSpell(IceSpear, SPEC_MASK_ALL, true);
@@ -430,6 +430,75 @@ class aura_area52_freezing_blood : public AuraScript
     }
 };
 
+class aura_area52_benediction : public AuraScript
+{
+    PrepareAuraScript(aura_area52_benediction);
+
+    bool _hasProc = false;
+    uint32 _lastProc = 0;
+
+    bool Load() override { return Area52Enabled; }
+
+    bool CheckProc(ProcEventInfo& event)
+    {
+        Player* player = GetTarget()->ToPlayer();
+        return player && event.GetActor() == player && event.GetActionTarget() &&
+            (event.GetTypeMask() & PROC_FLAG_KILL) && player->isHonorOrXPTarget(event.GetActionTarget()) &&
+            AscensionWhiteWalkerSupport::BenedictionCooldownReady(_hasProc, getMSTimeDiff(_lastProc, getMSTime()));
+    }
+
+    void Proc(ProcEventInfo&)
+    {
+        _hasProc = true;
+        _lastProc = getMSTime();
+    }
+
+    void Register() override
+    {
+        DoCheckProc += AuraCheckProcFn(aura_area52_benediction::CheckProc);
+        OnProc += AuraProcFn(aura_area52_benediction::Proc);
+    }
+};
+
+class spell_area52_benediction_party : public SpellScript
+{
+    PrepareSpellScript(spell_area52_benediction_party);
+
+    std::unordered_set<ObjectGuid::LowType> _eligible;
+
+    bool Load() override { return Area52Enabled; }
+
+    void SelectManaTargets(std::list<WorldObject*>& targets)
+    {
+        targets.remove_if([this](WorldObject* object)
+        {
+            Unit* target = object->ToUnit();
+            bool const eligible = target && target != GetCaster() && target->IsAlive() &&
+                !target->HasAura(811116) && AscensionWhiteWalkerSupport::BenedictionPartyManaEligible(
+                    target->GetPower(POWER_MANA), target->GetMaxPower(POWER_MANA));
+            if (eligible)
+                _eligible.insert(target->GetGUID().GetCounter());
+            return !eligible;
+        });
+    }
+
+    void SelectCooldownTargets(std::list<WorldObject*>& targets)
+    {
+        targets.remove_if([this](WorldObject* target)
+        {
+            return !_eligible.contains(target->GetGUID().GetCounter());
+        });
+    }
+
+    void Register() override
+    {
+        OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(
+            spell_area52_benediction_party::SelectManaTargets, EFFECT_0, TARGET_UNIT_CASTER_AREA_PARTY);
+        OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(
+            spell_area52_benediction_party::SelectCooldownTargets, EFFECT_1, TARGET_UNIT_CASTER_AREA_PARTY);
+    }
+};
+
 class aura_area52_fighters_sinister_strike : public AuraScript
 {
     PrepareAuraScript(aura_area52_fighters_sinister_strike);
@@ -496,6 +565,8 @@ void AddSC_AscensionWhiteWalkerSupport()
     RegisterSpellScript(aura_area52_white_walker);
     RegisterSpellScript(aura_area52_slice_and_ice);
     RegisterSpellScript(aura_area52_freezing_blood);
+    RegisterSpellScript(aura_area52_benediction);
+    RegisterSpellScript(spell_area52_benediction_party);
     RegisterSpellScript(aura_area52_fighters_sinister_strike);
     RegisterSpellScript(aura_area52_tides_of_battle);
 }

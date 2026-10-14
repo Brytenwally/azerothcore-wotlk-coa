@@ -24,6 +24,16 @@ constexpr std::uint32_t TidesOfBattle = 978744;
 constexpr std::uint32_t Ebb = 978746;
 constexpr std::uint32_t Flow = 978747;
 
+constexpr bool BenedictionCooldownReady(bool hasProc, std::uint32_t elapsed)
+{
+    return !hasProc || elapsed >= 5000;
+}
+
+constexpr bool BenedictionPartyManaEligible(std::uint32_t mana, std::uint32_t maximum)
+{
+    return maximum != 0 && std::uint64_t(mana) * 2 < maximum;
+}
+
 constexpr std::int32_t EviscerateClientCoefficient(std::uint8_t comboPoints)
 {
     return 2 * static_cast<std::int32_t>(comboPoints) * static_cast<std::int32_t>(comboPoints);

@@ -1,10 +1,191 @@
 import argparse
 from pathlib import Path
 import shutil
+import sqlite3
 import subprocess
 import tempfile
 
 ROOT = Path(__file__).resolve().parents[3]
+
+BENEDICTION_MOCKS = r'''
+#include "AscensionWhiteWalkerSupportRules.h"
+#include <cassert>
+#include <list>
+#include <unordered_set>
+using uint32 = std::uint32_t;
+uint32 clockTime = 0;
+uint32 getMSTime() { return clockTime; }
+uint32 getMSTimeDiff(uint32 first, uint32 second) { return second - first; }
+bool Area52Enabled = true;
+constexpr uint32 PROC_FLAG_KILL = 1;
+struct Player;
+struct Unit;
+struct ObjectGuid
+{
+    using LowType = uint32;
+    uint32 id;
+    uint32 GetCounter() const { return id; }
+};
+struct WorldObject
+{
+    virtual Unit* ToUnit() { return nullptr; }
+    virtual ObjectGuid GetGUID() const { return {0}; }
+};
+constexpr int POWER_MANA = 0;
+struct Unit : WorldObject
+{
+    Player* player = nullptr;
+    uint32 id = 1;
+    uint32 mana = 0;
+    uint32 maximum = 100;
+    bool alive = true;
+    bool cooldown = false;
+    Player* ToPlayer() { return player; }
+    Unit* ToUnit() override { return this; }
+    ObjectGuid GetGUID() const override { return {id}; }
+    bool IsAlive() const { return alive; }
+    bool HasAura(uint32) const { return cooldown; }
+    uint32 GetPower(int) const { return mana; }
+    uint32 GetMaxPower(int) const { return maximum; }
+};
+struct Player : Unit
+{
+    bool eligible = true;
+    Player() { player = this; }
+    bool isHonorOrXPTarget(Unit*) const { return eligible; }
+};
+Player owner;
+struct AuraScript
+{
+    virtual bool Load() { return true; }
+    Unit* GetTarget() { return &owner; }
+};
+struct SpellScript
+{
+    virtual bool Load() { return true; }
+    Unit* GetCaster() { return &owner; }
+};
+struct ProcEventInfo
+{
+    Unit* actor;
+    Unit* target;
+    uint32 mask = PROC_FLAG_KILL;
+    Unit* GetActor() const { return actor; }
+    Unit* GetActionTarget() const { return target; }
+    uint32 GetTypeMask() const { return mask; }
+};
+#define PrepareAuraScript(name) public:
+#define PrepareSpellScript(name) public:
+'''
+
+BENEDICTION_CASES = r'''
+int main()
+{
+    aura_area52_benediction aura;
+    Unit victim;
+    ProcEventInfo event{&owner, &victim};
+    assert(aura.Load());
+    assert(aura.CheckProc(event));
+    aura.Proc(event);
+    assert(!aura.CheckProc(event));
+    clockTime = 4999;
+    assert(!aura.CheckProc(event));
+    clockTime = 5000;
+    assert(aura.CheckProc(event));
+    event.mask = 0;
+    assert(!aura.CheckProc(event));
+    event.mask = PROC_FLAG_KILL;
+    owner.eligible = false;
+    assert(!aura.CheckProc(event));
+    owner.eligible = true;
+    event.actor = &victim;
+    assert(!aura.CheckProc(event));
+    event.actor = &owner;
+    event.target = nullptr;
+    assert(!aura.CheckProc(event));
+    spell_area52_benediction_party party;
+    Unit ally, boundary, dead, guarded, noMana;
+    ally.id = 2;
+    ally.mana = 49;
+    boundary.id = 3;
+    boundary.mana = 50;
+    dead.id = 4;
+    dead.alive = false;
+    guarded.id = 5;
+    guarded.cooldown = true;
+    noMana.id = 6;
+    noMana.maximum = 0;
+    std::list<WorldObject*> targets{&owner, &ally, &boundary, &dead, &guarded, &noMana};
+    party.SelectManaTargets(targets);
+    assert(targets.size() == 1 && targets.front() == &ally);
+    ally.mana = 79;
+    std::list<WorldObject*> cooldownTargets{&owner, &ally, &boundary, &dead, &guarded, &noMana};
+    party.SelectCooldownTargets(cooldownTargets);
+    assert(cooldownTargets.size() == 1 && cooldownTargets.front() == &ally);
+    Area52Enabled = false;
+    assert(!aura.Load());
+}
+'''
+
+GRANT_MOCKS = r'''
+#include "AscensionWhiteWalkerSupportRules.h"
+#include <cassert>
+#include <map>
+#include <unordered_map>
+#include <unordered_set>
+using uint32 = std::uint32_t;
+struct ObjectGuid
+{
+    using LowType = uint32;
+    uint32 GetCounter() const { return 1; }
+};
+constexpr int SPEC_MASK_ALL = 0;
+bool Area52Enabled = true;
+std::unordered_map<uint32, std::unordered_set<uint32>> WhiteWalkerGranted;
+struct Player
+{
+    bool active = true;
+    bool twoHanded = true;
+    std::map<uint32, bool> spells;
+    std::map<uint32, uint32> replacements;
+    ObjectGuid GetGUID() const { return {}; }
+    bool HasAura(uint32) const { return active; }
+    bool IsTwoHandUsed() const { return twoHanded; }
+    bool HasActiveSpell(uint32 id) const { return spells.contains(id); }
+    auto const& GetSpellMap() const { return spells; }
+    void learnSpell(uint32 id, bool) { spells[id] = true; }
+    void removeSpell(uint32 id, int, bool) { spells.erase(id); }
+    void SetTemporarySpellReplacement(uint32 id, uint32 replacement) { replacements[id] = replacement; }
+};
+'''
+
+GRANT_CASES = r'''
+int main()
+{
+    using namespace AscensionWhiteWalkerSupport;
+    Player player;
+    player.spells[IceLance] = true;
+    RefreshWhiteWalker(&player);
+    assert(player.HasActiveSpell(IceSpear));
+    assert(WhiteWalkerGranted[1].contains(IceSpear));
+    RefreshWhiteWalker(&player);
+    assert(WhiteWalkerGranted[1].contains(IceSpear));
+    player.spells.erase(IceLance);
+    RefreshWhiteWalker(&player);
+    assert(!player.HasActiveSpell(IceSpear));
+    player.spells[IceLance] = true;
+    RefreshWhiteWalker(&player);
+    player.twoHanded = false;
+    RefreshWhiteWalker(&player);
+    assert(!player.HasActiveSpell(IceSpear));
+    player.twoHanded = true;
+    player.spells[IceSpear] = true;
+    RefreshWhiteWalker(&player);
+    player.active = false;
+    RefreshWhiteWalker(&player);
+    assert(player.HasActiveSpell(IceSpear));
+}
+'''
 
 MAIN = r'''
 #include "AscensionWhiteWalkerSupportRules.h"
@@ -16,6 +197,15 @@ using namespace AscensionWhiteWalkerSupport;
 int main()
 {
     static_assert(AthleticCostPercent == -4 && AthleticSchools == 17);
+    assert(BenedictionCooldownReady(false, 0));
+    assert(!BenedictionCooldownReady(true, 4999));
+    assert(BenedictionCooldownReady(true, 5000));
+    assert(BenedictionCooldownReady(true, 5001));
+    assert(BenedictionPartyManaEligible(49, 100));
+    assert(!BenedictionPartyManaEligible(50, 100));
+    assert(!BenedictionPartyManaEligible(51, 100));
+    assert(!BenedictionPartyManaEligible(0, 0));
+    assert(BenedictionPartyManaEligible(0, 100));
     static_assert(WindsOfWinterRanks.size() == 8 && WindsOfWinterRanks.front() == 978846 && WindsOfWinterRanks.back() == 978853);
     static_assert(IceSpearRanks.size() == 7 && IceSpearRanks.front() == 984935 && IceSpearRanks.back() == 984975);
     static_assert(WintersFury == 984936 && WintersVitality == 978525);
@@ -103,6 +293,23 @@ def main():
     parser.add_argument('--dbc-dir')
     parser.parse_args()
     source = (ROOT / 'src/server/coa/AscensionWhiteWalkerSupport.cpp').read_text()
+    migration = (ROOT / 'data/sql/updates/pending_db_world/rev_20261014000001_area52_benediction.sql').read_text()
+    with sqlite3.connect(':memory:') as database:
+        database.execute('CREATE TABLE spell_script_names (spell_id INTEGER, ScriptName TEXT)')
+        database.execute("INSERT INTO spell_script_names VALUES (20101, 'unrelated')")
+        database.executescript(migration)
+        database.executescript(migration)
+        rows = database.execute('SELECT spell_id, ScriptName FROM spell_script_names ORDER BY spell_id, ScriptName').fetchall()
+        assert rows == [(20101, 'aura_area52_benediction'), (20101, 'unrelated'),
+                        (20102, 'aura_area52_benediction'), (20103, 'aura_area52_benediction'),
+                        (411116, 'spell_area52_benediction_party')]
+    grant_functions = source.split('bool IsWhiteWalkerManagedSpell', 1)[1].split('void RefreshAbsoluteZero', 1)[0]
+    grant_generated = GRANT_MOCKS + '\nbool IsWhiteWalkerManagedSpell' + grant_functions + GRANT_CASES
+    benediction = source.split('class aura_area52_benediction :', 1)[1].split('void Register()', 1)[0]
+    benediction_generated = BENEDICTION_MOCKS + 'class aura_area52_benediction :' + benediction + '};' + BENEDICTION_CASES
+    party = source.split('class spell_area52_benediction_party :', 1)[1].split('void Register()', 1)[0]
+    benediction_generated = benediction_generated.replace(BENEDICTION_CASES,
+        'class spell_area52_benediction_party :' + party + '};' + BENEDICTION_CASES)
     assert 'OnPlayerCanApplyEnchantment' in source
     assert 'FrostbrandEnchantments' in source
     assert 'RemoveAurasDueToItemSpell(helper, item->GetGUID())' in source
@@ -145,6 +352,14 @@ def main():
         source = folder / 'rules.cpp'
         binary = folder / 'rules'
         source.write_text(generated)
+        subprocess.run([compiler, '-std=c++20', '-Wall', '-Wextra', '-Werror',
+                        '-I', str(ROOT / 'src/server/coa'), str(source), '-o', str(binary)], check=True)
+        subprocess.run([str(binary)], check=True)
+        source.write_text(grant_generated)
+        subprocess.run([compiler, '-std=c++20', '-Wall', '-Wextra', '-Werror',
+                        '-I', str(ROOT / 'src/server/coa'), str(source), '-o', str(binary)], check=True)
+        subprocess.run([str(binary)], check=True)
+        source.write_text(benediction_generated)
         subprocess.run([compiler, '-std=c++20', '-Wall', '-Wextra', '-Werror',
                         '-I', str(ROOT / 'src/server/coa'), str(source), '-o', str(binary)], check=True)
         subprocess.run([str(binary)], check=True)
