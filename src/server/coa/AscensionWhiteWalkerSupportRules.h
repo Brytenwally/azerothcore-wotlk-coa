@@ -39,6 +39,10 @@ constexpr std::uint32_t WintersVitality = 978525;
 constexpr std::array<std::uint32_t, 8> WindsOfWinterRanks = { 978846, 978847, 978848, 978849,
     978850, 978851, 978852, 978853 };
 constexpr std::array<std::uint32_t, 7> IceSpearRanks = { 984935, 984970, 984971, 984972, 984973, 984974, 984975 };
+constexpr std::array<std::uint32_t, 9> FrostbrandDamageHelpers = { 965990, 965991, 965992, 965993, 965994,
+    965995, 965996, 965997, 965998 };
+constexpr std::array<std::uint32_t, 9> FrostbrandSlowHelpers = { 8034, 8037, 10458, 16352, 16353, 965999,
+    58797, 58798, 58799 };
 constexpr std::int32_t AthleticCostPercent = -4;
 constexpr std::uint32_t AthleticSchools = 1 | 16;
 

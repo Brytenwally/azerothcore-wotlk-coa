@@ -8,6 +8,7 @@
 #include "SpellInfo.h"
 #include "SpellMgr.h"
 #include "SpellScript.h"
+#include <algorithm>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -288,6 +289,28 @@ class aura_area52_white_walker : public AuraScript
     }
 };
 
+class spell_area52_frostbrand_damage : public SpellScript
+{
+    PrepareSpellScript(spell_area52_frostbrand_damage);
+
+    void ApplyRankSlow()
+    {
+        if (!Area52Enabled || !GetHitUnit() || !GetSpellInfo())
+            return;
+        using namespace AscensionWhiteWalkerSupport;
+        auto const it = std::find(FrostbrandDamageHelpers.begin(), FrostbrandDamageHelpers.end(), GetSpellInfo()->Id);
+        if (it == FrostbrandDamageHelpers.end())
+            return;
+        std::size_t const rank = static_cast<std::size_t>(std::distance(FrostbrandDamageHelpers.begin(), it));
+        GetCaster()->CastSpell(GetHitUnit(), FrostbrandSlowHelpers[rank], TRIGGERED_FULL_MASK);
+    }
+
+    void Register() override
+    {
+        AfterHit += SpellHitFn(spell_area52_frostbrand_damage::ApplyRankSlow);
+    }
+};
+
 class aura_area52_slice_and_ice : public AuraScript
 {
     PrepareAuraScript(aura_area52_slice_and_ice);
@@ -413,6 +436,7 @@ void AddSC_AscensionWhiteWalkerSupport()
     new white_walker_support_metadata();
     new white_walker_player();
     RegisterSpellScript(spell_area52_honed_ice);
+    RegisterSpellScript(spell_area52_frostbrand_damage);
     RegisterSpellScript(aura_area52_white_walker);
     RegisterSpellScript(aura_area52_slice_and_ice);
     RegisterSpellScript(aura_area52_freezing_blood);
