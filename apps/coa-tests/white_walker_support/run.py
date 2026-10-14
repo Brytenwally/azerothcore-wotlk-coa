@@ -13,6 +13,8 @@ using namespace AscensionWhiteWalkerSupport;
 int main()
 {
     static_assert(AthleticCostPercent == -4 && AthleticSchools == 17);
+    static_assert(WindsOfWinterRanks.size() == 8 && WindsOfWinterRanks.front() == 978846 && WindsOfWinterRanks.back() == 978853);
+    static_assert(IceSpearRanks.size() == 7 && IceSpearRanks.front() == 984935 && IceSpearRanks.back() == 984975);
     assert(HonedIceSource(3, 512, 16, false, 1, true));
     assert(!HonedIceSource(3, 512, 16, true, 1, true));
     assert(!HonedIceSource(3, 512, 16, false, 0, true));
@@ -23,6 +25,10 @@ int main()
     assert(HonedIceCriticalBonus(2, 1) == 2);
     assert(HonedIceCriticalBonus(2, 3) == 6);
     assert(HonedIceCriticalBonus(2, 0) == 0);
+    assert(WhiteWalkerActive(true, true, true));
+    assert(!WhiteWalkerActive(false, true, true));
+    assert(!WhiteWalkerActive(true, false, true));
+    assert(!WhiteWalkerActive(true, true, false));
 }
 '''
 

@@ -8,10 +8,114 @@
 #include "SpellInfo.h"
 #include "SpellMgr.h"
 #include "SpellScript.h"
+#include <unordered_map>
+#include <unordered_set>
 
 namespace
 {
 bool Area52Enabled = false;
+std::unordered_map<ObjectGuid::LowType, std::unordered_set<uint32>> WhiteWalkerGranted;
+
+bool IsWhiteWalkerManagedSpell(uint32 spellId)
+{
+    using namespace AscensionWhiteWalkerSupport;
+    if (spellId == SliceAndIce || spellId == IceSpear)
+        return true;
+    for (uint32 rank : WindsOfWinterRanks)
+        if (spellId == rank)
+            return true;
+    return false;
+}
+
+void RemoveGranted(Player* player, std::unordered_set<uint32>& granted, uint32 keep = 0)
+{
+    for (auto it = granted.begin(); it != granted.end();)
+    {
+        uint32 const spellId = *it;
+        if (spellId != keep && IsWhiteWalkerManagedSpell(spellId))
+        {
+            if (player->GetSpellMap().find(spellId) != player->GetSpellMap().end())
+                player->removeSpell(spellId, SPEC_MASK_ALL, true);
+            it = granted.erase(it);
+        }
+        else
+            ++it;
+    }
+}
+
+void RefreshWhiteWalker(Player* player)
+{
+    using namespace AscensionWhiteWalkerSupport;
+    bool const active = Area52Enabled && player->HasAura(WhiteWalker) && player->IsTwoHandUsed();
+    auto& granted = WhiteWalkerGranted[player->GetGUID().GetCounter()];
+    uint32 windsReplacement = 0;
+    for (auto rank = WindsOfWinterRanks.rbegin(); rank != WindsOfWinterRanks.rend(); ++rank)
+        if (player->HasActiveSpell(*rank))
+        {
+            windsReplacement = *rank;
+            break;
+        }
+    if (!active)
+        RemoveGranted(player, granted);
+
+    for (auto const& [root, replacement] : { std::pair<uint32, uint32>{ SliceAndDice, SliceAndIce },
+             { WindsOfWinter, windsReplacement } })
+    {
+        if (active)
+            for (uint32 oldRank : WindsOfWinterRanks)
+                if (oldRank != replacement && granted.contains(oldRank))
+                {
+                    if (player->GetSpellMap().find(oldRank) != player->GetSpellMap().end())
+                        player->removeSpell(oldRank, SPEC_MASK_ALL, true);
+                    granted.erase(oldRank);
+                }
+        if (active && replacement && player->HasActiveSpell(root) && !player->HasActiveSpell(replacement))
+        {
+            player->learnSpell(replacement, true);
+            granted.insert(replacement);
+        }
+        player->SetTemporarySpellReplacement(root, active ? replacement : 0);
+    }
+    uint32 iceSpear = 0;
+    for (auto rank = IceSpearRanks.rbegin(); rank != IceSpearRanks.rend(); ++rank)
+        if (player->HasActiveSpell(*rank))
+        {
+            iceSpear = *rank;
+            break;
+        }
+    if (active && player->HasActiveSpell(IceLance) && iceSpear == 0)
+    {
+        player->learnSpell(IceSpear, true);
+        granted.insert(IceSpear);
+    }
+    if (active && iceSpear != 0 && granted.contains(IceSpear))
+    {
+        if (iceSpear != IceSpear && player->GetSpellMap().find(IceSpear) != player->GetSpellMap().end())
+            player->removeSpell(IceSpear, SPEC_MASK_ALL, true);
+        granted.erase(IceSpear);
+    }
+}
+
+class white_walker_player : public PlayerScript
+{
+public:
+    white_walker_player() : PlayerScript("white_walker_player", { PLAYERHOOK_ON_LOGIN, PLAYERHOOK_ON_UPDATE, PLAYERHOOK_ON_LOGOUT }) { }
+
+    void OnPlayerLogin(Player* player) override
+    {
+        RefreshWhiteWalker(player);
+    }
+
+    void OnPlayerUpdate(Player* player, uint32) override
+    {
+        RefreshWhiteWalker(player);
+    }
+
+    void OnPlayerLogout(Player* player) override
+    {
+        WhiteWalkerGranted.erase(player->GetGUID().GetCounter());
+    }
+};
 
 class white_walker_support_metadata : public GlobalScript
 {
@@ -104,5 +208,6 @@ class spell_area52_honed_ice : public AuraScript
 void AddSC_AscensionWhiteWalkerSupport()
 {
     new white_walker_support_metadata();
+    new white_walker_player();
     RegisterSpellScript(spell_area52_honed_ice);
 }
