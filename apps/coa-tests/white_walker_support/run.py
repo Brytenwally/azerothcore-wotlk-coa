@@ -101,6 +101,12 @@ def main():
     assert 'FrostbrandEnchantments' in source
     assert 'RemoveAurasDueToItemSpell(helper, item->GetGUID())' in source
     assert 'RemoveAurasDueToItemSpell(otherHelper, item->GetGUID())' in source
+    conditional = (ROOT / 'src/server/coa/AscensionConditionalCombat.cpp').read_text()
+    assert 'ApplyFrozenPowerDamageContract' in conditional
+    assert 'SPELL_AURA_MOD_DAMAGE_DONE_VERSUS_AURASTATE' in conditional
+    assert 'ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE' in conditional
+    assert 'FrozenPowerTalentPercent' in conditional and 'FrozenPowerMysticPercent' in conditional
+    assert '8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799' in (ROOT / 'src/server/game/Entities/Unit/Unit.cpp').read_text()
     handler = source.split('class item_area52_frostbrand :', 1)[1].split('class player_area52_frostbrand', 1)[0]
     handler = 'class item_area52_frostbrand :' + handler
     generated = MAIN.replace('int main()', FROSTBRAND_MOCKS + handler + '\nint main()')
