@@ -1,6 +1,7 @@
 /* Copyright (C) 2016+ AzerothCore, GNU AGPL v3. */
 #include "AscensionWhiteWalkerSupportRules.h"
 #include "Config.h"
+#include "ItemScript.h"
 #include "Player.h"
 #include "ScriptMgr.h"
 #include "SpellAuraEffects.h"
@@ -289,25 +290,22 @@ class aura_area52_white_walker : public AuraScript
     }
 };
 
-class spell_area52_frostbrand_damage : public SpellScript
+class item_area52_frostbrand : public ItemScript
 {
-    PrepareSpellScript(spell_area52_frostbrand_damage);
+public:
+    item_area52_frostbrand() : ItemScript("item_area52_frostbrand") { }
 
-    void ApplyRankSlow()
+    bool OnCastItemCombatSpell(Player* player, Unit* victim, SpellInfo const* spellInfo, Item*) override
     {
-        if (!Area52Enabled || !GetHitUnit() || !GetSpellInfo())
-            return;
+        if (!Area52Enabled || !player || !victim || !spellInfo)
+            return true;
         using namespace AscensionWhiteWalkerSupport;
-        auto const it = std::find(FrostbrandDamageHelpers.begin(), FrostbrandDamageHelpers.end(), GetSpellInfo()->Id);
+        auto const it = std::find(FrostbrandDamageHelpers.begin(), FrostbrandDamageHelpers.end(), spellInfo->Id);
         if (it == FrostbrandDamageHelpers.end())
-            return;
+            return true;
         std::size_t const rank = static_cast<std::size_t>(std::distance(FrostbrandDamageHelpers.begin(), it));
-        GetCaster()->CastSpell(GetHitUnit(), FrostbrandSlowHelpers[rank], TRIGGERED_FULL_MASK);
-    }
-
-    void Register() override
-    {
-        AfterHit += SpellHitFn(spell_area52_frostbrand_damage::ApplyRankSlow);
+        player->CastSpell(victim, FrostbrandSlowHelpers[rank], TRIGGERED_FULL_MASK);
+        return true;
     }
 };
 
@@ -436,7 +434,7 @@ void AddSC_AscensionWhiteWalkerSupport()
     new white_walker_support_metadata();
     new white_walker_player();
     RegisterSpellScript(spell_area52_honed_ice);
-    RegisterSpellScript(spell_area52_frostbrand_damage);
+    new item_area52_frostbrand();
     RegisterSpellScript(aura_area52_white_walker);
     RegisterSpellScript(aura_area52_slice_and_ice);
     RegisterSpellScript(aura_area52_freezing_blood);
