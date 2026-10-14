@@ -3,6 +3,7 @@
  */
 
 #include "CoAScriptLoader.h"
+void AddSC_AscensionWhiteWalkerSupport();
 #include "AscensionReaperDirge.h"
 #include "AscensionTinkerOverload.h"
 #include "AscensionRunemasterGlyphs.h"
@@ -719,4 +720,5 @@ void AddCoAScripts()
     AddSC_AscensionClassBundleStore();
     AddSC_AscensionLfgObjective();
     AddSC_AscensionBushcraft();
+    AddSC_AscensionWhiteWalkerSupport();
 }

@@ -1,0 +1,59 @@
+{
+  "schema": 1,
+  "name": "Area 52 White Walker support: cost schools and Honed Ice ownership",
+  "contract": "Requires the Area 52 hero/live profile. Athletic Icing reduces Physical and Frost costs by 4%, leaves Fire unchanged and restores costs on removal. Honed Ice only procs from direct Cone of Cold damage, grants 2% critical chance per equipped copy without accumulating again on repeated casts, and removes its buff with the source. This does not verify the White Walker legendary or its replacement abilities.",
+  "timeout_ms": 90000,
+  "location": { "map": 0, "x": -9465, "y": 64, "z": 56, "o": 0 },
+  "players": [
+    { "id": "hero", "race": 1, "class": 10, "level": 80, "spell_hit_rating": 10000 }
+  ],
+  "creatures": [
+    { "id": "target", "owner": "hero", "entry": 36, "level": 80, "health": 1000000, "distance": 3 }
+  ],
+  "steps": [
+    { "action": "wait", "ms": 3000 },
+    { "action": "snapshot", "actor": "hero", "metric": "spell_power_cost", "spell": 116, "save_as": "frost_cost" },
+    { "action": "snapshot", "actor": "hero", "metric": "spell_power_cost", "spell": 1752, "save_as": "physical_cost" },
+    { "action": "snapshot", "actor": "hero", "metric": "spell_power_cost", "spell": 133, "save_as": "fire_cost" },
+    { "action": "set_aura", "actor": "hero", "spell": 84561, "stacks": 1 },
+    { "action": "assert", "actor": "hero", "metric": "aura_amount", "spell": 84561, "equals": -4 },
+    { "action": "assert", "actor": "hero", "metric": "spell_power_cost", "spell": 116, "ratio_to": "frost_cost", "min": 0.94, "max": 0.97 },
+    { "action": "assert", "actor": "hero", "metric": "spell_power_cost", "spell": 1752, "ratio_to": "physical_cost", "min": 0.94, "max": 0.97 },
+    { "action": "assert", "actor": "hero", "metric": "spell_power_cost", "spell": 133, "relative_to": "fire_cost", "equals": 0 },
+    { "action": "set_aura", "actor": "hero", "spell": 84561, "stacks": 0 },
+    { "action": "assert", "actor": "hero", "metric": "spell_power_cost", "spell": 116, "relative_to": "frost_cost", "equals": 0 },
+    { "action": "assert", "actor": "hero", "metric": "spell_power_cost", "spell": 1752, "relative_to": "physical_cost", "equals": 0 },
+    { "action": "client_packet", "actor": "hero", "opcode": 1831, "fields": [
+      { "u32": 2 },
+      { "u32": 2664 }, { "u32": 1 }, { "u32": 1 }, { "u8": 0 }, { "u32": 0 }, { "u32": 0 },
+      { "u32": 2666 }, { "u32": 1 }, { "u32": 1 }, { "u8": 0 }, { "u32": 1 }, { "u32": 0 }
+    ] },
+    { "action": "assert", "label": "Area 52 selection accepted", "actor": "hero", "metric": "server_packet_contains",
+      "opcode": 1836, "text": "CA_UPDATE_ENTRIES_OK", "equals": 1, "within_ms": 2000 },
+    { "action": "assert", "label": "Frostbolt learned through selection", "actor": "hero", "metric": "knows_spell", "spell": 116, "equals": 1 },
+    { "action": "assert", "label": "Cone of Cold learned through selection", "actor": "hero", "metric": "knows_spell", "spell": 120, "equals": 1 },
+    { "action": "set_aura", "actor": "hero", "spell": 909019, "stacks": 3 },
+    { "action": "cast", "actor": "hero", "spell": 116, "target": "target" },
+    { "action": "wait", "ms": 3000 },
+    { "action": "assert", "actor": "hero", "metric": "aura", "spell": 909020, "equals": 0 },
+    { "action": "cast", "actor": "hero", "spell": 120 },
+    { "action": "assert", "actor": "hero", "metric": "aura", "spell": 909020, "equals": 1, "within_ms": 2000 },
+    { "action": "assert", "actor": "hero", "metric": "aura_amount", "spell": 909020, "equals": 6 },
+    { "action": "assert", "actor": "hero", "metric": "aura_stacks", "spell": 909020, "equals": 1 },
+    { "action": "wait", "ms": 2000 },
+    { "action": "reset_cooldown", "actor": "hero", "spell": 120 },
+    { "action": "cast", "actor": "hero", "spell": 120 },
+    { "action": "wait", "ms": 1000 },
+    { "action": "assert", "actor": "hero", "metric": "aura_amount", "spell": 909020, "equals": 6 },
+    { "action": "assert", "actor": "hero", "metric": "aura_stacks", "spell": 909020, "equals": 1 },
+    { "action": "set_aura", "actor": "hero", "spell": 909019, "stacks": 0 },
+    { "action": "assert", "actor": "hero", "metric": "aura", "spell": 909020, "equals": 0 },
+    { "action": "wait", "ms": 2000 },
+    { "action": "set_aura", "actor": "hero", "spell": 909019, "stacks": 1 },
+    { "action": "reset_cooldown", "actor": "hero", "spell": 120 },
+    { "action": "cast", "actor": "hero", "spell": 120 },
+    { "action": "assert", "actor": "hero", "metric": "aura_amount", "spell": 909020, "equals": 2, "within_ms": 2000 },
+    { "action": "wait", "ms": 11000 },
+    { "action": "assert", "actor": "hero", "metric": "aura", "spell": 909020, "equals": 0 }
+  ]
+}
