@@ -44,6 +44,18 @@ constexpr std::array<std::uint32_t, 9> FrostbrandDamageHelpers = { 965990, 96599
 constexpr std::array<std::uint32_t, 9> FrostbrandEnchantments = { 2, 12, 524, 1667, 1668, 2635, 3782, 3783, 3784 };
 constexpr std::array<std::uint32_t, 9> FrostbrandSlowHelpers = { 8034, 8037, 10458, 16352, 16353, 965999,
     58797, 58798, 58799 };
+constexpr std::int32_t FrozenPowerTalentPercent(std::uint32_t rank)
+{
+    return rank < 3 ? 3 * static_cast<std::int32_t>(rank + 1) : 0;
+}
+constexpr std::int32_t FrozenPowerMysticPercent(std::uint32_t copies)
+{
+    return 2 * static_cast<std::int32_t>(copies > 3 ? 3 : copies);
+}
+constexpr bool FrozenPowerSchoolAllowed(std::uint32_t schoolMask)
+{
+    return (schoolMask & (4 | 16 | 8)) != 0;
+}
 constexpr std::int32_t AthleticCostPercent = -4;
 constexpr std::uint32_t AthleticSchools = 1 | 16;
 

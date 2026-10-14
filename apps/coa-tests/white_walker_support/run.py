@@ -20,6 +20,10 @@ int main()
     static_assert(WintersFury == 984936 && WintersVitality == 978525);
     static_assert(FrostbrandDamageHelpers.size() == 9 && FrostbrandDamageHelpers.front() == 965990 && FrostbrandDamageHelpers.back() == 965998);
     static_assert(FrostbrandSlowHelpers.size() == 9 && FrostbrandSlowHelpers.front() == 8034 && FrostbrandSlowHelpers.back() == 58799);
+    static_assert(FrozenPowerTalentPercent(0) == 3 && FrozenPowerTalentPercent(1) == 6 && FrozenPowerTalentPercent(2) == 9);
+    static_assert(FrozenPowerMysticPercent(1) == 2 && FrozenPowerMysticPercent(2) == 4 && FrozenPowerMysticPercent(3) == 6 && FrozenPowerMysticPercent(4) == 6);
+    static_assert(FrozenPowerSchoolAllowed(4) && FrozenPowerSchoolAllowed(8) && FrozenPowerSchoolAllowed(16));
+    static_assert(!FrozenPowerSchoolAllowed(1) && !FrozenPowerSchoolAllowed(32));
     static_assert(EviscerateClientCoefficient(1) == 2 && EviscerateClientCoefficient(5) == 50);
     assert(HonedIceSource(3, 512, 16, false, 1, true));
     assert(!HonedIceSource(3, 512, 16, true, 1, true));
