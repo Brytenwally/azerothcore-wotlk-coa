@@ -315,6 +315,15 @@ class player_area52_frostbrand : public PlayerScript
 public:
     player_area52_frostbrand() : PlayerScript("player_area52_frostbrand") { }
 
+    static bool HasItemHelper(Player* player, uint32 helper, ObjectGuid itemGuid)
+    {
+        auto const range = player->GetAppliedAuras().equal_range(helper);
+        for (auto itr = range.first; itr != range.second; ++itr)
+            if (itr->second->GetBase()->GetCastItemGUID() == itemGuid)
+                return true;
+        return false;
+    }
+
     bool OnPlayerCanApplyEnchantment(Player* player, Item* item, EnchantmentSlot slot, bool apply, bool, bool) override
     {
         if (!Area52Enabled || !player || !item || slot != TEMP_ENCHANTMENT_SLOT)
@@ -333,7 +342,7 @@ public:
             for (uint32 otherHelper : FrostbrandDamageHelpers)
                 if (otherHelper != helper)
                     player->RemoveAurasDueToItemSpell(otherHelper, item->GetGUID());
-            if (!player->HasAura(helper, player->GetGUID()))
+            if (!HasItemHelper(player, helper, item->GetGUID()))
                 player->CastSpell(player, helper, TRIGGERED_FULL_MASK, item);
         }
         else

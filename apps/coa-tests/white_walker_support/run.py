@@ -11,6 +11,7 @@ MAIN = r'''
 #include <cassert>
 #include <algorithm>
 #include <vector>
+#include <map>
 using namespace AscensionWhiteWalkerSupport;
 int main()
 {
@@ -45,10 +46,13 @@ int main()
 FROSTBRAND_MOCKS = r'''
 using uint32 = std::uint32_t;
 struct Unit {};
-struct Item {};
+struct ObjectGuid { int value = 0; bool operator==(ObjectGuid const& other) const { return value == other.value; } };
+struct Item { ObjectGuid GetGUID() const { return {}; } };
 struct SpellInfo { uint32 Id; };
 constexpr int TRIGGERED_FULL_MASK = 1;
 bool Area52Enabled = true;
+struct Aura { ObjectGuid GetCastItemGUID() const { return {}; } };
+struct AuraApplication { Aura* GetBase() const { static Aura aura; return &aura; } };
 struct AllItemScript
 {
     explicit AllItemScript(char const*) {}
@@ -58,6 +62,8 @@ struct Player
 {
     struct Cast { Unit* target; uint32 spell; Item* item; };
     std::vector<Cast> casts;
+    std::multimap<uint32, AuraApplication*> auras;
+    auto const& GetAppliedAuras() const { return auras; }
     void CastSpell(Unit* target, uint32 spell, int, Item* item) { casts.push_back({target, spell, item}); }
 };
 '''
@@ -101,6 +107,8 @@ def main():
     assert 'FrostbrandEnchantments' in source
     assert 'RemoveAurasDueToItemSpell(helper, item->GetGUID())' in source
     assert 'RemoveAurasDueToItemSpell(otherHelper, item->GetGUID())' in source
+    assert 'GetCastItemGUID() == itemGuid' in source
+    assert 'HasItemHelper(player, helper, item->GetGUID())' in source
     conditional = (ROOT / 'src/server/coa/AscensionConditionalCombat.cpp').read_text()
     assert 'ApplyFrozenPowerDamageContract' in conditional
     assert 'SPELL_AURA_MOD_DAMAGE_DONE_VERSUS_AURASTATE' in conditional
