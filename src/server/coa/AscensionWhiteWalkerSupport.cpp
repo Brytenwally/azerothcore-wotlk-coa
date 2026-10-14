@@ -203,6 +203,33 @@ class spell_area52_honed_ice : public AuraScript
             EFFECT_0, SPELL_AURA_PROC_TRIGGER_SPELL, AURA_EFFECT_HANDLE_REAL);
     }
 };
+
+class aura_area52_white_walker : public AuraScript
+{
+    PrepareAuraScript(aura_area52_white_walker);
+
+    bool CheckProc(ProcEventInfo& event)
+    {
+        if (!Area52Enabled || !event.GetSpellInfo() || !(event.GetHitMask() & PROC_HIT_CRITICAL))
+            return false;
+        uint32 const spellId = event.GetSpellInfo()->Id;
+        return spellId == 1752 || spellId == 2098;
+    }
+
+    void Proc(ProcEventInfo& event)
+    {
+        PreventDefaultAction();
+        Unit* target = event.GetActionTarget();
+        if (target && target->IsAlive())
+            GetTarget()->CastSpell(target, AscensionWhiteWalkerSupport::IceLance, TRIGGERED_FULL_MASK);
+    }
+
+    void Register() override
+    {
+        DoCheckProc += AuraCheckProcFn(aura_area52_white_walker::CheckProc);
+        OnProc += AuraProcFn(aura_area52_white_walker::Proc);
+    }
+};
 }
 
 void AddSC_AscensionWhiteWalkerSupport()
@@ -210,4 +237,5 @@ void AddSC_AscensionWhiteWalkerSupport()
     new white_walker_support_metadata();
     new white_walker_player();
     RegisterSpellScript(spell_area52_honed_ice);
+    RegisterSpellScript(aura_area52_white_walker);
 }
