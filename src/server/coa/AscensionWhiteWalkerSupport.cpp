@@ -15,6 +15,7 @@ namespace
 {
 bool Area52Enabled = false;
 std::unordered_map<ObjectGuid::LowType, std::unordered_set<uint32>> WhiteWalkerGranted;
+std::unordered_set<ObjectGuid::LowType> AbsoluteZeroGranted;
 
 bool IsWhiteWalkerManagedSpell(uint32 spellId)
 {
@@ -96,6 +97,27 @@ void RefreshWhiteWalker(Player* player)
     }
 }
 
+void RefreshAbsoluteZero(Player* player)
+{
+    using namespace AscensionWhiteWalkerSupport;
+    bool const active = Area52Enabled && player->HasAura(AbsoluteZero) && player->HasActiveSpell(FrostNova);
+    bool const knowsReplacement = player->HasActiveSpell(AbsoluteZeroReplacement);
+    auto const guid = player->GetGUID().GetCounter();
+    if (active && !knowsReplacement)
+    {
+        player->learnSpell(AbsoluteZeroReplacement, true);
+        AbsoluteZeroGranted.insert(guid);
+    }
+    if (!active)
+    {
+        player->SetTemporarySpellReplacement(FrostNova, 0);
+        if (AbsoluteZeroGranted.erase(guid) && player->GetSpellMap().find(AbsoluteZeroReplacement) != player->GetSpellMap().end())
+            player->removeSpell(AbsoluteZeroReplacement, SPEC_MASK_ALL, true);
+        return;
+    }
+    player->SetTemporarySpellReplacement(FrostNova, AbsoluteZeroReplacement);
+}
+
 class white_walker_player : public PlayerScript
 {
 public:
@@ -104,16 +126,19 @@ public:
     void OnPlayerLogin(Player* player) override
     {
         RefreshWhiteWalker(player);
+        RefreshAbsoluteZero(player);
     }
 
     void OnPlayerUpdate(Player* player, uint32) override
     {
         RefreshWhiteWalker(player);
+        RefreshAbsoluteZero(player);
     }
 
     void OnPlayerLogout(Player* player) override
     {
         WhiteWalkerGranted.erase(player->GetGUID().GetCounter());
+        AbsoluteZeroGranted.erase(player->GetGUID().GetCounter());
     }
 };
 
