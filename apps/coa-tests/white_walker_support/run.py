@@ -113,6 +113,10 @@ def main():
     assert 'SetTemporarySpellReplacement(FrostNova, AbsoluteZeroReplacement)' in source
     assert 'SetTemporarySpellReplacement(FrostNova, 0)' in source
     assert 'AbsoluteZeroGranted.erase(guid)' in source
+    assert 'event.GetSpellInfo()->Id == AscensionWhiteWalkerSupport::ColdBlood' in source
+    assert 'player->CastSpell(player, AscensionWhiteWalkerSupport::Frostbolt' in source
+    assert 'getMSTimeDiff(last, now) < 1000' in source
+    assert 'ModifySpellCooldown(AscensionWhiteWalkerSupport::ColdBlood, -10000)' in source
     conditional = (ROOT / 'src/server/coa/AscensionConditionalCombat.cpp').read_text()
     assert 'ApplyFrozenPowerDamageContract' in conditional
     assert 'SPELL_AURA_MOD_DAMAGE_DONE_VERSUS_AURASTATE' in conditional
