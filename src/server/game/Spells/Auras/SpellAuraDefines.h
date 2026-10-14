@@ -412,6 +412,7 @@ enum AscensionIgnoreMinRangeType
 enum AscensionAuraStateDamageScope
 {
     ASCENSION_CLASSMASK_AURASTATE_DAMAGE = 20007
+    ,ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE = 20012
 };
 
 // Same arrangement for native aura 168: the selector kept in MiscValueB asks

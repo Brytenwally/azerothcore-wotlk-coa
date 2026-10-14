@@ -11,6 +11,32 @@ constexpr uint32 SPELL_EVIL_DOERS_BEWARE = 681328;
 constexpr uint32 SPELL_REAPER_HEMORRHAGE = 705432;
 constexpr uint32 SPELL_REAPER_THE_TIME_HAS_COME = 572879;
 
+void ApplyFrozenPowerDamageContract(SpellInfo* spellInfo)
+{
+    if (!spellInfo || (spellInfo->Id != 63373 && spellInfo->Id != 63374 &&
+        spellInfo->Id != 263374 && spellInfo->Id != 414600))
+        return;
+
+    SpellEffectInfo& effect = spellInfo->Effects[EFFECT_0];
+    if (effect.Effect != SPELL_EFFECT_APPLY_AURA ||
+        effect.ApplyAuraName != SPELL_AURA_ADD_FLAT_MODIFIER || effect.MiscValue != 23 ||
+        effect.SpellClassMask != flag96(16777216, 0, 0) || effect.TargetA.GetTarget() != TARGET_UNIT_CASTER ||
+        effect.TargetB.GetTarget())
+        return;
+
+    // Frozen Power's public contract is 3/6/9% for the three talent ranks and
+    // 2% per applied Mystic Enchant (up to three copies).  Convert the raw
+    // effect into the target-aware damage path; Unit.cpp supplies the
+    // caster-independent Frostbrand debuff predicate.
+    if (spellInfo->Id == 63373) effect.BasePoints = 3;
+    else if (spellInfo->Id == 63374) effect.BasePoints = 6;
+    else if (spellInfo->Id == 263374) effect.BasePoints = 9;
+    else effect.BasePoints = 2;
+    effect.ApplyAuraName = SPELL_AURA_MOD_DAMAGE_DONE_VERSUS_AURASTATE;
+    effect.MiscValue = ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE;
+    effect.MiscValueB = ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE;
+}
+
 bool HasExpectedEvilDoersLegacy(SpellInfo const* spellInfo)
 {
     SpellEffectInfo const& effect = spellInfo->Effects[EFFECT_0];
@@ -96,4 +122,5 @@ void ApplyAscensionConditionalCombatContracts(SpellInfo* spellInfo)
 
     ApplyReaperHemorrhageDamageContract(spellInfo);
     ApplyReaperTheTimeHasComeDamageContract(spellInfo);
+    ApplyFrozenPowerDamageContract(spellInfo);
 }

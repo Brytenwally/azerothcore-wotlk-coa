@@ -9194,6 +9194,16 @@ float Unit::SpellPctDamageModsDone(Unit* victim, SpellInfo const* spellProto, Da
     // bonus against aurastate
     DoneTotalMod *= GetTotalAuraMultiplier(SPELL_AURA_MOD_DAMAGE_DONE_VERSUS_AURASTATE, [victim, spellProto, damagetype, this](AuraEffect const* aurEff)
     {
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const frostbrandSlowIds[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false;
+            for (uint32 id : frostbrandSlowIds)
+                marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, damagetype == DOT);
+        }
         if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_AURASTATE_DAMAGE && !aurEff->IsAffectedOnSpell(spellProto))
             return false;
         return victim->HasAuraState(AuraStateType(aurEff->GetMiscValue())) && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, damagetype == DOT);
@@ -11221,6 +11231,16 @@ uint32 Unit::MeleeDamageBonusDone(Unit* victim, uint32 pdamage, WeaponAttackType
     // bonus against aurastate
     DoneTotalMod *= GetTotalAuraMultiplier(SPELL_AURA_MOD_DAMAGE_DONE_VERSUS_AURASTATE, [victim, spellProto, this](AuraEffect const* aurEff)
     {
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const frostbrandSlowIds[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false;
+            for (uint32 id : frostbrandSlowIds)
+                marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, false);
+        }
         if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_AURASTATE_DAMAGE &&
             (!spellProto || !aurEff->IsAffectedOnSpell(spellProto)))
             return false;
