@@ -138,6 +138,12 @@ public:
             info->StackAmount = 1;
             return;
         }
+        if (info->Id == AscensionWhiteWalkerSupport::SliceAndIce)
+        {
+            info->ProcFlags = 16;
+            info->ProcChance = 101;
+            return;
+        }
         if (info->Id != AscensionWhiteWalkerSupport::AthleticIcing)
             return;
 
@@ -230,6 +236,29 @@ class aura_area52_white_walker : public AuraScript
         OnProc += AuraProcFn(aura_area52_white_walker::Proc);
     }
 };
+
+class aura_area52_slice_and_ice : public AuraScript
+{
+    PrepareAuraScript(aura_area52_slice_and_ice);
+
+    bool CheckProc(ProcEventInfo& event)
+    {
+        return Area52Enabled && event.GetSpellInfo() && event.GetSpellInfo()->Id == AscensionWhiteWalkerSupport::IceLance &&
+            (event.GetHitMask() & PROC_HIT_CRITICAL);
+    }
+
+    void Proc(ProcEventInfo& event)
+    {
+        PreventDefaultAction();
+        GetTarget()->CastSpell(GetTarget(), 978525, TRIGGERED_FULL_MASK);
+    }
+
+    void Register() override
+    {
+        DoCheckProc += AuraCheckProcFn(aura_area52_slice_and_ice::CheckProc);
+        OnProc += AuraProcFn(aura_area52_slice_and_ice::Proc);
+    }
+};
 }
 
 void AddSC_AscensionWhiteWalkerSupport()
@@ -238,4 +267,5 @@ void AddSC_AscensionWhiteWalkerSupport()
     new white_walker_player();
     RegisterSpellScript(spell_area52_honed_ice);
     RegisterSpellScript(aura_area52_white_walker);
+    RegisterSpellScript(aura_area52_slice_and_ice);
 }
