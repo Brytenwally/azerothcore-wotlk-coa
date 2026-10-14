@@ -169,6 +169,12 @@ public:
             info->ProcChance = 101;
             return;
         }
+        if (info->Id == AscensionWhiteWalkerSupport::FreezingBlood)
+        {
+            info->ProcFlags = 16;
+            info->ProcChance = 101;
+            return;
+        }
         if (info->Id != AscensionWhiteWalkerSupport::AthleticIcing)
             return;
 
@@ -285,6 +291,30 @@ class aura_area52_slice_and_ice : public AuraScript
         OnProc += AuraProcFn(aura_area52_slice_and_ice::Proc);
     }
 };
+
+class aura_area52_freezing_blood : public AuraScript
+{
+    PrepareAuraScript(aura_area52_freezing_blood);
+
+    bool CheckProc(ProcEventInfo& event)
+    {
+        Player* player = GetTarget()->ToPlayer();
+        return Area52Enabled && player && event.GetSpellInfo() && event.GetSpellInfo()->Id == AscensionWhiteWalkerSupport::ColdBlood &&
+            player->HasActiveSpell(AscensionWhiteWalkerSupport::Frostbolt);
+    }
+
+    void Proc(ProcEventInfo& event)
+    {
+        PreventDefaultAction();
+        GetTarget()->CastSpell(GetTarget(), AscensionWhiteWalkerSupport::Frostbolt, TRIGGERED_FULL_MASK);
+    }
+
+    void Register() override
+    {
+        DoCheckProc += AuraCheckProcFn(aura_area52_freezing_blood::CheckProc);
+        OnProc += AuraProcFn(aura_area52_freezing_blood::Proc);
+    }
+};
 }
 
 void AddSC_AscensionWhiteWalkerSupport()
@@ -294,4 +324,5 @@ void AddSC_AscensionWhiteWalkerSupport()
     RegisterSpellScript(spell_area52_honed_ice);
     RegisterSpellScript(aura_area52_white_walker);
     RegisterSpellScript(aura_area52_slice_and_ice);
+    RegisterSpellScript(aura_area52_freezing_blood);
 }
