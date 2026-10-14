@@ -120,6 +120,8 @@ def main():
     assert 'event.GetSpellInfo()->Id == AscensionWhiteWalkerSupport::SinisterStrike' in source
     assert 'event.GetDamageInfo()->GetDamage()' in source
     assert 'AscensionWhiteWalkerSupport::FightersPower' in source
+    assert 'event.GetProcSpell() ? std::max(0, event.GetProcSpell()->GetPowerCost()) : 0' in source
+    assert 'preCostEnergy * 100 >= player->GetMaxPower(POWER_ENERGY) * 90' in source
     conditional = (ROOT / 'src/server/coa/AscensionConditionalCombat.cpp').read_text()
     assert 'ApplyFrozenPowerDamageContract' in conditional
     assert 'SPELL_AURA_MOD_DAMAGE_DONE_VERSUS_AURASTATE' in conditional

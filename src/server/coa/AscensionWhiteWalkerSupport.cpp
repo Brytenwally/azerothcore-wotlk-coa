@@ -463,14 +463,16 @@ class aura_area52_tides_of_battle : public AuraScript
             GetTarget()->ToPlayer() && event.GetDamageInfo() && event.GetDamageInfo()->GetDamage();
     }
 
-    void Proc(ProcEventInfo&)
+    void Proc(ProcEventInfo& event)
     {
         PreventDefaultAction();
         Player* player = GetTarget()->ToPlayer();
         if (!player)
             return;
+        uint32 const spent = event.GetProcSpell() ? std::max(0, event.GetProcSpell()->GetPowerCost()) : 0;
+        uint32 const preCostEnergy = player->GetPower(POWER_ENERGY) + spent;
         bool const aboveThreshold = player->GetMaxPower(POWER_ENERGY) > 0 &&
-            player->GetPower(POWER_ENERGY) * 100 >= player->GetMaxPower(POWER_ENERGY) * 90;
+            preCostEnergy * 100 >= player->GetMaxPower(POWER_ENERGY) * 90;
         player->RemoveAurasDueToSpell(aboveThreshold ? AscensionWhiteWalkerSupport::Flow : AscensionWhiteWalkerSupport::Ebb);
         player->CastSpell(player, aboveThreshold ? AscensionWhiteWalkerSupport::Ebb : AscensionWhiteWalkerSupport::Flow,
             TRIGGERED_FULL_MASK);
