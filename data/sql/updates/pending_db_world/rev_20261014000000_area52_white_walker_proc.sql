@@ -21,3 +21,9 @@ WHERE `spell_id` = 781046 AND `ScriptName` = 'aura_area52_fighters_sinister_stri
 
 INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`)
 VALUES (781046, 'aura_area52_fighters_sinister_strike');
+
+DELETE FROM `spell_script_names`
+WHERE `spell_id` = 978744 AND `ScriptName` = 'aura_area52_tides_of_battle';
+
+INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`)
+VALUES (978744, 'aura_area52_tides_of_battle');

@@ -181,6 +181,12 @@ public:
             info->ProcChance = 101;
             return;
         }
+        if (info->Id == AscensionWhiteWalkerSupport::TidesOfBattle)
+        {
+            info->ProcFlags = 16;
+            info->ProcChance = 101;
+            return;
+        }
         if (info->Id != AscensionWhiteWalkerSupport::AthleticIcing)
             return;
 
@@ -344,6 +350,36 @@ class aura_area52_fighters_sinister_strike : public AuraScript
         OnProc += AuraProcFn(aura_area52_fighters_sinister_strike::Proc);
     }
 };
+
+class aura_area52_tides_of_battle : public AuraScript
+{
+    PrepareAuraScript(aura_area52_tides_of_battle);
+
+    bool CheckProc(ProcEventInfo& event)
+    {
+        return Area52Enabled && event.GetSpellInfo() && event.GetSpellInfo()->Id == AscensionWhiteWalkerSupport::SinisterStrike &&
+            GetTarget()->ToPlayer() && event.GetDamageInfo() && event.GetDamageInfo()->GetDamage();
+    }
+
+    void Proc(ProcEventInfo&)
+    {
+        PreventDefaultAction();
+        Player* player = GetTarget()->ToPlayer();
+        if (!player)
+            return;
+        bool const aboveThreshold = player->GetMaxPower(POWER_ENERGY) > 0 &&
+            player->GetPower(POWER_ENERGY) * 100 >= player->GetMaxPower(POWER_ENERGY) * 90;
+        player->RemoveAurasDueToSpell(aboveThreshold ? AscensionWhiteWalkerSupport::Flow : AscensionWhiteWalkerSupport::Ebb);
+        player->CastSpell(player, aboveThreshold ? AscensionWhiteWalkerSupport::Ebb : AscensionWhiteWalkerSupport::Flow,
+            TRIGGERED_FULL_MASK);
+    }
+
+    void Register() override
+    {
+        DoCheckProc += AuraCheckProcFn(aura_area52_tides_of_battle::CheckProc);
+        OnProc += AuraProcFn(aura_area52_tides_of_battle::Proc);
+    }
+};
 }
 
 void AddSC_AscensionWhiteWalkerSupport()
@@ -355,4 +391,5 @@ void AddSC_AscensionWhiteWalkerSupport()
     RegisterSpellScript(aura_area52_slice_and_ice);
     RegisterSpellScript(aura_area52_freezing_blood);
     RegisterSpellScript(aura_area52_fighters_sinister_strike);
+    RegisterSpellScript(aura_area52_tides_of_battle);
 }
