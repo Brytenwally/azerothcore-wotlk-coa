@@ -20,10 +20,13 @@ struct Unit
     bool twoHanded = true;
     bool slice = true;
     std::vector<uint32> casts;
+    std::vector<uint32> removed;
     Unit* ToPlayer() { return this; }
     bool IsTwoHandUsed() const { return twoHanded; }
     bool HasAura(uint32 id) const { return id == AscensionWhiteWalkerSupport::SliceAndIce && slice; }
     void CastSpell(Unit*, uint32 id, int) { casts.push_back(id); }
+    uint32 GetGUID() const { return 1; }
+    void RemoveAurasDueToSpell(uint32 id, uint32 guid) { assert(guid == 1); removed.push_back(id); }
 };
 struct Spell { bool triggered = false; bool IsTriggered() const { return triggered; } };
 struct SpellInfo { uint32 Id; };
@@ -56,6 +59,8 @@ Unit owner, other;
 Unit* GetTarget() { return &owner; }
 constexpr int TRIGGERED_FULL_MASK = 1;
 void PreventDefaultAction() { }
+struct AuraEffect { };
+using AuraEffectHandleModes = int;
 '''
 
 PROC_RANK_CASES = r'''
@@ -125,6 +130,28 @@ int main()
     assert(!SliceProc(event));
     SliceDispatch(event);
     assert(owner.casts == std::vector<uint32>{AscensionWhiteWalkerSupport::WintersVitality});
+    event.cast.triggered = false;
+    damage.amount = 0;
+    assert(AvailabilityProc(event));
+    event.cast.triggered = true;
+    assert(!AvailabilityProc(event));
+    event.cast.triggered = false;
+    event.actor = &other;
+    assert(!AvailabilityProc(event));
+    event.actor = &owner;
+    owner.slice = false;
+    assert(!AvailabilityProc(event));
+    owner.slice = true;
+    owner.twoHanded = false;
+    assert(!AvailabilityProc(event));
+    owner.twoHanded = true;
+    owner.casts.clear();
+    ApplyAvailability(nullptr, 0);
+    assert(owner.casts == std::vector<uint32>{984937});
+    AvailabilityDispatch(nullptr, event);
+    assert((owner.casts == std::vector<uint32>{984937, AscensionWhiteWalkerSupport::WintersFury}));
+    RemoveAvailability(nullptr, 0);
+    assert(owner.removed == std::vector<uint32>{984937});
 }
 '''
 
@@ -849,7 +876,9 @@ def main():
                         (411116, 'spell_area52_benediction_party')]
         database.execute('CREATE TABLE spell_proc (SpellId INTEGER, SpellFamilyMask2 INTEGER, Cooldown INTEGER, '
                          'SpellFamilyName INTEGER, SpellFamilyMask0 INTEGER, SpellFamilyMask1 INTEGER, '
-                         'ProcFlags INTEGER, SpellTypeMask INTEGER, SpellPhaseMask INTEGER, SchoolMask INTEGER)')
+                         'ProcFlags INTEGER, SpellTypeMask INTEGER, SpellPhaseMask INTEGER, SchoolMask INTEGER, '
+                         'HitMask INTEGER, AttributesMask INTEGER, DisableEffectsMask INTEGER, '
+                         'ProcsPerMinute REAL, Chance REAL, Charges INTEGER)')
         database.executemany('INSERT INTO spell_proc (SpellId, SpellFamilyMask2, Cooldown) VALUES (?, ?, ?)',
                              [(-63373, 0, 0), (63374, 8, 0), (263374, 0, 0), (123, 8, 42)])
         frozen_proc = (ROOT / 'data/sql/updates/pending_db_world/rev_20261014000002_area52_frozen_power_proc.sql').read_text()
@@ -882,6 +911,13 @@ def main():
         assert database.execute('SELECT ProcFlags, SchoolMask, SpellFamilyMask0, SpellTypeMask, '
                                 'SpellPhaseMask, Cooldown FROM spell_proc WHERE SpellId=978302').fetchone() == (
                                     65536, 16, 0, 1, 2, 1234)
+        availability_migration = (ROOT / 'data/sql/updates/pending_db_world/rev_20261014000006_area52_ice_spear_availability.sql').read_text()
+        database.executescript(availability_migration)
+        database.executescript(availability_migration)
+        assert database.execute('SELECT ProcFlags, SpellTypeMask, SpellPhaseMask, Chance, Cooldown '
+                                'FROM spell_proc WHERE SpellId=984937').fetchone() == (0x15510, 7, 1, 0, 0)
+        assert database.execute('SELECT ScriptName FROM spell_script_names WHERE spell_id=984937').fetchall() == [
+            ('aura_area52_slice_and_ice_availability',)]
     effects = (ROOT / 'src/server/game/Spells/SpellEffects.cpp').read_text()
     eviscerate = effects.split('// Eviscerate\n', 1)[1].split('break;', 1)[0]
     assert 'EviscerateScalingBonus(area52, ap,' in eviscerate
@@ -925,11 +961,17 @@ def main():
     for script, function in [('aura_area52_white_walker', 'WhiteWalkerProc'),
                              ('aura_area52_fighters_sinister_strike', 'FighterProc'),
                              ('aura_area52_tides_of_battle', 'TidesProc'),
+                             ('aura_area52_slice_and_ice_availability', 'AvailabilityProc'),
                              ('aura_area52_slice_and_ice', 'SliceProc')]:
         body = source.split('class ' + script + ' :', 1)[1].split('bool CheckProc', 1)[1].split('void Proc', 1)[0]
         proc_generated += '\nbool ' + function + body
     slice_dispatch = source.split('class aura_area52_slice_and_ice :', 1)[1].split('void Proc', 1)[1].split('void Register()', 1)[0]
     proc_generated += '\nvoid SliceDispatch' + slice_dispatch.replace('ProcEventInfo& event', 'ProcEventInfo&')
+    availability = source.split('class aura_area52_slice_and_ice_availability :', 1)[1]
+    proc_generated += '\nvoid AvailabilityDispatch' + availability.split('void Proc', 1)[1].split('void Register()', 1)[0]
+    slice_body = source.split('class aura_area52_slice_and_ice :', 1)[1]
+    proc_generated += '\nvoid ApplyAvailability' + slice_body.split('void Apply', 1)[1].split('void Remove', 1)[0]
+    proc_generated += '\nvoid RemoveAvailability' + slice_body.split('void Remove', 1)[1].split('bool CheckProc', 1)[0]
     proc_generated += PROC_RANK_CASES
     assert 'event.GetDamageInfo()->GetDamage()' in source
     assert 'AscensionWhiteWalkerSupport::FightersPower' in source

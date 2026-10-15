@@ -372,6 +372,16 @@ class aura_area52_slice_and_ice : public AuraScript
 {
     PrepareAuraScript(aura_area52_slice_and_ice);
 
+    void Apply(AuraEffect const*, AuraEffectHandleModes)
+    {
+        GetTarget()->CastSpell(GetTarget(), 984937, TRIGGERED_FULL_MASK);
+    }
+
+    void Remove(AuraEffect const*, AuraEffectHandleModes)
+    {
+        GetTarget()->RemoveAurasDueToSpell(984937, GetTarget()->GetGUID());
+    }
+
     bool CheckProc(ProcEventInfo& event)
     {
         return Area52Enabled && event.GetActor() == GetTarget() && event.GetSpellInfo() &&
@@ -391,6 +401,35 @@ class aura_area52_slice_and_ice : public AuraScript
     {
         DoCheckProc += AuraCheckProcFn(aura_area52_slice_and_ice::CheckProc);
         OnProc += AuraProcFn(aura_area52_slice_and_ice::Proc);
+        AfterEffectApply += AuraEffectApplyFn(aura_area52_slice_and_ice::Apply,
+            EFFECT_0, SPELL_AURA_PROC_TRIGGER_SPELL, AURA_EFFECT_HANDLE_REAL_OR_REAPPLY_MASK);
+        AfterEffectRemove += AuraEffectRemoveFn(aura_area52_slice_and_ice::Remove,
+            EFFECT_0, SPELL_AURA_PROC_TRIGGER_SPELL, AURA_EFFECT_HANDLE_REAL);
+    }
+};
+
+class aura_area52_slice_and_ice_availability : public AuraScript
+{
+    PrepareAuraScript(aura_area52_slice_and_ice_availability);
+
+    bool CheckProc(ProcEventInfo& event)
+    {
+        return Area52Enabled && event.GetActor() == GetTarget() && GetTarget()->ToPlayer() &&
+            GetTarget()->ToPlayer()->IsTwoHandUsed() && GetTarget()->HasAura(AscensionWhiteWalkerSupport::SliceAndIce) &&
+            event.GetSpellInfo() && event.GetProcSpell() && !event.GetProcSpell()->IsTriggered();
+    }
+
+    void Proc(AuraEffect const*, ProcEventInfo&)
+    {
+        PreventDefaultAction();
+        GetTarget()->CastSpell(GetTarget(), AscensionWhiteWalkerSupport::WintersFury, TRIGGERED_FULL_MASK);
+    }
+
+    void Register() override
+    {
+        DoCheckProc += AuraCheckProcFn(aura_area52_slice_and_ice_availability::CheckProc);
+        OnEffectProc += AuraEffectProcFn(aura_area52_slice_and_ice_availability::Proc,
+            EFFECT_0, SPELL_AURA_PROC_TRIGGER_SPELL);
     }
 };
 
@@ -700,6 +739,7 @@ void AddSC_AscensionWhiteWalkerSupport()
     new item_area52_frostbrand();
     RegisterSpellScript(aura_area52_white_walker);
     RegisterSpellScript(aura_area52_slice_and_ice);
+    RegisterSpellScript(aura_area52_slice_and_ice_availability);
     RegisterSpellScript(aura_area52_freezing_blood);
     RegisterSpellScript(spell_area52_cold_blood_activation);
     RegisterSpellScript(aura_area52_freezing_blood_consumed);
