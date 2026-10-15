@@ -16,6 +16,7 @@
  */
 
 #include "SpellInfo.h"
+#include "../../coa/AscensionMysticEnchant.h"
 #include "Chat.h"
 #include "ConditionMgr.h"
 #include "Corpse.h"
@@ -3152,6 +3153,7 @@ int32 SpellInfo::CalcPowerCost(Unit const* caster, SpellSchoolMask schoolMask, S
     // intrinsically instant, non-channeled mana spells; ranged animation delay
     // and temporary cast-time spellmods do not change that classification.
     float powerCostMultiplier = caster->GetFloatValue(static_cast<uint16>(UNIT_FIELD_POWER_COST_MULTIPLIER) + school);
+    powerCostMultiplier += AscensionMysticEnchant::NonstackingCostCorrection(caster, uint32(1) << school);
     if (PowerType == POWER_MANA && !IsChanneled() && (!CastTimeEntry || CastTimeEntry->CastTime == 0))
         powerCostMultiplier -= float(caster->GetTotalAuraModifier(SPELL_AURA_ASCENSION_MOD_INSTANT_MANA_COST_PCT)) / 100.0f;
 

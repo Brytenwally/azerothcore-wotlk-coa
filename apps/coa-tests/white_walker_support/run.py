@@ -8,6 +8,86 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parents[3]
 
+COST_MOCKS = r'''
+#include <algorithm>
+#include <cassert>
+#include <cmath>
+#include <cstdint>
+#include <set>
+#include <vector>
+using int32 = std::int32_t;
+using uint32 = std::uint32_t;
+constexpr int EFFECT_0 = 0;
+constexpr int SPELL_AURA_MOD_POWER_COST_SCHOOL_PCT = 72;
+struct AuraEffect
+{
+    uint32 id;
+    int32 amount;
+    uint32 schools;
+    int type = SPELL_AURA_MOD_POWER_COST_SCHOOL_PCT;
+    int32 GetAmount() const { return amount; }
+    uint32 GetMiscValue() const { return schools; }
+    uint32 GetId() const { return id; }
+    int GetAuraType() const { return type; }
+};
+struct Unit
+{
+    std::vector<AuraEffect const*> effects;
+    AuraEffect const* GetAuraEffect(uint32 id, int) const
+    {
+        for (auto effect : effects) if (effect->id == id) return effect;
+        return nullptr;
+    }
+    auto const& GetAuraEffectsByType(int) const { return effects; }
+};
+bool Ready = true;
+struct Catalog
+{
+    std::set<uint32> spells{84561, 911160, 1329440};
+    bool FindSpell(uint32 id) const { return spells.contains(id); }
+} Loaded;
+'''
+
+COST_CASES = r'''
+int main()
+{
+    AuraEffect athletic{84561, -4, 17};
+    AuraEffect channeling{911160, -3, 84};
+    AuraEffect talent{111, -5, 16};
+    AuraEffect similar{1329440, -3, 126};
+    Unit caster{{&athletic, &channeling, &talent}};
+    for (int copies = 1; copies <= 3; ++copies)
+    {
+        channeling.amount = -3 * copies;
+        float correction = NonstackingCostCorrection(&caster, 16);
+        assert(std::abs(correction - std::min(4, 3 * copies) / 100.0f) < .00001f);
+        float combined = (athletic.amount + channeling.amount + talent.amount) / 100.0f + correction;
+        assert(std::abs(combined - (-std::max(4, 3 * copies) - 5) / 100.0f) < .00001f);
+        assert(NonstackingCostCorrection(&caster, 1) == 0);
+        assert(NonstackingCostCorrection(&caster, 4) == 0);
+        assert(NonstackingCostCorrection(&caster, 64) == 0);
+    }
+    caster.effects.push_back(&similar);
+    assert(std::abs(NonstackingCostCorrection(&caster, 16) - .07f) < .00001f);
+    caster.effects = {&athletic, &talent};
+    assert(NonstackingCostCorrection(&caster, 16) == 0);
+    caster.effects = {&channeling, &talent};
+    assert(NonstackingCostCorrection(&caster, 16) == 0);
+    caster.effects = {&athletic, &channeling};
+    Ready = false;
+    assert(NonstackingCostCorrection(&caster, 16) == 0);
+    Ready = true;
+    athletic.type = 4;
+    assert(NonstackingCostCorrection(&caster, 16) == 0);
+    athletic.type = SPELL_AURA_MOD_POWER_COST_SCHOOL_PCT;
+    athletic.amount = 4;
+    assert(NonstackingCostCorrection(&caster, 16) == 0);
+    athletic.amount = -4;
+    channeling.amount = 3;
+    assert(NonstackingCostCorrection(&caster, 16) == 0);
+}
+'''
+
 PROC_RANK_MOCKS = r'''
 #include "AscensionWhiteWalkerSupportRules.h"
 #include <algorithm>
@@ -1097,7 +1177,16 @@ def main():
         assert ebb['EffectAmplitude[2]'] == 1000
         assert ebb['EffectBasePoints[1]'] + ebb['EffectDieSides[1]'] == -3
         assert fields('Spell', 978747)['StackAmount'] == 5
+        channeling = fields('Spell', 911160)
+        assert channeling['EffectApplyAuraName[0]'] == 72
+        assert channeling['EffectBasePoints[0]'] + channeling['EffectDieSides[0]'] == -3
+        assert channeling['EffectMiscValue[0]'] == 84 and channeling['StackAmount'] == 3
     source = (ROOT / 'src/server/coa/AscensionWhiteWalkerSupport.cpp').read_text()
+    mystic_source = (ROOT / 'src/server/coa/AscensionMysticEnchant.cpp').read_text()
+    correction = mystic_source.split('float NonstackingCostCorrection', 1)[1].split('bool ApplyGuide', 1)[0]
+    cost_generated = COST_MOCKS + '\nfloat NonstackingCostCorrection' + correction + COST_CASES
+    assert 'NonstackingCostCorrection(caster, uint32(1) << school)' in (
+        ROOT / 'src/server/game/Spells/SpellInfo.cpp').read_text()
     migration = (ROOT / 'data/sql/updates/pending_db_world/rev_20261014000001_area52_benediction.sql').read_text()
     with sqlite3.connect(':memory:') as database:
         database.execute('CREATE TABLE spell_script_names (spell_id INTEGER, ScriptName TEXT)')
@@ -1263,6 +1352,10 @@ def main():
         subprocess.run([compiler, '-std=c++20', '-Wall', '-Wextra', '-Werror',
                         '-I', str(ROOT / 'src/server/coa'), str(source), '-o', str(binary)], check=True)
         subprocess.run([str(binary)], check=True)
+        source.write_text(cost_generated)
+        subprocess.run([compiler, '-std=c++20', '-Wall', '-Wextra', '-Werror',
+                        str(source), '-o', str(binary)], check=True)
+        subprocess.run([str(binary)], check=True)
         source.write_text(proc_generated)
         subprocess.run([compiler, '-std=c++20', '-Wall', '-Wextra', '-Werror',
                         '-I', str(ROOT / 'src/server/coa'), str(source), '-o', str(binary)], check=True)
@@ -1279,7 +1372,7 @@ def main():
         subprocess.run([compiler, '-std=c++20', '-Wall', '-Wextra', '-Werror',
                         '-I', str(ROOT / 'src/server/coa'), str(source), '-o', str(binary)], check=True)
         subprocess.run([str(binary)], check=True)
-    print('PASS: White Walker support rules; production Frostbrand handler all ranks, victim/item ownership and exclusions')
+    print('PASS: White Walker production handlers, native data contracts, ownership, resource and cost regressions')
 
 if __name__ == '__main__':
     main()

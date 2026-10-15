@@ -7,10 +7,12 @@
 #include <vector>
 
 class Player;
+class Unit;
 
 namespace AscensionMysticEnchant
 {
 bool ApplyGuide(Player* player, std::vector<GuideEnchant> const& guide);
+float NonstackingCostCorrection(Unit const* caster, std::uint32_t schoolMask);
 }
 
 #endif

@@ -20,6 +20,7 @@
 #include "Random.h"
 #include "ScriptMgr.h"
 #include "SpellAuras.h"
+#include "SpellAuraEffects.h"
 #include "SpellInfo.h"
 #include "SpellMgr.h"
 #include "SpellScript.h"
@@ -1003,6 +1004,26 @@ public:
             LOG_ERROR("coa", "Mystic enchants are unavailable: MysticEnchant.dbc did not load");
     }
 };
+}
+
+float NonstackingCostCorrection(Unit const* caster, std::uint32_t schoolMask)
+{
+    if (!Ready)
+        return 0.0f;
+    AuraEffect const* athletic = caster->GetAuraEffect(84561, EFFECT_0);
+    if (!athletic || athletic->GetAmount() >= 0 || athletic->GetAuraType() != SPELL_AURA_MOD_POWER_COST_SCHOOL_PCT ||
+        !(athletic->GetMiscValue() & schoolMask))
+        return 0.0f;
+    int32 sum = 0;
+    int32 strongest = 0;
+    for (AuraEffect const* effect : caster->GetAuraEffectsByType(SPELL_AURA_MOD_POWER_COST_SCHOOL_PCT))
+    {
+        if (effect->GetAmount() >= 0 || !(effect->GetMiscValue() & schoolMask) || !Loaded.FindSpell(effect->GetId()))
+            continue;
+        sum += effect->GetAmount();
+        strongest = std::min(strongest, effect->GetAmount());
+    }
+    return float(strongest - sum) / 100.0f;
 }
 
 bool ApplyGuide(Player* player, std::vector<GuideEnchant> const& guide)
