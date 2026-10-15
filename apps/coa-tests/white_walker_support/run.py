@@ -88,6 +88,101 @@ int main()
 }
 '''
 
+DAMAGE_PREDICATE_MOCKS = r'''
+#include <cassert>
+#include <set>
+#include <cstdint>
+using uint32 = std::uint32_t;
+using AuraStateType = int;
+constexpr int ASCENSION_CLASSMASK_AURASTATE_DAMAGE = 20007;
+constexpr int ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE = 20012;
+constexpr int ASCENSION_CLASSMASK_NPC_DAMAGE = 20013;
+constexpr int ASCENSION_CLASSMASK_PLAYER_DAMAGE = 20014;
+constexpr int SPELL_SCHOOL_MASK_FROST = 16;
+constexpr int SPELL_SCHOOL_MASK_FIRE = 4;
+constexpr int SPELL_SCHOOL_MASK_NATURE = 8;
+constexpr int DOT = 1;
+struct Unit
+{
+    bool player = false;
+    bool state = false;
+    std::set<uint32> auras;
+    bool IsPlayer() const { return player; }
+    bool HasAura(uint32 id) const { return auras.contains(id); }
+    bool HasAuraState(int) const { return state; }
+};
+struct AuraEffect;
+struct SpellInfo
+{
+    uint32 school = 16;
+    bool attribute = true;
+    uint32 GetSchoolMask() const { return school; }
+    bool ValidateAttribute6SpellDamageMods(Unit const*, AuraEffect const*, bool) const { return attribute; }
+};
+struct AuraEffect
+{
+    int marker = ASCENSION_CLASSMASK_NPC_DAMAGE;
+    bool affected = true;
+    int GetMiscValueB() const { return marker; }
+    int GetMiscValue() const { return 0; }
+    bool IsAffectedOnSpell(SpellInfo const*) const { return affected; }
+};
+'''
+
+DAMAGE_PREDICATE_CASES = r'''
+int main()
+{
+    Unit target, caster;
+    SpellInfo spell;
+    AuraEffect effect;
+    auto check = [&]
+    {
+        assert(SpellPredicate(&target, &spell, &caster, 0)(&effect) ==
+            MeleePredicate(&target, &spell, &caster)(&effect));
+        return SpellPredicate(&target, &spell, &caster, 0)(&effect);
+    };
+    assert(check());
+    target.player = true;
+    assert(!check());
+    effect.marker = ASCENSION_CLASSMASK_PLAYER_DAMAGE;
+    assert(check());
+    target.player = false;
+    assert(!check());
+    target.player = true;
+    effect.affected = false;
+    assert(!check());
+    effect.affected = true;
+    spell.attribute = false;
+    assert(!check());
+    spell.attribute = true;
+    assert(!SpellPredicate(&target, nullptr, &caster, 0)(&effect));
+    assert(!MeleePredicate(&target, nullptr, &caster)(&effect));
+    effect.marker = ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE;
+    assert(!check());
+    for (uint32 slow : {8034u, 8037u, 10458u, 16352u, 16353u, 965999u, 58797u, 58798u, 58799u})
+    {
+        target.auras = {slow};
+        for (uint32 school : {4u, 8u, 16u})
+        {
+            spell.school = school;
+            assert(check());
+            assert(SpellPredicate(&target, &spell, &caster, DOT)(&effect));
+        }
+        for (uint32 school : {1u, 2u, 32u, 64u})
+        {
+            spell.school = school;
+            assert(!check());
+        }
+    }
+    spell.school = 16;
+    spell.attribute = false;
+    assert(!check());
+    spell.attribute = true;
+    target.auras.clear();
+    assert(!check());
+}
+'''
+
 PROC_RANK_MOCKS = r'''
 #include "AscensionWhiteWalkerSupportRules.h"
 #include <algorithm>
@@ -409,13 +504,17 @@ FROZEN_POWER_MOCKS = r'''
 #include <array>
 #include <cassert>
 using uint32 = std::uint32_t;
+using uint8 = std::uint8_t;
 constexpr int EFFECT_0 = 0;
 constexpr int EFFECT_1 = 1;
 constexpr int SPELL_EFFECT_APPLY_AURA = 6;
 constexpr int SPELL_AURA_ADD_FLAT_MODIFIER = 107;
+constexpr int SPELL_AURA_ADD_PCT_MODIFIER = 108;
 constexpr int SPELL_AURA_MOD_RATING_FROM_STAT = 220;
 constexpr int SPELL_AURA_MOD_DAMAGE_DONE_VERSUS_AURASTATE = 303;
 constexpr int ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE = 20012;
+constexpr int ASCENSION_CLASSMASK_NPC_DAMAGE = 20013;
+constexpr int ASCENSION_CLASSMASK_PLAYER_DAMAGE = 20014;
 constexpr int TARGET_UNIT_CASTER = 1;
 struct flag96
 {
@@ -436,7 +535,7 @@ struct SpellEffectInfo
     int BasePoints = 99;
     int DieSides = 1;
 };
-struct SpellInfo { uint32 Id; std::array<SpellEffectInfo, 3> Effects; };
+struct SpellInfo { uint32 Id; std::array<SpellEffectInfo, 3> Effects; uint32 SpellFamilyName = 8; };
 '''
 
 FROZEN_POWER_CASES = r'''
@@ -483,6 +582,36 @@ int main()
     assert(slice.Effects[1].BasePoints == 99);
     ApplySliceAndIceStats(nullptr, &helper);
     ApplySliceAndIceStats(&slice, nullptr);
+    for (uint32 identity : {979053u, 979011u, 530921u})
+    {
+        SpellInfo info{identity, {}};
+        info.SpellFamilyName = identity == 979053 ? 3 : 8;
+        std::array<int, 2> values = identity == 979011 ? std::array<int, 2>{125, 25} :
+            identity == 530921 ? std::array<int, 2>{10, 20} : std::array<int, 2>{50, 0};
+        for (int index = 0; index < (identity == 979053 ? 1 : 2); ++index)
+        {
+            info.Effects[index].ApplyAuraName = SPELL_AURA_ADD_PCT_MODIFIER;
+            info.Effects[index].MiscValue = (identity == 530921 ? index == 0 : index == 1) ? 36 : 38;
+            info.Effects[index].BasePoints = values[index] - 1;
+        }
+        ApplyArea52TargetDamageContracts(&info);
+        for (int index = 0; index < (identity == 979053 ? 1 : 2); ++index)
+        {
+            auto const& effect = info.Effects[index];
+            assert(effect.ApplyAuraName == SPELL_AURA_MOD_DAMAGE_DONE_VERSUS_AURASTATE);
+            assert(effect.BasePoints + effect.DieSides == values[index]);
+            assert(effect.MiscValueB == (effect.MiscValue == 36 ? ASCENSION_CLASSMASK_PLAYER_DAMAGE :
+                ASCENSION_CLASSMASK_NPC_DAMAGE));
+            assert((effect.SpellClassMask == flag96(16777216, 0, 0)));
+        }
+        ApplyArea52TargetDamageContracts(&info);
+    }
+    SpellInfo wrongFamily{979053, {}};
+    wrongFamily.Effects[0].ApplyAuraName = SPELL_AURA_ADD_PCT_MODIFIER;
+    wrongFamily.Effects[0].MiscValue = 38;
+    ApplyArea52TargetDamageContracts(&wrongFamily);
+    assert(wrongFamily.Effects[0].ApplyAuraName == SPELL_AURA_ADD_PCT_MODIFIER);
+    ApplyArea52TargetDamageContracts(nullptr);
 }
 '''
 
@@ -1182,6 +1311,15 @@ def main():
         assert channeling['EffectBasePoints[0]'] + channeling['EffectDieSides[0]'] == -3
         assert channeling['EffectMiscValue[0]'] == 84 and channeling['StackAmount'] == 3
     source = (ROOT / 'src/server/coa/AscensionWhiteWalkerSupport.cpp').read_text()
+    unit_source = (ROOT / 'src/server/game/Entities/Unit/Unit.cpp').read_text()
+    predicates = unit_source.split('DoneTotalMod *= GetTotalAuraMultiplier(SPELL_AURA_MOD_DAMAGE_DONE_VERSUS_AURASTATE, ', 2)[1:]
+    damage_generated = DAMAGE_PREDICATE_MOCKS
+    for name, body, arguments in [('SpellPredicate', predicates[0], ', int damagetype'),
+                                  ('MeleePredicate', predicates[1], '')]:
+        expression = body.split('});', 1)[0] + '}'
+        damage_generated += ('\nauto ' + name + '(Unit const* victim, SpellInfo const* spellProto, '
+                             'Unit const* caster' + arguments + ') { return ' + expression.replace('this', 'caster') + '; }\n')
+    damage_generated += DAMAGE_PREDICATE_CASES
     mystic_source = (ROOT / 'src/server/coa/AscensionMysticEnchant.cpp').read_text()
     correction = mystic_source.split('float NonstackingCostCorrection', 1)[1].split('bool ApplyGuide', 1)[0]
     cost_generated = COST_MOCKS + '\nfloat NonstackingCostCorrection' + correction + COST_CASES
@@ -1353,6 +1491,10 @@ def main():
                         '-I', str(ROOT / 'src/server/coa'), str(source), '-o', str(binary)], check=True)
         subprocess.run([str(binary)], check=True)
         source.write_text(cost_generated)
+        subprocess.run([compiler, '-std=c++20', '-Wall', '-Wextra', '-Werror',
+                        str(source), '-o', str(binary)], check=True)
+        subprocess.run([str(binary)], check=True)
+        source.write_text(damage_generated)
         subprocess.run([compiler, '-std=c++20', '-Wall', '-Wextra', '-Werror',
                         str(source), '-o', str(binary)], check=True)
         subprocess.run([str(binary)], check=True)

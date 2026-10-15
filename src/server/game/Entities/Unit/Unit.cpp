@@ -9194,6 +9194,11 @@ float Unit::SpellPctDamageModsDone(Unit* victim, SpellInfo const* spellProto, Da
     // bonus against aurastate
     DoneTotalMod *= GetTotalAuraMultiplier(SPELL_AURA_MOD_DAMAGE_DONE_VERSUS_AURASTATE, [victim, spellProto, damagetype, this](AuraEffect const* aurEff)
     {
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_NPC_DAMAGE ||
+            aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_PLAYER_DAMAGE)
+            return spellProto && aurEff->IsAffectedOnSpell(spellProto) &&
+                victim->IsPlayer() == (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_PLAYER_DAMAGE) &&
+                spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, damagetype == DOT);
         if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
         {
             if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
@@ -11231,6 +11236,11 @@ uint32 Unit::MeleeDamageBonusDone(Unit* victim, uint32 pdamage, WeaponAttackType
     // bonus against aurastate
     DoneTotalMod *= GetTotalAuraMultiplier(SPELL_AURA_MOD_DAMAGE_DONE_VERSUS_AURASTATE, [victim, spellProto, this](AuraEffect const* aurEff)
     {
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_NPC_DAMAGE ||
+            aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_PLAYER_DAMAGE)
+            return spellProto && aurEff->IsAffectedOnSpell(spellProto) &&
+                victim->IsPlayer() == (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_PLAYER_DAMAGE) &&
+                spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, false);
         if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
         {
             if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))

@@ -35,6 +35,23 @@ void ApplyFrozenPowerDamageContract(SpellInfo* spellInfo)
     effect.MiscValueB = ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE;
 }
 
+void ApplyArea52TargetDamageContracts(SpellInfo* spellInfo)
+{
+    if (!spellInfo || !((spellInfo->Id == 979053 && spellInfo->SpellFamilyName == 3) ||
+        ((spellInfo->Id == 979011 || spellInfo->Id == 530921) && spellInfo->SpellFamilyName == 8)))
+        return;
+    for (uint8 index = 0; index < (spellInfo->Id == 979053 ? 1 : 2); ++index)
+    {
+        auto& effect = spellInfo->Effects[index];
+        if (effect.Effect != SPELL_EFFECT_APPLY_AURA || effect.ApplyAuraName != SPELL_AURA_ADD_PCT_MODIFIER ||
+            (effect.MiscValue != 36 && effect.MiscValue != 38) ||
+            effect.TargetA.GetTarget() != TARGET_UNIT_CASTER || effect.TargetB.GetTarget())
+            continue;
+        effect.MiscValueB = effect.MiscValue == 36 ? ASCENSION_CLASSMASK_PLAYER_DAMAGE : ASCENSION_CLASSMASK_NPC_DAMAGE;
+        effect.ApplyAuraName = SPELL_AURA_MOD_DAMAGE_DONE_VERSUS_AURASTATE;
+    }
+}
+
 bool HasExpectedEvilDoersLegacy(SpellInfo const* spellInfo)
 {
     SpellEffectInfo const& effect = spellInfo->Effects[EFFECT_0];
@@ -121,4 +138,5 @@ void ApplyAscensionConditionalCombatContracts(SpellInfo* spellInfo)
     ApplyReaperHemorrhageDamageContract(spellInfo);
     ApplyReaperTheTimeHasComeDamageContract(spellInfo);
     ApplyFrozenPowerDamageContract(spellInfo);
+    ApplyArea52TargetDamageContracts(spellInfo);
 }

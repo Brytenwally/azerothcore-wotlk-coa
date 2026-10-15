@@ -411,8 +411,10 @@ enum AscensionIgnoreMinRangeType
 // to request class-mask filtering from native aura 303.
 enum AscensionAuraStateDamageScope
 {
-    ASCENSION_CLASSMASK_AURASTATE_DAMAGE = 20007
-    ,ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE = 20012
+    ASCENSION_CLASSMASK_AURASTATE_DAMAGE = 20007,
+    ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE = 20012,
+    ASCENSION_CLASSMASK_NPC_DAMAGE = 20013,
+    ASCENSION_CLASSMASK_PLAYER_DAMAGE = 20014
 };
 
 // Same arrangement for native aura 168: the selector kept in MiscValueB asks
