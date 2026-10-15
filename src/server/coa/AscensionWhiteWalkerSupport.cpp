@@ -128,12 +128,23 @@ void RefreshAbsoluteZero(Player* player)
 class white_walker_player : public PlayerScript
 {
 public:
-    white_walker_player() : PlayerScript("white_walker_player", { PLAYERHOOK_ON_LOGIN, PLAYERHOOK_ON_UPDATE, PLAYERHOOK_ON_LOGOUT }) { }
+    white_walker_player() : PlayerScript("white_walker_player",
+        {PLAYERHOOK_ON_LOGIN, PLAYERHOOK_ON_UPDATE, PLAYERHOOK_ON_LOGOUT, PLAYERHOOK_ON_SPELL_CAST}) { }
 
     void OnPlayerLogin(Player* player) override
     {
         RefreshWhiteWalker(player);
         RefreshAbsoluteZero(player);
+    }
+
+    void OnPlayerSpellCast(Player* player, Spell* spell, bool) override
+    {
+        using namespace AscensionWhiteWalkerSupport;
+        if (!Area52Enabled || spell->IsTriggered() || !player->HasAura(TidesOfBattle) ||
+            sSpellMgr->GetFirstSpellInChain(spell->GetSpellInfo()->Id) != SinisterStrike)
+            return;
+        spell->SetScriptValue(TidesOfBattle, uint64(player->GetPower(POWER_ENERGY)) + 1);
+        spell->SetScriptValue(Ebb, player->GetMaxPower(POWER_ENERGY));
     }
 
     void OnPlayerUpdate(Player* player, uint32) override
@@ -764,7 +775,10 @@ class aura_area52_tides_of_battle : public AuraScript
     {
         return Area52Enabled && event.GetActor() == GetTarget() && event.GetSpellInfo() &&
             sSpellMgr->GetFirstSpellInChain(event.GetSpellInfo()->Id) == AscensionWhiteWalkerSupport::SinisterStrike &&
-            GetTarget()->ToPlayer() && event.GetDamageInfo() && event.GetDamageInfo()->GetDamage();
+            GetTarget()->ToPlayer() && event.GetProcSpell() &&
+            event.GetProcSpell()->GetScriptValue(AscensionWhiteWalkerSupport::TidesOfBattle) &&
+            !event.GetProcSpell()->GetScriptValue(AscensionWhiteWalkerSupport::Flow) &&
+            event.GetDamageInfo() && event.GetDamageInfo()->GetDamage();
     }
 
     void Proc(ProcEventInfo& event)
@@ -773,10 +787,11 @@ class aura_area52_tides_of_battle : public AuraScript
         Player* player = GetTarget()->ToPlayer();
         if (!player)
             return;
-        uint32 const spent = event.GetProcSpell() ? std::max(0, event.GetProcSpell()->GetPowerCost()) : 0;
-        uint32 const preCostEnergy = player->GetPower(POWER_ENERGY) + spent;
-        bool const aboveThreshold = player->GetMaxPower(POWER_ENERGY) > 0 &&
-            preCostEnergy * 100 >= player->GetMaxPower(POWER_ENERGY) * 90;
+        Spell const* source = event.GetProcSpell();
+        uint64 const preCostEnergy = source->GetScriptValue(AscensionWhiteWalkerSupport::TidesOfBattle) - 1;
+        uint64 const maximum = source->GetScriptValue(AscensionWhiteWalkerSupport::Ebb);
+        bool const aboveThreshold = maximum > 0 && preCostEnergy * 100 >= maximum * 90;
+        const_cast<Spell*>(source)->SetScriptValue(AscensionWhiteWalkerSupport::Flow, 1);
         player->RemoveAurasDueToSpell(aboveThreshold ? AscensionWhiteWalkerSupport::Flow : AscensionWhiteWalkerSupport::Ebb);
         player->CastSpell(player, aboveThreshold ? AscensionWhiteWalkerSupport::Ebb : AscensionWhiteWalkerSupport::Flow,
             TRIGGERED_FULL_MASK);
@@ -786,6 +801,27 @@ class aura_area52_tides_of_battle : public AuraScript
     {
         DoCheckProc += AuraCheckProcFn(aura_area52_tides_of_battle::CheckProc);
         OnProc += AuraProcFn(aura_area52_tides_of_battle::Proc);
+    }
+};
+
+class aura_area52_ebb_drain : public AuraScript
+{
+    PrepareAuraScript(aura_area52_ebb_drain);
+
+    bool Load() override { return Area52Enabled && GetUnitOwner()->IsPlayer(); }
+
+    void Tick(AuraEffect const*)
+    {
+        PreventDefaultAction();
+        int32 const percent = std::max(0, -GetEffect(EFFECT_1)->GetAmount());
+        int32 const drain = int64(GetTarget()->GetMaxPower(POWER_ENERGY)) * percent / 100;
+        GetTarget()->ModifyPower(POWER_ENERGY, -drain);
+    }
+
+    void Register() override
+    {
+        OnEffectPeriodic += AuraEffectPeriodicFn(aura_area52_ebb_drain::Tick,
+            EFFECT_2, SPELL_AURA_PERIODIC_TRIGGER_SPELL);
     }
 };
 }
@@ -810,4 +846,5 @@ void AddSC_AscensionWhiteWalkerSupport()
     RegisterSpellScript(aura_area52_cut_to_the_chase);
     RegisterSpellScript(aura_area52_fighters_sinister_strike);
     RegisterSpellScript(aura_area52_tides_of_battle);
+    RegisterSpellScript(aura_area52_ebb_drain);
 }

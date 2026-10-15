@@ -18,6 +18,7 @@ using uint32 = std::uint32_t;
 using uint8 = std::uint8_t;
 using uint64 = std::uint64_t;
 using int32 = std::int32_t;
+using int64 = std::int64_t;
 bool Area52Enabled = true;
 constexpr uint32 PROC_HIT_CRITICAL = 2;
 struct Unit
@@ -27,6 +28,9 @@ struct Unit
     bool fury = false;
     bool worldforgedCooldown = false;
     uint32 level = 80;
+    bool tides = true;
+    int32 energy = 100;
+    uint32 maximumEnergy = 100;
     int critModifier = 0;
     std::vector<uint32> casts;
     std::vector<uint32> removed;
@@ -37,16 +41,20 @@ struct Unit
     bool HasAura(uint32 id) const
     {
         return (id == AscensionWhiteWalkerSupport::SliceAndIce && slice) ||
-            (id == AscensionWhiteWalkerSupport::WintersFury && fury) || (id == 780999 && worldforgedCooldown);
+            (id == AscensionWhiteWalkerSupport::WintersFury && fury) || (id == 780999 && worldforgedCooldown) ||
+            (id == AscensionWhiteWalkerSupport::TidesOfBattle && tides);
     }
     void CastSpell(Unit*, uint32 id, int) { casts.push_back(id); }
     uint32 GetGUID() const { return 1; }
     uint32 GetLevel() const { return level; }
+    uint32 GetPower(int) const { return energy; }
+    uint32 GetMaxPower(int) const { return maximumEnergy; }
+    void ModifyPower(int, int32 change) { energy = std::clamp<int32>(energy + change, 0, maximumEnergy); }
     void CastCustomSpell(Unit*, uint32 id, int32* first, int32* second, int32*, bool)
     {
         custom.push_back({static_cast<int32>(id), first ? *first : 0, second ? *second : 0});
     }
-    void RemoveAurasDueToSpell(uint32 id, uint32 guid)
+    void RemoveAurasDueToSpell(uint32 id, uint32 guid = 1)
     {
         assert(guid == 1);
         removed.push_back(id);
@@ -54,6 +62,7 @@ struct Unit
     }
     int GetTotalAuraModifier(int) const { return critModifier; }
 };
+using Player = Unit;
 struct SpellInfo
 {
     uint32 Id;
@@ -105,8 +114,13 @@ SpellMgr* sSpellMgr = &manager;
 Unit owner, other;
 Unit* GetTarget() { return &owner; }
 constexpr int TRIGGERED_FULL_MASK = 1;
-void PreventDefaultAction() { }
-struct AuraEffect { };
+bool prevented = false;
+void PreventDefaultAction() { prevented = true; }
+struct AuraEffect { int32 amount = -3; int32 GetAmount() const { return amount; } };
+AuraEffect drainEffect;
+AuraEffect const* GetEffect(int) { return &drainEffect; }
+constexpr int POWER_ENERGY = 3;
+constexpr int EFFECT_1 = 1;
 using AuraEffectHandleModes = int;
 uint8 enchantCopies = 1;
 uint8 GetStackAmount() { return enchantCopies; }
@@ -125,6 +139,9 @@ int main()
     DamageInfo damage;
     SpellInfo spell{1752};
     ProcEventInfo event{&owner, &spell, &damage};
+    event.cast.caster = &owner;
+    event.cast.info = &spell;
+    SnapshotTides(&owner, &event.cast, false);
     for (uint32 rank : sinister)
     {
         spell.Id = rank;
@@ -261,6 +278,49 @@ int main()
                 {781000, attackPower, attackPower}, {781001, 10 * enchantCopies, 0},
                 {781002, 100 * enchantCopies, 0}}));
         }
+    for (int32 energy : {0, 89, 90, 91, 100})
+    {
+        event.cast.values.clear();
+        owner.energy = energy;
+        owner.maximumEnergy = 100;
+        SnapshotTides(&owner, &event.cast, false);
+        owner.energy = energy > 50 ? energy - 50 : 0;
+        owner.casts.clear();
+        owner.removed.clear();
+        assert(TidesProc(event));
+        TidesDispatch(event);
+        assert(owner.casts == std::vector<uint32>{energy >= 90 ? AscensionWhiteWalkerSupport::Ebb :
+            AscensionWhiteWalkerSupport::Flow});
+        assert(owner.removed == std::vector<uint32>{energy >= 90 ? AscensionWhiteWalkerSupport::Flow :
+            AscensionWhiteWalkerSupport::Ebb});
+        assert(!TidesProc(event));
+    }
+    event.cast.values.clear();
+    event.cast.triggered = true;
+    SnapshotTides(&owner, &event.cast, false);
+    assert(!TidesProc(event));
+    event.cast.triggered = false;
+    owner.tides = false;
+    SnapshotTides(&owner, &event.cast, false);
+    assert(!TidesProc(event));
+    owner.tides = true;
+    for (uint32 maximum : {100, 200})
+        for (int copies = 1; copies <= 5; ++copies)
+        {
+            owner.maximumEnergy = maximum;
+            owner.energy = maximum;
+            drainEffect.amount = -3 * copies;
+            prevented = false;
+            EbbTick(nullptr);
+            assert(prevented && owner.energy == int32(maximum - maximum * 3 * copies / 100));
+            owner.energy = 1;
+            EbbTick(nullptr);
+            assert(owner.energy == 0);
+        }
+    drainEffect.amount = 3;
+    owner.energy = 50;
+    EbbTick(nullptr);
+    assert(owner.energy == 50);
 }
 '''
 
@@ -1032,6 +1092,11 @@ def main():
                                    (1, 30, 40, 50, 60, 70, 80)):
             rank = fields('Spell', identity)
             assert rank['SpellLevel'] == level and rank['CasterAuraSpell'] == 984936
+        ebb = fields('Spell', 978746)
+        assert ebb['StackAmount'] == 5 and ebb['EffectApplyAuraName[2]'] == 23
+        assert ebb['EffectAmplitude[2]'] == 1000
+        assert ebb['EffectBasePoints[1]'] + ebb['EffectDieSides[1]'] == -3
+        assert fields('Spell', 978747)['StackAmount'] == 5
     source = (ROOT / 'src/server/coa/AscensionWhiteWalkerSupport.cpp').read_text()
     migration = (ROOT / 'data/sql/updates/pending_db_world/rev_20261014000001_area52_benediction.sql').read_text()
     with sqlite3.connect(':memory:') as database:
@@ -1093,6 +1158,11 @@ def main():
         database.executescript(fighter_migration)
         assert database.execute('SELECT ProcFlags, Chance, Cooldown FROM spell_proc WHERE SpellId=781046').fetchone() == (
             16, 0, 4321)
+        ebb_migration = (ROOT / 'data/sql/updates/pending_db_world/rev_20261014000008_area52_ebb_drain.sql').read_text()
+        database.executescript(ebb_migration)
+        database.executescript(ebb_migration)
+        assert database.execute('SELECT ScriptName FROM spell_script_names WHERE spell_id=978746').fetchall() == [
+            ('aura_area52_ebb_drain',)]
     effects = (ROOT / 'src/server/game/Spells/SpellEffects.cpp').read_text()
     eviscerate = effects.split('// Eviscerate\n', 1)[1].split('break;', 1)[0]
     assert 'EviscerateScalingBonus(area52, ap,' in eviscerate
@@ -1133,6 +1203,8 @@ def main():
     assert 'getMSTimeDiff(last->second, now) < 1000' in source
     assert 'ModifySpellCooldown(AscensionWhiteWalkerSupport::ColdBlood, -10000)' in source
     proc_generated = PROC_RANK_MOCKS
+    snapshot = source.split('void OnPlayerSpellCast', 1)[1].split('void OnPlayerUpdate', 1)[0]
+    proc_generated += '\nvoid SnapshotTides' + snapshot.replace(' override', '')
     for script, function in [('aura_area52_white_walker', 'WhiteWalkerProc'),
                              ('aura_area52_fighters_sinister_strike', 'FighterProc'),
                              ('aura_area52_tides_of_battle', 'TidesProc'),
@@ -1151,11 +1223,14 @@ def main():
     proc_generated += '\nclass IceSpearCallbacks { public: void OnSpellBeforeEffects' + spear.replace(' override', '') + '\n};\n'
     fighter_dispatch = source.split('class aura_area52_fighters_sinister_strike :', 1)[1].split('void Proc', 1)[1].split('void Register()', 1)[0]
     proc_generated += '\nvoid FighterDispatch' + fighter_dispatch.replace('ProcEventInfo& event', 'ProcEventInfo&')
+    tides_dispatch = source.split('class aura_area52_tides_of_battle :', 1)[1].split('void Proc', 1)[1].split('void Register()', 1)[0]
+    proc_generated += '\nvoid TidesDispatch' + tides_dispatch
+    ebb_tick = source.split('class aura_area52_ebb_drain :', 1)[1].split('void Tick', 1)[1].split('void Register()', 1)[0]
+    proc_generated += '\nvoid EbbTick' + ebb_tick
     proc_generated += PROC_RANK_CASES
     assert 'event.GetDamageInfo()->GetDamage()' in source
     assert 'AscensionWhiteWalkerSupport::FightersPower' in source
-    assert 'event.GetProcSpell() ? std::max(0, event.GetProcSpell()->GetPowerCost()) : 0' in source
-    assert 'preCostEnergy * 100 >= player->GetMaxPower(POWER_ENERGY) * 90' in source
+    assert 'preCostEnergy * 100 >= maximum * 90' in source
     conditional = (ROOT / 'src/server/coa/AscensionConditionalCombat.cpp').read_text()
     frozen_conversion = conditional.split('void ApplyFrozenPowerDamageContract', 1)[1].split('bool HasExpectedEvilDoersLegacy', 1)[0]
     slice_stats = source.split('void ApplySliceAndIceStats', 1)[1].split('void RefreshWhiteWalker', 1)[0]
