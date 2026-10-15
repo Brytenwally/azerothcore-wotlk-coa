@@ -7,14 +7,137 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parents[3]
 
+PROC_RANK_MOCKS = r'''
+#include "AscensionWhiteWalkerSupportRules.h"
+#include <cassert>
+#include <map>
+#include <vector>
+using uint32 = std::uint32_t;
+bool Area52Enabled = true;
+constexpr uint32 PROC_HIT_CRITICAL = 2;
+struct Unit
+{
+    bool twoHanded = true;
+    bool slice = true;
+    std::vector<uint32> casts;
+    Unit* ToPlayer() { return this; }
+    bool IsTwoHandUsed() const { return twoHanded; }
+    bool HasAura(uint32 id) const { return id == AscensionWhiteWalkerSupport::SliceAndIce && slice; }
+    void CastSpell(Unit*, uint32 id, int) { casts.push_back(id); }
+};
+struct Spell { bool triggered = false; bool IsTriggered() const { return triggered; } };
+struct SpellInfo { uint32 Id; };
+struct DamageInfo { uint32 amount = 100; uint32 GetDamage() const { return amount; } };
+struct ProcEventInfo
+{
+    Unit* actor;
+    SpellInfo* spell;
+    DamageInfo* damage;
+    uint32 hit = PROC_HIT_CRITICAL;
+    Spell cast{};
+    Spell const* GetProcSpell() const { return &cast; }
+    Unit* GetActor() const { return actor; }
+    SpellInfo const* GetSpellInfo() const { return spell; }
+    DamageInfo const* GetDamageInfo() const { return damage; }
+    uint32 GetHitMask() const { return hit; }
+};
+struct SpellMgr
+{
+    std::map<uint32, uint32> roots;
+    uint32 GetFirstSpellInChain(uint32 id) const
+    {
+        auto found = roots.find(id);
+        return found == roots.end() ? id : found->second;
+    }
+};
+SpellMgr manager;
+SpellMgr* sSpellMgr = &manager;
+Unit owner, other;
+Unit* GetTarget() { return &owner; }
+constexpr int TRIGGERED_FULL_MASK = 1;
+void PreventDefaultAction() { }
+'''
+
+PROC_RANK_CASES = r'''
+int main()
+{
+    std::array<uint32, 12> sinister{1752, 1757, 1758, 1759, 1760, 8621, 11293, 11294,
+        26861, 26862, 48637, 48638};
+    std::array<uint32, 12> eviscerate{2098, 6760, 6761, 6762, 8623, 8624, 11299, 11300,
+        31016, 26865, 48667, 48668};
+    for (uint32 rank : sinister) manager.roots[rank] = 1752;
+    for (uint32 rank : eviscerate) manager.roots[rank] = 2098;
+    for (uint32 rank : AscensionWhiteWalkerSupport::IceLanceRanks) manager.roots[rank] = 30455;
+    DamageInfo damage;
+    SpellInfo spell{1752};
+    ProcEventInfo event{&owner, &spell, &damage};
+    for (uint32 rank : sinister)
+    {
+        spell.Id = rank;
+        assert(WhiteWalkerProc(event) && FighterProc(event) && TidesProc(event));
+        assert(!SliceProc(event));
+    }
+    for (uint32 rank : eviscerate)
+    {
+        spell.Id = rank;
+        assert(WhiteWalkerProc(event));
+        assert(!FighterProc(event) && !TidesProc(event) && !SliceProc(event));
+    }
+    for (uint32 rank : AscensionWhiteWalkerSupport::IceLanceRanks)
+    {
+        spell.Id = rank;
+        assert(SliceProc(event));
+        assert(!WhiteWalkerProc(event) && !FighterProc(event) && !TidesProc(event));
+    }
+    for (auto check : {WhiteWalkerProc, FighterProc, TidesProc, SliceProc})
+    {
+        spell.Id = check == SliceProc ? 42914 : 48638;
+        assert(check(event));
+        event.actor = &other;
+        assert(!check(event));
+        event.actor = &owner;
+        damage.amount = 0;
+        assert(!check(event));
+        damage.amount = 100;
+        event.damage = nullptr;
+        assert(!check(event));
+        event.damage = &damage;
+        event.spell = nullptr;
+        assert(!check(event));
+        event.spell = &spell;
+        Area52Enabled = false;
+        assert(!check(event));
+        Area52Enabled = true;
+    }
+    spell.Id = 48638;
+    owner.slice = false;
+    assert(!WhiteWalkerProc(event));
+    owner.slice = true;
+    owner.twoHanded = false;
+    assert(!WhiteWalkerProc(event));
+    owner.twoHanded = true;
+    event.hit = 0;
+    assert(!WhiteWalkerProc(event));
+    spell.Id = 42914;
+    assert(!SliceProc(event));
+    event.hit = PROC_HIT_CRITICAL;
+    event.cast.triggered = true;
+    assert(!SliceProc(event));
+    SliceDispatch(event);
+    assert(owner.casts == std::vector<uint32>{AscensionWhiteWalkerSupport::WintersVitality});
+}
+'''
+
 FROZEN_POWER_MOCKS = r'''
 #include "AscensionWhiteWalkerSupportRules.h"
 #include <array>
 #include <cassert>
 using uint32 = std::uint32_t;
 constexpr int EFFECT_0 = 0;
+constexpr int EFFECT_1 = 1;
 constexpr int SPELL_EFFECT_APPLY_AURA = 6;
 constexpr int SPELL_AURA_ADD_FLAT_MODIFIER = 107;
+constexpr int SPELL_AURA_MOD_RATING_FROM_STAT = 220;
 constexpr int SPELL_AURA_MOD_DAMAGE_DONE_VERSUS_AURASTATE = 303;
 constexpr int ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE = 20012;
 constexpr int TARGET_UNIT_CASTER = 1;
@@ -65,6 +188,25 @@ int main()
     ApplyFrozenPowerDamageContract(&wrongShape);
     assert(wrongShape.Effects[0].BasePoints == 99);
     ApplyFrozenPowerDamageContract(nullptr);
+    SpellInfo helper{878302, {}};
+    helper.Effects[0].ApplyAuraName = SPELL_AURA_MOD_RATING_FROM_STAT;
+    helper.Effects[0].BasePoints = 49;
+    helper.Effects[0].MiscValue = 256;
+    helper.Effects[0].MiscValueB = 3;
+    SpellInfo slice{AscensionWhiteWalkerSupport::SliceAndIce, {}};
+    ApplySliceAndIceStats(&slice, &helper);
+    assert(slice.Effects[1].Effect == SPELL_EFFECT_APPLY_AURA);
+    assert(slice.Effects[1].ApplyAuraName == SPELL_AURA_MOD_RATING_FROM_STAT);
+    assert(slice.Effects[1].BasePoints + slice.Effects[1].DieSides == 50);
+    assert(slice.Effects[1].MiscValue == 256 && slice.Effects[1].MiscValueB == 3);
+    ApplySliceAndIceStats(&unrelated, &helper);
+    assert(unrelated.Effects[1].BasePoints == 99);
+    helper.Effects[0].ApplyAuraName = SPELL_AURA_ADD_FLAT_MODIFIER;
+    slice.Effects[1].BasePoints = 99;
+    ApplySliceAndIceStats(&slice, &helper);
+    assert(slice.Effects[1].BasePoints == 99);
+    ApplySliceAndIceStats(nullptr, &helper);
+    ApplySliceAndIceStats(&slice, nullptr);
 }
 '''
 
@@ -733,6 +875,13 @@ def main():
         assert database.execute('SELECT ProcFlags, SchoolMask FROM spell_proc WHERE SpellId=979135').fetchone() == (0x10010, 16)
         assert database.execute('SELECT ScriptName FROM spell_script_names WHERE spell_id=530920').fetchall() == [
             ('aura_area52_freezing_blood_consumed',)]
+        database.execute('INSERT INTO spell_proc (SpellId, Cooldown) VALUES (978302, 1234)')
+        slice_migration = (ROOT / 'data/sql/updates/pending_db_world/rev_20261014000005_area52_slice_and_ice_proc.sql').read_text()
+        database.executescript(slice_migration)
+        database.executescript(slice_migration)
+        assert database.execute('SELECT ProcFlags, SchoolMask, SpellFamilyMask0, SpellTypeMask, '
+                                'SpellPhaseMask, Cooldown FROM spell_proc WHERE SpellId=978302').fetchone() == (
+                                    65536, 16, 0, 1, 2, 1234)
     effects = (ROOT / 'src/server/game/Spells/SpellEffects.cpp').read_text()
     eviscerate = effects.split('// Eviscerate\n', 1)[1].split('break;', 1)[0]
     assert 'EviscerateScalingBonus(area52, ap,' in eviscerate
@@ -772,14 +921,25 @@ def main():
     assert 'player->CastSpell(target, *rank, TRIGGERED_FULL_MASK)' in source
     assert 'getMSTimeDiff(last->second, now) < 1000' in source
     assert 'ModifySpellCooldown(AscensionWhiteWalkerSupport::ColdBlood, -10000)' in source
-    assert 'event.GetSpellInfo()->Id == AscensionWhiteWalkerSupport::SinisterStrike' in source
+    proc_generated = PROC_RANK_MOCKS
+    for script, function in [('aura_area52_white_walker', 'WhiteWalkerProc'),
+                             ('aura_area52_fighters_sinister_strike', 'FighterProc'),
+                             ('aura_area52_tides_of_battle', 'TidesProc'),
+                             ('aura_area52_slice_and_ice', 'SliceProc')]:
+        body = source.split('class ' + script + ' :', 1)[1].split('bool CheckProc', 1)[1].split('void Proc', 1)[0]
+        proc_generated += '\nbool ' + function + body
+    slice_dispatch = source.split('class aura_area52_slice_and_ice :', 1)[1].split('void Proc', 1)[1].split('void Register()', 1)[0]
+    proc_generated += '\nvoid SliceDispatch' + slice_dispatch.replace('ProcEventInfo& event', 'ProcEventInfo&')
+    proc_generated += PROC_RANK_CASES
     assert 'event.GetDamageInfo()->GetDamage()' in source
     assert 'AscensionWhiteWalkerSupport::FightersPower' in source
     assert 'event.GetProcSpell() ? std::max(0, event.GetProcSpell()->GetPowerCost()) : 0' in source
     assert 'preCostEnergy * 100 >= player->GetMaxPower(POWER_ENERGY) * 90' in source
     conditional = (ROOT / 'src/server/coa/AscensionConditionalCombat.cpp').read_text()
     frozen_conversion = conditional.split('void ApplyFrozenPowerDamageContract', 1)[1].split('bool HasExpectedEvilDoersLegacy', 1)[0]
-    frozen_generated = FROZEN_POWER_MOCKS + '\nvoid ApplyFrozenPowerDamageContract' + frozen_conversion + FROZEN_POWER_CASES
+    slice_stats = source.split('void ApplySliceAndIceStats', 1)[1].split('void RefreshWhiteWalker', 1)[0]
+    frozen_generated = (FROZEN_POWER_MOCKS + '\nvoid ApplySliceAndIceStats' + slice_stats +
+                        '\nvoid ApplyFrozenPowerDamageContract' + frozen_conversion + FROZEN_POWER_CASES)
     assert 'ApplyFrozenPowerDamageContract' in conditional
     assert 'SPELL_AURA_MOD_DAMAGE_DONE_VERSUS_AURASTATE' in conditional
     assert 'ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE' in conditional
@@ -804,6 +964,10 @@ def main():
         source = folder / 'rules.cpp'
         binary = folder / 'rules'
         source.write_text(generated)
+        subprocess.run([compiler, '-std=c++20', '-Wall', '-Wextra', '-Werror',
+                        '-I', str(ROOT / 'src/server/coa'), str(source), '-o', str(binary)], check=True)
+        subprocess.run([str(binary)], check=True)
+        source.write_text(proc_generated)
         subprocess.run([compiler, '-std=c++20', '-Wall', '-Wextra', '-Werror',
                         '-I', str(ROOT / 'src/server/coa'), str(source), '-o', str(binary)], check=True)
         subprocess.run([str(binary)], check=True)

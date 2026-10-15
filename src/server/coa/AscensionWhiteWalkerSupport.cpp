@@ -21,6 +21,22 @@ std::unordered_map<ObjectGuid::LowType, std::unordered_set<uint32>> WhiteWalkerG
 std::unordered_set<ObjectGuid::LowType> AbsoluteZeroGranted;
 std::unordered_map<ObjectGuid::LowType, uint32> FreezingBloodLastCooldown;
 
+void ApplySliceAndIceStats(SpellInfo* info, SpellInfo const* helper)
+{
+    if (!info || info->Id != AscensionWhiteWalkerSupport::SliceAndIce || !helper || helper->Id != 878302)
+        return;
+    auto const& source = helper->Effects[EFFECT_0];
+    if (source.Effect != SPELL_EFFECT_APPLY_AURA || source.ApplyAuraName != SPELL_AURA_MOD_RATING_FROM_STAT)
+        return;
+    auto& rating = info->Effects[EFFECT_1];
+    rating.Effect = SPELL_EFFECT_APPLY_AURA;
+    rating.ApplyAuraName = source.ApplyAuraName;
+    rating.BasePoints = source.BasePoints;
+    rating.DieSides = source.DieSides;
+    rating.MiscValue = source.MiscValue;
+    rating.MiscValueB = source.MiscValueB;
+}
+
 void RefreshWhiteWalker(Player* player)
 {
     using namespace AscensionWhiteWalkerSupport;
@@ -151,7 +167,8 @@ public:
         }
         if (info->Id == AscensionWhiteWalkerSupport::SliceAndIce)
         {
-            info->ProcFlags = 16;
+            ApplySliceAndIceStats(info, sSpellMgr->GetSpellInfo(878302));
+            info->ProcFlags = PROC_FLAG_DONE_SPELL_MAGIC_DMG_CLASS_NEG;
             info->ProcChance = 101;
             return;
         }
@@ -266,9 +283,13 @@ class aura_area52_white_walker : public AuraScript
 
     bool CheckProc(ProcEventInfo& event)
     {
-        if (!Area52Enabled || !event.GetSpellInfo() || !(event.GetHitMask() & PROC_HIT_CRITICAL))
+        if (!Area52Enabled || !event.GetSpellInfo() || event.GetActor() != GetTarget() ||
+            !GetTarget()->ToPlayer() || !GetTarget()->ToPlayer()->IsTwoHandUsed() ||
+            !GetTarget()->HasAura(AscensionWhiteWalkerSupport::SliceAndIce) ||
+            !event.GetDamageInfo() || !event.GetDamageInfo()->GetDamage() ||
+            !(event.GetHitMask() & PROC_HIT_CRITICAL))
             return false;
-        uint32 const spellId = event.GetSpellInfo()->Id;
+        uint32 const spellId = sSpellMgr->GetFirstSpellInChain(event.GetSpellInfo()->Id);
         return spellId == 1752 || spellId == 2098;
     }
 
@@ -353,14 +374,16 @@ class aura_area52_slice_and_ice : public AuraScript
 
     bool CheckProc(ProcEventInfo& event)
     {
-        return Area52Enabled && event.GetSpellInfo() && event.GetSpellInfo()->Id == AscensionWhiteWalkerSupport::IceLance &&
+        return Area52Enabled && event.GetActor() == GetTarget() && event.GetSpellInfo() &&
+            event.GetProcSpell() && !event.GetProcSpell()->IsTriggered() &&
+            sSpellMgr->GetFirstSpellInChain(event.GetSpellInfo()->Id) == AscensionWhiteWalkerSupport::IceLance &&
+            event.GetDamageInfo() && event.GetDamageInfo()->GetDamage() &&
             (event.GetHitMask() & PROC_HIT_CRITICAL);
     }
 
     void Proc(ProcEventInfo& event)
     {
         PreventDefaultAction();
-        GetTarget()->CastSpell(GetTarget(), AscensionWhiteWalkerSupport::WintersFury, TRIGGERED_FULL_MASK);
         GetTarget()->CastSpell(GetTarget(), AscensionWhiteWalkerSupport::WintersVitality, TRIGGERED_FULL_MASK);
     }
 
@@ -616,7 +639,8 @@ class aura_area52_fighters_sinister_strike : public AuraScript
 
     bool CheckProc(ProcEventInfo& event)
     {
-        return Area52Enabled && event.GetSpellInfo() && event.GetSpellInfo()->Id == AscensionWhiteWalkerSupport::SinisterStrike &&
+        return Area52Enabled && event.GetActor() == GetTarget() && event.GetSpellInfo() &&
+            sSpellMgr->GetFirstSpellInChain(event.GetSpellInfo()->Id) == AscensionWhiteWalkerSupport::SinisterStrike &&
             event.GetDamageInfo() && event.GetDamageInfo()->GetDamage();
     }
 
@@ -639,7 +663,8 @@ class aura_area52_tides_of_battle : public AuraScript
 
     bool CheckProc(ProcEventInfo& event)
     {
-        return Area52Enabled && event.GetSpellInfo() && event.GetSpellInfo()->Id == AscensionWhiteWalkerSupport::SinisterStrike &&
+        return Area52Enabled && event.GetActor() == GetTarget() && event.GetSpellInfo() &&
+            sSpellMgr->GetFirstSpellInChain(event.GetSpellInfo()->Id) == AscensionWhiteWalkerSupport::SinisterStrike &&
             GetTarget()->ToPlayer() && event.GetDamageInfo() && event.GetDamageInfo()->GetDamage();
     }
 
