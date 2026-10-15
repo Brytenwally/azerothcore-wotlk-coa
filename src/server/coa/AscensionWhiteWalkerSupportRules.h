@@ -39,6 +39,13 @@ constexpr std::int32_t EviscerateClientCoefficient(std::uint8_t comboPoints)
 {
     return 2 * static_cast<std::int32_t>(comboPoints) * static_cast<std::int32_t>(comboPoints);
 }
+constexpr std::int32_t EviscerateScalingBonus(bool area52, float attackPower, float spellPower,
+    std::uint8_t comboPoints)
+{
+    return area52 ? static_cast<std::int32_t>((attackPower + spellPower) *
+        EviscerateClientCoefficient(comboPoints) / 100.0f) :
+        static_cast<std::int32_t>(attackPower * comboPoints * 0.07f);
+}
 constexpr std::uint32_t SliceAndDice = 5171;
 constexpr std::uint32_t SliceAndIce = 978302;
 constexpr std::uint32_t WindsOfWinter = 120;

@@ -140,6 +140,10 @@ public:
         if (!Area52Enabled)
             return;
 
+        if (info->SpellFamilyName == SPELLFAMILY_ROGUE && (info->SpellFamilyFlags[0] & 0x00020000) &&
+            info->Effects[EFFECT_0].Effect == SPELL_EFFECT_SCHOOL_DAMAGE)
+            info->Effects[EFFECT_0].BonusMultiplier = 0;
+
         if (info->Id == AscensionWhiteWalkerSupport::HonedIceBuff)
         {
             info->StackAmount = 1;
@@ -463,6 +467,42 @@ class spell_area52_benediction_party : public SpellScript
     }
 };
 
+class aura_area52_cut_to_the_chase : public AuraScript
+{
+    PrepareAuraScript(aura_area52_cut_to_the_chase);
+
+    bool Load() override { return Area52Enabled; }
+
+    bool CheckProc(ProcEventInfo& event)
+    {
+        SpellInfo const* info = event.GetSpellInfo();
+        Spell const* spell = event.GetProcSpell();
+        if (!info || !info->NeedsComboPoints() || event.GetActor() != GetTarget() || !spell ||
+            spell->IsTriggered() || spell->GetScriptValue(51664))
+            return false;
+        const_cast<Spell*>(spell)->SetScriptValue(51664, 1);
+        return true;
+    }
+
+    void Proc(AuraEffect const*, ProcEventInfo&)
+    {
+        PreventDefaultAction();
+        Unit* owner = GetTarget();
+        for (uint32 id : { 5171u, 6774u, 978302u })
+            if (Aura* aura = owner->GetAura(id, owner->GetGUID()))
+            {
+                aura->SetDuration(aura->GetSpellInfo()->GetMaxDuration(), true);
+                aura->SetMaxDuration(aura->GetDuration());
+            }
+    }
+
+    void Register() override
+    {
+        DoCheckProc += AuraCheckProcFn(aura_area52_cut_to_the_chase::CheckProc);
+        OnEffectProc += AuraEffectProcFn(aura_area52_cut_to_the_chase::Proc, EFFECT_0, SPELL_AURA_DUMMY);
+    }
+};
+
 class aura_area52_fighters_sinister_strike : public AuraScript
 {
     PrepareAuraScript(aura_area52_fighters_sinister_strike);
@@ -531,6 +571,7 @@ void AddSC_AscensionWhiteWalkerSupport()
     RegisterSpellScript(aura_area52_freezing_blood);
     RegisterSpellScript(aura_area52_benediction);
     RegisterSpellScript(spell_area52_benediction_party);
+    RegisterSpellScript(aura_area52_cut_to_the_chase);
     RegisterSpellScript(aura_area52_fighters_sinister_strike);
     RegisterSpellScript(aura_area52_tides_of_battle);
 }

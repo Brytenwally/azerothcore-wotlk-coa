@@ -16,6 +16,8 @@
  */
 
 #include "Battleground.h"
+#include "../../coa/AscensionWhiteWalkerSupportRules.h"
+#include "Config.h"
 #include "BattlegroundIC.h"
 #include "BattlegroundMgr.h"
 #include "BattlegroundSA.h"
@@ -893,7 +895,12 @@ void Spell::EffectSchoolDMG(SpellEffIndex effIndex)
                             if (uint32 combo = m_caster->ToPlayer()->GetComboPoints())
                             {
                                 float ap = m_caster->GetTotalAttackPowerValue(BASE_ATTACK);
-                                damage += int32(ap * combo * 0.07f);
+                                static bool const area52 = sConfigMgr->GetOption<bool>("CoA.Enable", true) &&
+                                    sConfigMgr->GetOption<std::string>("CoA.ClassModel", "coa") == "hero" &&
+                                    sConfigMgr->GetOption<std::string>("CoA.RealmType", "live") == "live" &&
+                                    !(sConfigMgr->GetOption<uint32>("CoA.GameModeMask", 0) & ~uint32(0x400));
+                                damage += AscensionWhiteWalkerSupport::EviscerateScalingBonus(area52, ap,
+                                    m_caster->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_MAGIC), combo);
 
                                 // Eviscerate and Envenom Bonus Damage (item set effect)
                                 if (m_caster->HasAura(37169))
