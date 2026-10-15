@@ -81,6 +81,19 @@ uint32 getMSTime() { return clockTime; }
 uint32 getMSTimeDiff(uint32 first, uint32 second) { return second - first; }
 bool Area52Enabled = true;
 constexpr uint32 PROC_FLAG_KILL = 1;
+constexpr uint32 PROC_FLAG_DONE_PERIODIC = 0x40000;
+constexpr uint32 SPELL_SCHOOL_MASK_FROST = 16;
+constexpr int SPELL_AURA_MOD_STEALTH = 16;
+constexpr int TRIGGERED_FULL_MASK = 1;
+constexpr int EFFECT_0 = 0;
+constexpr int EFFECT_2 = 2;
+constexpr int SPELLVALUE_BASE_POINT0 = 0;
+constexpr int SPELLVALUE_BASE_POINT1 = 1;
+constexpr int SPELLFAMILY_ROGUE = 8;
+constexpr int SPELL_DAMAGE_CLASS_MELEE = 2;
+constexpr int SPELL_EFFECT_ADD_COMBO_POINTS = 80;
+using AuraEffectHandleModes = int;
+int32 CalculatePct(uint32 amount, int32 percent) { return amount * percent / 100; }
 struct Player;
 struct Unit;
 struct ObjectGuid
@@ -90,13 +103,27 @@ struct ObjectGuid
     uint32 GetCounter() const { return id; }
     bool operator==(ObjectGuid const&) const = default;
 };
+struct EffectData { int32 value = 4; int32 CalcValue(Unit*) const { return value; } };
 struct SpellInfo
 {
     bool finishing = true;
+    bool generating = false;
+    uint32 SpellFamilyName = 8;
+    int DmgClass = SPELL_DAMAGE_CLASS_MELEE;
+    std::array<EffectData, 3> Effects;
     int32 maximumDuration = 21000;
     bool NeedsComboPoints() const { return finishing; }
     int32 GetMaxDuration() const { return maximumDuration; }
+    bool HasEffect(int effect) const { return effect == SPELL_EFFECT_ADD_COMBO_POINTS && generating; }
 };
+struct SpellMgr
+{
+    SpellInfo parent;
+    SpellInfo bonus;
+    SpellInfo const* GetSpellInfo(uint32 id) const { return id == 979135 ? &parent : &bonus; }
+};
+SpellMgr spellMgr;
+SpellMgr* sSpellMgr = &spellMgr;
 struct Spell
 {
     bool triggered = false;
@@ -139,12 +166,18 @@ struct Unit : WorldObject
     uint32 maximum = 100;
     bool alive = true;
     bool cooldown = false;
+    bool freezing = false;
+    uint32 customId = 0;
+    int customField = 0;
+    int32 customAmount = 0;
+    Unit* customTarget = nullptr;
+    uint32 removedId = 0;
     std::map<uint32, Aura*> auraMap;
     Player* ToPlayer() { return player; }
     Unit* ToUnit() override { return this; }
     ObjectGuid GetGUID() const override { return {id}; }
     bool IsAlive() const { return alive; }
-    bool HasAura(uint32) const { return cooldown; }
+    bool HasAura(uint32 id) const { return id == 979135 ? freezing : cooldown; }
     uint32 GetPower(int) const { return mana; }
     uint32 GetMaxPower(int) const { return maximum; }
     Aura* GetAura(uint32 id, ObjectGuid guid)
@@ -152,14 +185,44 @@ struct Unit : WorldObject
         auto it = auraMap.find(id);
         return guid == GetGUID() && it != auraMap.end() ? it->second : nullptr;
     }
+    void CastCustomSpell(uint32 id, int field, int32 amount, Unit* target, bool)
+    {
+        customId = id;
+        customField = field;
+        customAmount = amount;
+        customTarget = target;
+    }
+    void RemoveAurasDueToSpell(uint32 id, ObjectGuid guid)
+    {
+        if (guid == GetGUID())
+        {
+            removedId = id;
+            auraMap.erase(id);
+        }
+    }
 };
 struct Player : Unit
 {
     bool eligible = true;
+    bool attackAllowed = true;
+    bool stealthRemoved = false;
+    Unit* selected = nullptr;
+    Unit* castTarget = nullptr;
+    uint32 castId = 0;
+    int cooldownAdjustment = 0;
+    std::unordered_set<uint32> knownSpells;
     Player() { player = this; }
     bool isHonorOrXPTarget(Unit*) const { return eligible; }
+    bool HasAura(uint32 id) const { return id == 979135 ? freezing : Unit::HasAura(id); }
+    bool HasActiveSpell(uint32 id) const { return knownSpells.contains(id); }
+    Unit* GetSelectedUnit() const { return selected; }
+    bool IsValidAttackTarget(Unit*) const { return attackAllowed; }
+    void RemoveAurasByType(int) { stealthRemoved = true; }
+    void CastSpell(Unit* target, uint32 id, int) { castTarget = target; castId = id; }
+    void ModifySpellCooldown(uint32, int value) { cooldownAdjustment += value; }
 };
 Player owner;
+std::map<uint32, uint32> FreezingBloodLastCooldown;
 struct AuraScript
 {
     virtual bool Load() { return true; }
@@ -171,6 +234,7 @@ struct SpellScript
     virtual bool Load() { return true; }
     Unit* GetCaster() { return &owner; }
 };
+struct DamageInfo { uint32 amount; uint32 GetDamage() const { return amount; } };
 struct ProcEventInfo
 {
     Unit* actor;
@@ -178,11 +242,15 @@ struct ProcEventInfo
     uint32 mask = PROC_FLAG_KILL;
     SpellInfo* info = nullptr;
     Spell* spell = nullptr;
+    DamageInfo* damage = nullptr;
+    uint32 school = SPELL_SCHOOL_MASK_FROST;
     Unit* GetActor() const { return actor; }
     Unit* GetActionTarget() const { return target; }
     uint32 GetTypeMask() const { return mask; }
     SpellInfo const* GetSpellInfo() const { return info; }
     Spell* GetProcSpell() const { return spell; }
+    DamageInfo const* GetDamageInfo() const { return damage; }
+    uint32 GetSchoolMask() const { return school; }
 };
 #define PrepareAuraScript(name) public:
 #define PrepareSpellScript(name) public:
@@ -252,6 +320,87 @@ int main()
     cut.Proc(nullptr, event);
     assert(slice.duration == 21000 && slice.maximum == 21000);
     assert(ice.duration == 21000 && ice.maximum == 21000);
+    spell_area52_cold_blood_activation activation;
+    owner.freezing = true;
+    owner.selected = &victim;
+    for (uint32 rank : AscensionWhiteWalkerSupport::FrostboltRanks)
+    {
+        owner.knownSpells.clear();
+        owner.knownSpells.insert(rank);
+        owner.castId = 0;
+        activation.Activate();
+        assert(owner.castTarget == &victim && owner.castId == rank);
+        assert(owner.stealthRemoved);
+    }
+    owner.knownSpells.insert(116);
+    activation.Activate();
+    assert(owner.castId == 42842);
+    owner.castId = 0;
+    owner.attackAllowed = false;
+    activation.Activate();
+    assert(owner.castId == 0);
+    owner.attackAllowed = true;
+    owner.selected = nullptr;
+    activation.Activate();
+    assert(owner.castId == 0);
+    owner.selected = &victim;
+    owner.knownSpells.clear();
+    activation.Activate();
+    assert(owner.castId == 0);
+    aura_area52_freezing_blood freezing;
+    DamageInfo hit{100};
+    event.damage = &hit;
+    clockTime = 0;
+    FreezingBloodLastCooldown.clear();
+    assert(freezing.CheckProc(event));
+    freezing.Proc(event);
+    freezing.Proc(event);
+    assert(owner.cooldownAdjustment == -10000);
+    clockTime = 999;
+    freezing.Proc(event);
+    assert(owner.cooldownAdjustment == -10000);
+    clockTime = 1000;
+    freezing.Proc(event);
+    assert(owner.cooldownAdjustment == -20000);
+    event.mask = PROC_FLAG_DONE_PERIODIC;
+    assert(!freezing.CheckProc(event));
+    event.mask = 0;
+    event.school = 4;
+    assert(!freezing.CheckProc(event));
+    event.school = SPELL_SCHOOL_MASK_FROST;
+    event.actor = &victim;
+    assert(!freezing.CheckProc(event));
+    aura_area52_freezing_blood_consumed consumed;
+    owner.freezing = true;
+    consumed.Consumed(nullptr, 0);
+    assert(owner.customId == 979163 && owner.customField == 1 && owner.customAmount == 4);
+    assert(owner.customTarget == &owner);
+    owner.freezing = false;
+    owner.customId = 0;
+    consumed.Consumed(nullptr, 0);
+    assert(owner.customId == 0);
+    owner.freezing = true;
+    aura_area52_freezing_blood_damage bonus;
+    event.actor = &owner;
+    event.mask = 0;
+    event.school = SPELL_SCHOOL_MASK_FROST;
+    spellMgr.bonus.Effects[0].value = 20;
+    assert(bonus.CheckProc(event));
+    bonus.Proc(nullptr, event);
+    assert(owner.customId == 979134 && owner.customField == 0 && owner.customAmount == 20);
+    assert(owner.customTarget == &victim);
+    finisher.finishing = false;
+    assert(!bonus.CheckProc(event));
+    finisher.generating = true;
+    assert(bonus.CheckProc(event));
+    finisher.DmgClass = 1;
+    assert(!bonus.CheckProc(event));
+    finisher.DmgClass = SPELL_DAMAGE_CLASS_MELEE;
+    event.mask = PROC_FLAG_DONE_PERIODIC;
+    assert(!bonus.CheckProc(event));
+    owner.auraMap[979163] = &ice;
+    freezing.Remove(nullptr, 0);
+    assert(owner.removedId == 979163 && !owner.auraMap.contains(979163));
     Area52Enabled = false;
     assert(!aura.Load());
 }
@@ -558,7 +707,7 @@ def main():
                         (411116, 'spell_area52_benediction_party')]
         database.execute('CREATE TABLE spell_proc (SpellId INTEGER, SpellFamilyMask2 INTEGER, Cooldown INTEGER, '
                          'SpellFamilyName INTEGER, SpellFamilyMask0 INTEGER, SpellFamilyMask1 INTEGER, '
-                         'ProcFlags INTEGER, SpellTypeMask INTEGER, SpellPhaseMask INTEGER)')
+                         'ProcFlags INTEGER, SpellTypeMask INTEGER, SpellPhaseMask INTEGER, SchoolMask INTEGER)')
         database.executemany('INSERT INTO spell_proc (SpellId, SpellFamilyMask2, Cooldown) VALUES (?, ?, ?)',
                              [(-63373, 0, 0), (63374, 8, 0), (263374, 0, 0), (123, 8, 42)])
         frozen_proc = (ROOT / 'data/sql/updates/pending_db_world/rev_20261014000002_area52_frozen_power_proc.sql').read_text()
@@ -574,6 +723,16 @@ def main():
         assert database.execute('SELECT ScriptName FROM spell_script_names WHERE spell_id=-51664').fetchall() == [
             ('aura_area52_cut_to_the_chase',)]
         assert database.execute('SELECT ProcFlags, SpellTypeMask, SpellPhaseMask FROM spell_proc WHERE SpellId=-51664').fetchone() == (0x15510, 7, 2)
+        database.execute('INSERT INTO spell_proc (SpellId) VALUES (979135)')
+        database.execute("INSERT INTO spell_script_names VALUES (14177, 'spell_rog_cold_blood')")
+        freezing_migration = (ROOT / 'data/sql/updates/pending_db_world/rev_20261014000004_area52_freezing_blood.sql').read_text()
+        database.executescript(freezing_migration)
+        database.executescript(freezing_migration)
+        assert database.execute('SELECT ScriptName FROM spell_script_names WHERE spell_id=14177 ORDER BY ScriptName').fetchall() == [
+            ('spell_area52_cold_blood_activation',), ('spell_rog_cold_blood',)]
+        assert database.execute('SELECT ProcFlags, SchoolMask FROM spell_proc WHERE SpellId=979135').fetchone() == (0x10010, 16)
+        assert database.execute('SELECT ScriptName FROM spell_script_names WHERE spell_id=530920').fetchall() == [
+            ('aura_area52_freezing_blood_consumed',)]
     effects = (ROOT / 'src/server/game/Spells/SpellEffects.cpp').read_text()
     eviscerate = effects.split('// Eviscerate\n', 1)[1].split('break;', 1)[0]
     assert 'EviscerateScalingBonus(area52, ap,' in eviscerate
@@ -590,6 +749,16 @@ def main():
     cut = source.split('class aura_area52_cut_to_the_chase :', 1)[1].split('void Register()', 1)[0]
     benediction_generated = benediction_generated.replace(BENEDICTION_CASES,
         'class aura_area52_cut_to_the_chase :' + cut + '};' + BENEDICTION_CASES)
+    activation = source.split('class spell_area52_cold_blood_activation :', 1)[1].split('void Register()', 1)[0]
+    freezing = source.split('class aura_area52_freezing_blood :', 1)[1].split('void Register()', 1)[0]
+    benediction_generated = benediction_generated.replace(BENEDICTION_CASES,
+        'class spell_area52_cold_blood_activation :' + activation + '};' +
+        'class aura_area52_freezing_blood :' + freezing + '};' + BENEDICTION_CASES)
+    consumed = source.split('class aura_area52_freezing_blood_consumed :', 1)[1].split('void Register()', 1)[0]
+    bonus = source.split('class aura_area52_freezing_blood_damage :', 1)[1].split('void Register()', 1)[0]
+    benediction_generated = benediction_generated.replace(BENEDICTION_CASES,
+        'class aura_area52_freezing_blood_consumed :' + consumed + '};' +
+        'class aura_area52_freezing_blood_damage :' + bonus + '};' + BENEDICTION_CASES)
     assert 'OnPlayerCanApplyEnchantment' in source
     assert 'FrostbrandEnchantments' in source
     assert 'RemoveAurasDueToItemSpell(helper, item->GetGUID())' in source
@@ -599,9 +768,9 @@ def main():
     assert 'AbsoluteZeroReplacement' in source
     assert 'SetTemporarySpellReplacement(rank, player->HasActiveSpell(rank) ? AbsoluteZeroReplacement : 0)' in source
     assert 'AbsoluteZeroGranted.erase(guid)' in source
-    assert 'event.GetSpellInfo()->Id == AscensionWhiteWalkerSupport::ColdBlood' in source
-    assert 'player->CastSpell(player, AscensionWhiteWalkerSupport::Frostbolt' in source
-    assert 'getMSTimeDiff(last, now) < 1000' in source
+    assert 'AfterCast += SpellCastFn(spell_area52_cold_blood_activation::Activate)' in source
+    assert 'player->CastSpell(target, *rank, TRIGGERED_FULL_MASK)' in source
+    assert 'getMSTimeDiff(last->second, now) < 1000' in source
     assert 'ModifySpellCooldown(AscensionWhiteWalkerSupport::ColdBlood, -10000)' in source
     assert 'event.GetSpellInfo()->Id == AscensionWhiteWalkerSupport::SinisterStrike' in source
     assert 'event.GetDamageInfo()->GetDamage()' in source

@@ -157,8 +157,23 @@ public:
         }
         if (info->Id == AscensionWhiteWalkerSupport::FreezingBlood)
         {
-            info->ProcFlags = 16;
+            info->ProcFlags = PROC_FLAG_DONE_SPELL_MELEE_DMG_CLASS | PROC_FLAG_DONE_SPELL_MAGIC_DMG_CLASS_NEG;
             info->ProcChance = 101;
+            info->Effects[EFFECT_2].Effect = 0;
+            info->Effects[EFFECT_2].ApplyAuraName = SPELL_AURA_NONE;
+            return;
+        }
+        if (info->Id == 979163)
+        {
+            info->ProcFlags = PROC_FLAG_DONE_SPELL_MELEE_DMG_CLASS;
+            info->ProcChance = 100;
+            auto& critical = info->Effects[EFFECT_1];
+            critical.Effect = SPELL_EFFECT_APPLY_AURA;
+            critical.ApplyAuraName = SPELL_AURA_MOD_SPELL_CRIT_CHANCE;
+            critical.BasePoints = 3;
+            critical.DieSides = 1;
+            critical.TargetA = SpellImplicitTargetInfo(TARGET_UNIT_CASTER);
+            critical.TargetB = SpellImplicitTargetInfo();
             return;
         }
         if (info->Id == AscensionWhiteWalkerSupport::FightersSinisterStrike)
@@ -356,6 +371,36 @@ class aura_area52_slice_and_ice : public AuraScript
     }
 };
 
+class spell_area52_cold_blood_activation : public SpellScript
+{
+    PrepareSpellScript(spell_area52_cold_blood_activation);
+
+    bool Load() override { return Area52Enabled; }
+
+    void Activate()
+    {
+        Player* player = GetCaster()->ToPlayer();
+        if (!player || !player->HasAura(AscensionWhiteWalkerSupport::FreezingBlood))
+            return;
+        Unit* target = player->GetSelectedUnit();
+        if (!target || !target->IsAlive() || !player->IsValidAttackTarget(target))
+            return;
+        auto const& ranks = AscensionWhiteWalkerSupport::FrostboltRanks;
+        for (auto rank = ranks.rbegin(); rank != ranks.rend(); ++rank)
+            if (player->HasActiveSpell(*rank))
+            {
+                player->RemoveAurasByType(SPELL_AURA_MOD_STEALTH);
+                player->CastSpell(target, *rank, TRIGGERED_FULL_MASK);
+                return;
+            }
+    }
+
+    void Register() override
+    {
+        AfterCast += SpellCastFn(spell_area52_cold_blood_activation::Activate);
+    }
+};
+
 class aura_area52_freezing_blood : public AuraScript
 {
     PrepareAuraScript(aura_area52_freezing_blood);
@@ -363,38 +408,100 @@ class aura_area52_freezing_blood : public AuraScript
     bool CheckProc(ProcEventInfo& event)
     {
         Player* player = GetTarget()->ToPlayer();
-        if (!Area52Enabled || !player || !event.GetSpellInfo())
+        if (!Area52Enabled || !player || !event.GetSpellInfo() || event.GetActor() != player)
             return false;
-        if (event.GetSpellInfo()->Id == AscensionWhiteWalkerSupport::ColdBlood)
-            return player->HasActiveSpell(AscensionWhiteWalkerSupport::Frostbolt);
         auto const* damage = event.GetDamageInfo();
         return damage && damage->GetDamage() && (event.GetSchoolMask() & SPELL_SCHOOL_MASK_FROST) &&
             !(event.GetTypeMask() & PROC_FLAG_DONE_PERIODIC);
     }
 
-    void Proc(ProcEventInfo& event)
+    void Proc(ProcEventInfo&)
     {
         PreventDefaultAction();
         Player* player = GetTarget()->ToPlayer();
         if (!player)
             return;
-        if (event.GetSpellInfo()->Id == AscensionWhiteWalkerSupport::ColdBlood)
-        {
-            player->CastSpell(player, AscensionWhiteWalkerSupport::Frostbolt, TRIGGERED_FULL_MASK);
-            return;
-        }
         uint32 const now = getMSTime();
-        uint32& last = FreezingBloodLastCooldown[player->GetGUID().GetCounter()];
-        if (last && getMSTimeDiff(last, now) < 1000)
+        auto const guid = player->GetGUID().GetCounter();
+        auto const last = FreezingBloodLastCooldown.find(guid);
+        if (last != FreezingBloodLastCooldown.end() && getMSTimeDiff(last->second, now) < 1000)
             return;
-        last = now;
+        FreezingBloodLastCooldown[guid] = now;
         player->ModifySpellCooldown(AscensionWhiteWalkerSupport::ColdBlood, -10000);
+    }
+
+    void Remove(AuraEffect const*, AuraEffectHandleModes)
+    {
+        GetTarget()->RemoveAurasDueToSpell(979163, GetTarget()->GetGUID());
     }
 
     void Register() override
     {
         DoCheckProc += AuraCheckProcFn(aura_area52_freezing_blood::CheckProc);
         OnProc += AuraProcFn(aura_area52_freezing_blood::Proc);
+        AfterEffectRemove += AuraEffectRemoveFn(aura_area52_freezing_blood::Remove,
+            EFFECT_0, SPELL_AURA_PROC_TRIGGER_SPELL, AURA_EFFECT_HANDLE_REAL);
+    }
+};
+
+class aura_area52_freezing_blood_consumed : public AuraScript
+{
+    PrepareAuraScript(aura_area52_freezing_blood_consumed);
+
+    bool Load() override { return Area52Enabled; }
+
+    void Consumed(AuraEffect const*, AuraEffectHandleModes)
+    {
+        Unit* owner = GetTarget();
+        if (!owner->HasAura(AscensionWhiteWalkerSupport::FreezingBlood))
+            return;
+        SpellInfo const* source = sSpellMgr->GetSpellInfo(AscensionWhiteWalkerSupport::FreezingBlood);
+        if (!source)
+            return;
+        owner->CastCustomSpell(979163, SPELLVALUE_BASE_POINT1,
+            source->Effects[EFFECT_2].CalcValue(owner), owner, true);
+    }
+
+    void Register() override
+    {
+        AfterEffectApply += AuraEffectApplyFn(aura_area52_freezing_blood_consumed::Consumed,
+            EFFECT_0, SPELL_AURA_MOD_WEAPON_CRIT_PERCENT, AURA_EFFECT_HANDLE_REAL_OR_REAPPLY_MASK);
+    }
+};
+
+class aura_area52_freezing_blood_damage : public AuraScript
+{
+    PrepareAuraScript(aura_area52_freezing_blood_damage);
+
+    bool Load() override { return Area52Enabled; }
+
+    bool CheckProc(ProcEventInfo& event)
+    {
+        SpellInfo const* info = event.GetSpellInfo();
+        auto const* damage = event.GetDamageInfo();
+        return info && event.GetActor() == GetTarget() && damage && damage->GetDamage() &&
+            !(event.GetTypeMask() & PROC_FLAG_DONE_PERIODIC) && info->SpellFamilyName == SPELLFAMILY_ROGUE &&
+            info->DmgClass == SPELL_DAMAGE_CLASS_MELEE &&
+            (info->NeedsComboPoints() || info->HasEffect(SPELL_EFFECT_ADD_COMBO_POINTS));
+    }
+
+    void Proc(AuraEffect const*, ProcEventInfo& event)
+    {
+        PreventDefaultAction();
+        Unit* victim = event.GetActionTarget();
+        SpellInfo const* bonus = sSpellMgr->GetSpellInfo(979134);
+        if (!victim || !victim->IsAlive() || !bonus || !event.GetDamageInfo())
+            return;
+        int32 const amount = CalculatePct(event.GetDamageInfo()->GetDamage(),
+            bonus->Effects[EFFECT_0].CalcValue(GetTarget()));
+        GetTarget()->CastCustomSpell(979134, SPELLVALUE_BASE_POINT0, amount, victim, true);
+    }
+
+    void Register() override
+    {
+        DoCheckProc += AuraCheckProcFn(aura_area52_freezing_blood_damage::CheckProc);
+        OnEffectProc += AuraEffectProcFn(aura_area52_freezing_blood_damage::Proc,
+            EFFECT_0, SPELL_AURA_PROC_TRIGGER_SPELL);
     }
 };
 
@@ -569,6 +676,9 @@ void AddSC_AscensionWhiteWalkerSupport()
     RegisterSpellScript(aura_area52_white_walker);
     RegisterSpellScript(aura_area52_slice_and_ice);
     RegisterSpellScript(aura_area52_freezing_blood);
+    RegisterSpellScript(spell_area52_cold_blood_activation);
+    RegisterSpellScript(aura_area52_freezing_blood_consumed);
+    RegisterSpellScript(aura_area52_freezing_blood_damage);
     RegisterSpellScript(aura_area52_benediction);
     RegisterSpellScript(spell_area52_benediction_party);
     RegisterSpellScript(aura_area52_cut_to_the_chase);

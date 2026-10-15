@@ -18,6 +18,8 @@ constexpr std::array<std::uint32_t, 6> FrostNovaRanks = { 122, 865, 6131, 10230,
 constexpr std::uint32_t FreezingBlood = 979135;
 constexpr std::uint32_t ColdBlood = 14177;
 constexpr std::uint32_t Frostbolt = 116;
+constexpr std::array<std::uint32_t, 16> FrostboltRanks = { 116, 205, 837, 7322, 8406, 8407, 8408, 10179,
+    10180, 10181, 25304, 27071, 27072, 38697, 42841, 42842 };
 constexpr std::uint32_t FightersSinisterStrike = 781046;
 constexpr std::uint32_t FightersPower = 781000;
 constexpr std::uint32_t SinisterStrike = 1752;
