@@ -7,6 +7,67 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parents[3]
 
+FROZEN_POWER_MOCKS = r'''
+#include "AscensionWhiteWalkerSupportRules.h"
+#include <array>
+#include <cassert>
+using uint32 = std::uint32_t;
+constexpr int EFFECT_0 = 0;
+constexpr int SPELL_EFFECT_APPLY_AURA = 6;
+constexpr int SPELL_AURA_ADD_FLAT_MODIFIER = 107;
+constexpr int SPELL_AURA_MOD_DAMAGE_DONE_VERSUS_AURASTATE = 303;
+constexpr int ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE = 20012;
+constexpr int TARGET_UNIT_CASTER = 1;
+struct flag96
+{
+    std::array<uint32, 3> values;
+    flag96(uint32 a, uint32 b, uint32 c) : values{a, b, c} {}
+    bool operator==(flag96 const&) const = default;
+};
+struct Target { int value; int GetTarget() const { return value; } };
+struct SpellEffectInfo
+{
+    int Effect = SPELL_EFFECT_APPLY_AURA;
+    int ApplyAuraName = SPELL_AURA_ADD_FLAT_MODIFIER;
+    int MiscValue = 23;
+    int MiscValueB = 0;
+    flag96 SpellClassMask{16777216, 0, 0};
+    Target TargetA{TARGET_UNIT_CASTER};
+    Target TargetB{0};
+    int BasePoints = 99;
+    int DieSides = 1;
+};
+struct SpellInfo { uint32 Id; std::array<SpellEffectInfo, 3> Effects; };
+'''
+
+FROZEN_POWER_CASES = r'''
+int main()
+{
+    std::array<uint32, 4> ids{63373, 63374, 263374, 414600};
+    std::array<int, 4> percentages{3, 6, 9, 2};
+    for (std::size_t index = 0; index < ids.size(); ++index)
+    {
+        SpellInfo info{ids[index], {}};
+        ApplyFrozenPowerDamageContract(&info);
+        auto const& effect = info.Effects[0];
+        assert(effect.BasePoints + effect.DieSides == percentages[index]);
+        assert(effect.ApplyAuraName == SPELL_AURA_MOD_DAMAGE_DONE_VERSUS_AURASTATE);
+        assert(effect.MiscValueB == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE);
+        if (ids[index] == 414600)
+            for (int copies = 1; copies <= 3; ++copies)
+                assert((effect.BasePoints + effect.DieSides) * copies == 2 * copies);
+    }
+    SpellInfo unrelated{123, {}};
+    ApplyFrozenPowerDamageContract(&unrelated);
+    assert(unrelated.Effects[0].BasePoints == 99);
+    SpellInfo wrongShape{63373, {}};
+    wrongShape.Effects[0].TargetA.value = 6;
+    ApplyFrozenPowerDamageContract(&wrongShape);
+    assert(wrongShape.Effects[0].BasePoints == 99);
+    ApplyFrozenPowerDamageContract(nullptr);
+}
+'''
+
 BENEDICTION_MOCKS = r'''
 #include "AscensionWhiteWalkerSupportRules.h"
 #include <cassert>
@@ -548,6 +609,8 @@ def main():
     assert 'event.GetProcSpell() ? std::max(0, event.GetProcSpell()->GetPowerCost()) : 0' in source
     assert 'preCostEnergy * 100 >= player->GetMaxPower(POWER_ENERGY) * 90' in source
     conditional = (ROOT / 'src/server/coa/AscensionConditionalCombat.cpp').read_text()
+    frozen_conversion = conditional.split('void ApplyFrozenPowerDamageContract', 1)[1].split('bool HasExpectedEvilDoersLegacy', 1)[0]
+    frozen_generated = FROZEN_POWER_MOCKS + '\nvoid ApplyFrozenPowerDamageContract' + frozen_conversion + FROZEN_POWER_CASES
     assert 'ApplyFrozenPowerDamageContract' in conditional
     assert 'SPELL_AURA_MOD_DAMAGE_DONE_VERSUS_AURASTATE' in conditional
     assert 'ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE' in conditional
@@ -580,6 +643,10 @@ def main():
                         '-I', str(ROOT / 'src/server/coa'), str(source), '-o', str(binary)], check=True)
         subprocess.run([str(binary)], check=True)
         source.write_text(benediction_generated)
+        subprocess.run([compiler, '-std=c++20', '-Wall', '-Wextra', '-Werror',
+                        '-I', str(ROOT / 'src/server/coa'), str(source), '-o', str(binary)], check=True)
+        subprocess.run([str(binary)], check=True)
+        source.write_text(frozen_generated)
         subprocess.run([compiler, '-std=c++20', '-Wall', '-Wextra', '-Werror',
                         '-I', str(ROOT / 'src/server/coa'), str(source), '-o', str(binary)], check=True)
         subprocess.run([str(binary)], check=True)

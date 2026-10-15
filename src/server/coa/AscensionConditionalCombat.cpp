@@ -25,10 +25,11 @@ void ApplyFrozenPowerDamageContract(SpellInfo* spellInfo)
         effect.TargetB.GetTarget())
         return;
 
-    if (spellInfo->Id == 63373) effect.BasePoints = AscensionWhiteWalkerSupport::FrozenPowerTalentPercent(0);
-    else if (spellInfo->Id == 63374) effect.BasePoints = AscensionWhiteWalkerSupport::FrozenPowerTalentPercent(1);
-    else if (spellInfo->Id == 263374) effect.BasePoints = AscensionWhiteWalkerSupport::FrozenPowerTalentPercent(2);
-    else effect.BasePoints = AscensionWhiteWalkerSupport::FrozenPowerMysticPercent(1);
+    if (spellInfo->Id == 63373) effect.BasePoints = AscensionWhiteWalkerSupport::FrozenPowerTalentPercent(0) - 1;
+    else if (spellInfo->Id == 63374) effect.BasePoints = AscensionWhiteWalkerSupport::FrozenPowerTalentPercent(1) - 1;
+    else if (spellInfo->Id == 263374) effect.BasePoints = AscensionWhiteWalkerSupport::FrozenPowerTalentPercent(2) - 1;
+    else effect.BasePoints = AscensionWhiteWalkerSupport::FrozenPowerMysticPercent(1) - 1;
+    effect.DieSides = 1;
     effect.ApplyAuraName = SPELL_AURA_MOD_DAMAGE_DONE_VERSUS_AURASTATE;
     effect.MiscValue = ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE;
     effect.MiscValueB = ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE;
