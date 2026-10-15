@@ -9,27 +9,64 @@ ROOT = Path(__file__).resolve().parents[3]
 
 PROC_RANK_MOCKS = r'''
 #include "AscensionWhiteWalkerSupportRules.h"
+#include <algorithm>
 #include <cassert>
 #include <map>
 #include <vector>
 using uint32 = std::uint32_t;
+using uint8 = std::uint8_t;
+using uint64 = std::uint64_t;
 bool Area52Enabled = true;
 constexpr uint32 PROC_HIT_CRITICAL = 2;
 struct Unit
 {
     bool twoHanded = true;
     bool slice = true;
+    bool fury = false;
+    int critModifier = 0;
     std::vector<uint32> casts;
     std::vector<uint32> removed;
     Unit* ToPlayer() { return this; }
+    bool IsPlayer() const { return true; }
     bool IsTwoHandUsed() const { return twoHanded; }
-    bool HasAura(uint32 id) const { return id == AscensionWhiteWalkerSupport::SliceAndIce && slice; }
+    bool HasAura(uint32 id) const
+    {
+        return (id == AscensionWhiteWalkerSupport::SliceAndIce && slice) ||
+            (id == AscensionWhiteWalkerSupport::WintersFury && fury);
+    }
     void CastSpell(Unit*, uint32 id, int) { casts.push_back(id); }
     uint32 GetGUID() const { return 1; }
-    void RemoveAurasDueToSpell(uint32 id, uint32 guid) { assert(guid == 1); removed.push_back(id); }
+    void RemoveAurasDueToSpell(uint32 id, uint32 guid)
+    {
+        assert(guid == 1);
+        removed.push_back(id);
+        if (id == AscensionWhiteWalkerSupport::WintersFury) fury = false;
+    }
+    int GetTotalAuraModifier(int) const { return critModifier; }
 };
-struct Spell { bool triggered = false; bool IsTriggered() const { return triggered; } };
-struct SpellInfo { uint32 Id; };
+struct SpellInfo
+{
+    uint32 Id;
+    bool cantCrit = false;
+    bool IsCritCapable() const { return true; }
+    bool HasAttribute(int) const { return cantCrit; }
+};
+struct Spell
+{
+    bool triggered = false;
+    Unit* caster = nullptr;
+    SpellInfo* info = nullptr;
+    std::map<uint32, uint64> values{};
+    bool IsTriggered() const { return triggered; }
+    Unit* GetCaster() const { return caster; }
+    SpellInfo const* GetSpellInfo() const { return info; }
+    uint64 GetScriptValue(uint32 id) const { auto found = values.find(id); return found == values.end() ? 0 : found->second; }
+    void SetScriptValue(uint32 id, uint64 value) { values[id] = value; }
+};
+constexpr int SPELL_MISS_NONE = 0;
+constexpr int SPELL_ATTR2_CANT_CRIT = 1;
+constexpr int SPELL_AURA_MOD_ATTACKER_SPELL_AND_WEAPON_CRIT_CHANCE = 2;
+struct TargetInfo { int damage = 100; int missCondition = SPELL_MISS_NONE; bool crit = false; };
 struct DamageInfo { uint32 amount = 100; uint32 GetDamage() const { return amount; } };
 struct ProcEventInfo
 {
@@ -152,6 +189,48 @@ int main()
     assert((owner.casts == std::vector<uint32>{984937, AscensionWhiteWalkerSupport::WintersFury}));
     RemoveAvailability(nullptr, 0);
     assert(owner.removed == std::vector<uint32>{984937});
+    IceSpearCallbacks spear;
+    for (uint32 rank : AscensionWhiteWalkerSupport::IceSpearRanks)
+    {
+        SpellInfo info{rank};
+        Spell cast;
+        cast.caster = &owner;
+        cast.info = &info;
+        owner.fury = true;
+        owner.casts.clear();
+        spear.OnSpellBeforeEffects(&cast, &owner, &info);
+        assert(!owner.fury && cast.GetScriptValue(AscensionWhiteWalkerSupport::WintersFury) == 1);
+        owner.fury = true;
+        spear.OnSpellBeforeEffects(&cast, &owner, &info);
+        assert(owner.fury);
+        TargetInfo hit;
+        spear.OnSpellCalculatedTarget(&cast, &other, hit);
+        assert(hit.crit);
+        hit.crit = false;
+        other.critModifier = -100;
+        spear.OnSpellCalculatedTarget(&cast, &other, hit);
+        assert(!hit.crit);
+        other.critModifier = 0;
+        info.cantCrit = true;
+        spear.OnSpellCalculatedTarget(&cast, &other, hit);
+        assert(!hit.crit);
+        info.cantCrit = false;
+        hit.missCondition = 1;
+        spear.OnSpellCalculatedTarget(&cast, &other, hit);
+        assert(!hit.crit);
+        spear.OnSpellHitResult(&cast, &other, 1, 100, 0, false);
+        assert(owner.casts.empty());
+        spear.OnSpellHitResult(&cast, &other, 0, 100, 0, true);
+        spear.OnSpellHitResult(&cast, &other, 0, 100, 0, true);
+        assert(owner.casts == std::vector<uint32>{979053});
+    }
+    SpellInfo ordinary{30455};
+    Spell ordinaryCast;
+    ordinaryCast.caster = &owner;
+    ordinaryCast.info = &ordinary;
+    owner.fury = true;
+    spear.OnSpellBeforeEffects(&ordinaryCast, &owner, &ordinary);
+    assert(owner.fury && !ordinaryCast.GetScriptValue(AscensionWhiteWalkerSupport::WintersFury));
 }
 '''
 
@@ -592,14 +671,30 @@ constexpr int SPEC_MASK_ALL = 0;
 bool Area52Enabled = true;
 std::unordered_map<uint32, std::unordered_set<uint32>> WhiteWalkerGranted;
 std::unordered_set<uint32> AbsoluteZeroGranted;
+struct SpellInfo { uint32 SpellLevel; };
+struct SpellMgr
+{
+    std::array<SpellInfo, 7> ranks{{{1}, {30}, {40}, {50}, {60}, {70}, {80}}};
+    SpellInfo const* GetSpellInfo(uint32 id) const
+    {
+        auto const& ids = AscensionWhiteWalkerSupport::IceSpearRanks;
+        auto found = std::find(ids.begin(), ids.end(), id);
+        return found == ids.end() ? nullptr : &ranks[found - ids.begin()];
+    }
+};
+SpellMgr manager;
+SpellMgr* sSpellMgr = &manager;
 struct Player
 {
     bool active = true;
     bool twoHanded = true;
+    bool fury = false;
+    uint32 level = 1;
     std::map<uint32, bool> spells;
     std::map<uint32, uint32> replacements;
     ObjectGuid GetGUID() const { return {}; }
-    bool HasAura(uint32) const { return active; }
+    bool HasAura(uint32 id) const { return id == AscensionWhiteWalkerSupport::WintersFury ? fury : active; }
+    uint32 GetLevel() const { return level; }
     bool IsTwoHandUsed() const { return twoHanded; }
     bool HasActiveSpell(uint32 id) const { return spells.contains(id); }
     auto const& GetSpellMap() const { return spells; }
@@ -690,6 +785,28 @@ int main()
         RefreshAbsoluteZero(&player);
         assert(!player.HasActiveSpell(AbsoluteZeroReplacement));
         assert(player.replacements[rank] == 0);
+    }
+    for (uint32 root : IceLanceRanks)
+    {
+        player = Player{};
+        WhiteWalkerGranted.clear();
+        player.spells[root] = true;
+        for (std::size_t rank = 0; rank < IceSpearRanks.size(); ++rank)
+        {
+            player.level = manager.ranks[rank].SpellLevel;
+            player.fury = true;
+            RefreshWhiteWalker(&player);
+            assert(player.HasActiveSpell(IceSpearRanks[rank]));
+            assert(player.replacements[root] == IceSpearRanks[rank]);
+            if (rank) assert(!player.HasActiveSpell(IceSpearRanks[rank - 1]));
+            player.fury = false;
+            RefreshWhiteWalker(&player);
+            assert(player.replacements[root] == 0);
+        }
+        player.twoHanded = false;
+        RefreshWhiteWalker(&player);
+        assert(!player.HasActiveSpell(IceSpearRanks.back()));
+        assert(player.replacements[root] == 0);
     }
 }
 '''
@@ -972,6 +1089,8 @@ def main():
     slice_body = source.split('class aura_area52_slice_and_ice :', 1)[1]
     proc_generated += '\nvoid ApplyAvailability' + slice_body.split('void Apply', 1)[1].split('void Remove', 1)[0]
     proc_generated += '\nvoid RemoveAvailability' + slice_body.split('void Remove', 1)[1].split('bool CheckProc', 1)[0]
+    spear = source.split('class white_walker_ice_spear :', 1)[1].split('void OnSpellBeforeEffects', 1)[1].split('\n};', 1)[0]
+    proc_generated += '\nclass IceSpearCallbacks { public: void OnSpellBeforeEffects' + spear.replace(' override', '') + '\n};\n'
     proc_generated += PROC_RANK_CASES
     assert 'event.GetDamageInfo()->GetDamage()' in source
     assert 'AscensionWhiteWalkerSupport::FightersPower' in source

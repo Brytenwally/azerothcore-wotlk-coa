@@ -2,6 +2,7 @@
 #include "AscensionWhiteWalkerSupportRules.h"
 #include "Config.h"
 #include "AllItemScript.h"
+#include "AllSpellScript.h"
 #include "Player.h"
 #include "PlayerScript.h"
 #include "ScriptMgr.h"
@@ -63,20 +64,29 @@ void RefreshWhiteWalker(Player* player)
         replace(ConeOfColdRanks[rank], WindsOfWinterRanks[rank]);
     uint32 iceSpear = 0;
     for (auto rank = IceSpearRanks.rbegin(); rank != IceSpearRanks.rend(); ++rank)
-        if (player->HasActiveSpell(*rank))
+    {
+        SpellInfo const* info = sSpellMgr->GetSpellInfo(*rank);
+        if ((player->HasActiveSpell(*rank) && !granted.contains(*rank)) ||
+            (info && info->SpellLevel <= player->GetLevel()))
         {
             iceSpear = *rank;
             break;
         }
+    }
     bool const iceLanceKnown = std::any_of(IceLanceRanks.begin(), IceLanceRanks.end(),
         [player](uint32 rank) { return player->HasActiveSpell(rank); });
-    if (active && iceLanceKnown && iceSpear == 0)
+    if (active && iceLanceKnown && iceSpear)
     {
-        player->learnSpell(IceSpear, true);
-        granted.insert(IceSpear);
+        desired.insert(iceSpear);
+        if (!player->HasActiveSpell(iceSpear))
+        {
+            player->learnSpell(iceSpear, true);
+            granted.insert(iceSpear);
+        }
     }
-    if (active && iceLanceKnown && (!iceSpear || iceSpear == IceSpear))
-        desired.insert(IceSpear);
+    for (uint32 rank : IceLanceRanks)
+        player->SetTemporarySpellReplacement(rank,
+            active && player->HasAura(WintersFury) && player->HasActiveSpell(rank) ? iceSpear : 0);
     for (auto it = granted.begin(); it != granted.end();)
     {
         if (!desired.contains(*it))
@@ -170,6 +180,12 @@ public:
             ApplySliceAndIceStats(info, sSpellMgr->GetSpellInfo(878302));
             info->ProcFlags = PROC_FLAG_DONE_SPELL_MAGIC_DMG_CLASS_NEG;
             info->ProcChance = 101;
+            return;
+        }
+        if (info->Id == AscensionWhiteWalkerSupport::WintersFury)
+        {
+            info->Effects[EFFECT_1].Effect = 0;
+            info->Effects[EFFECT_1].ApplyAuraName = SPELL_AURA_NONE;
             return;
         }
         if (info->Id == AscensionWhiteWalkerSupport::FreezingBlood)
@@ -298,7 +314,7 @@ class aura_area52_white_walker : public AuraScript
         PreventDefaultAction();
         Unit* target = event.GetActionTarget();
         if (target && target->IsAlive())
-            GetTarget()->CastSpell(target, AscensionWhiteWalkerSupport::IceLance, TRIGGERED_FULL_MASK);
+            GetTarget()->CastSpell(target, 984432, TRIGGERED_FULL_MASK);
     }
 
     void Register() override
@@ -430,6 +446,43 @@ class aura_area52_slice_and_ice_availability : public AuraScript
         DoCheckProc += AuraCheckProcFn(aura_area52_slice_and_ice_availability::CheckProc);
         OnEffectProc += AuraEffectProcFn(aura_area52_slice_and_ice_availability::Proc,
             EFFECT_0, SPELL_AURA_PROC_TRIGGER_SPELL);
+    }
+};
+
+class white_walker_ice_spear : public AllSpellScript
+{
+public:
+    white_walker_ice_spear() : AllSpellScript("white_walker_ice_spear",
+        {ALLSPELLHOOK_ON_BEFORE_EFFECTS, ALLSPELLHOOK_ON_CALCULATED_TARGET, ALLSPELLHOOK_ON_HIT_RESULT}) { }
+
+    void OnSpellBeforeEffects(Spell* spell, Unit* caster, SpellInfo const* info) override
+    {
+        using namespace AscensionWhiteWalkerSupport;
+        if (!Area52Enabled || !caster->IsPlayer() || spell->GetScriptValue(WintersFury) ||
+            !caster->HasAura(WintersFury) ||
+            std::find(IceSpearRanks.begin(), IceSpearRanks.end(), info->Id) == IceSpearRanks.end())
+            return;
+        spell->SetScriptValue(WintersFury, 1);
+        caster->RemoveAurasDueToSpell(WintersFury, caster->GetGUID());
+    }
+
+    void OnSpellCalculatedTarget(Spell* spell, Unit* target, TargetInfo& hit) override
+    {
+        if (!Area52Enabled || !spell->GetScriptValue(AscensionWhiteWalkerSupport::WintersFury) ||
+            !target || hit.damage <= 0 || hit.missCondition != SPELL_MISS_NONE ||
+            !spell->GetSpellInfo()->IsCritCapable() || spell->GetSpellInfo()->HasAttribute(SPELL_ATTR2_CANT_CRIT) ||
+            target->GetTotalAuraModifier(SPELL_AURA_MOD_ATTACKER_SPELL_AND_WEAPON_CRIT_CHANCE) <= -100)
+            return;
+        hit.crit = true;
+    }
+
+    void OnSpellHitResult(Spell* spell, Unit* target, uint8 miss, uint32 damage, uint32, bool) override
+    {
+        if (!Area52Enabled || !target || miss != SPELL_MISS_NONE || !damage ||
+            !spell->GetScriptValue(AscensionWhiteWalkerSupport::WintersFury) || spell->GetScriptValue(979053))
+            return;
+        spell->SetScriptValue(979053, 1);
+        spell->GetCaster()->CastSpell(spell->GetCaster(), 979053, TRIGGERED_FULL_MASK);
     }
 };
 
@@ -732,6 +785,7 @@ class aura_area52_tides_of_battle : public AuraScript
 
 void AddSC_AscensionWhiteWalkerSupport()
 {
+    new white_walker_ice_spear();
     new white_walker_support_metadata();
     new white_walker_player();
     new player_area52_frostbrand();
