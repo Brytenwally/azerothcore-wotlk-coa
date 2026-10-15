@@ -212,7 +212,8 @@ public:
         if (info->Id == AscensionWhiteWalkerSupport::FightersSinisterStrike)
         {
             info->ProcFlags = 16;
-            info->ProcChance = 101;
+            if (SpellInfo const* helper = sSpellMgr->GetSpellInfo(781047))
+                info->ProcChance = helper->ProcChance;
             return;
         }
         if (info->Id == AscensionWhiteWalkerSupport::TidesOfBattle)
@@ -733,13 +734,19 @@ class aura_area52_fighters_sinister_strike : public AuraScript
     {
         return Area52Enabled && event.GetActor() == GetTarget() && event.GetSpellInfo() &&
             sSpellMgr->GetFirstSpellInChain(event.GetSpellInfo()->Id) == AscensionWhiteWalkerSupport::SinisterStrike &&
-            event.GetDamageInfo() && event.GetDamageInfo()->GetDamage();
+            !GetTarget()->HasAura(780999) && event.GetDamageInfo() && event.GetDamageInfo()->GetDamage();
     }
 
     void Proc(ProcEventInfo& event)
     {
         PreventDefaultAction();
-        GetTarget()->CastSpell(GetTarget(), AscensionWhiteWalkerSupport::FightersPower, TRIGGERED_FULL_MASK);
+        int32 attackPower = GetTarget()->GetLevel() * GetStackAmount();
+        int32 energy = 10 * GetStackAmount();
+        int32 rage = energy * 10;
+        GetTarget()->CastCustomSpell(GetTarget(), AscensionWhiteWalkerSupport::FightersPower,
+            &attackPower, &attackPower, nullptr, true);
+        GetTarget()->CastCustomSpell(GetTarget(), 781001, &energy, nullptr, nullptr, true);
+        GetTarget()->CastCustomSpell(GetTarget(), 781002, &rage, nullptr, nullptr, true);
     }
 
     void Register() override

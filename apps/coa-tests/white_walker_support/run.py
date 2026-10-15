@@ -3,6 +3,7 @@ from pathlib import Path
 import shutil
 import sqlite3
 import subprocess
+import sys
 import tempfile
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -16,6 +17,7 @@ PROC_RANK_MOCKS = r'''
 using uint32 = std::uint32_t;
 using uint8 = std::uint8_t;
 using uint64 = std::uint64_t;
+using int32 = std::int32_t;
 bool Area52Enabled = true;
 constexpr uint32 PROC_HIT_CRITICAL = 2;
 struct Unit
@@ -23,19 +25,27 @@ struct Unit
     bool twoHanded = true;
     bool slice = true;
     bool fury = false;
+    bool worldforgedCooldown = false;
+    uint32 level = 80;
     int critModifier = 0;
     std::vector<uint32> casts;
     std::vector<uint32> removed;
+    std::vector<std::array<int32, 3>> custom;
     Unit* ToPlayer() { return this; }
     bool IsPlayer() const { return true; }
     bool IsTwoHandUsed() const { return twoHanded; }
     bool HasAura(uint32 id) const
     {
         return (id == AscensionWhiteWalkerSupport::SliceAndIce && slice) ||
-            (id == AscensionWhiteWalkerSupport::WintersFury && fury);
+            (id == AscensionWhiteWalkerSupport::WintersFury && fury) || (id == 780999 && worldforgedCooldown);
     }
     void CastSpell(Unit*, uint32 id, int) { casts.push_back(id); }
     uint32 GetGUID() const { return 1; }
+    uint32 GetLevel() const { return level; }
+    void CastCustomSpell(Unit*, uint32 id, int32* first, int32* second, int32*, bool)
+    {
+        custom.push_back({static_cast<int32>(id), first ? *first : 0, second ? *second : 0});
+    }
     void RemoveAurasDueToSpell(uint32 id, uint32 guid)
     {
         assert(guid == 1);
@@ -98,6 +108,8 @@ constexpr int TRIGGERED_FULL_MASK = 1;
 void PreventDefaultAction() { }
 struct AuraEffect { };
 using AuraEffectHandleModes = int;
+uint8 enchantCopies = 1;
+uint8 GetStackAmount() { return enchantCopies; }
 '''
 
 PROC_RANK_CASES = r'''
@@ -231,6 +243,24 @@ int main()
     owner.fury = true;
     spear.OnSpellBeforeEffects(&ordinaryCast, &owner, &ordinary);
     assert(owner.fury && !ordinaryCast.GetScriptValue(AscensionWhiteWalkerSupport::WintersFury));
+    spell.Id = 48638;
+    damage.amount = 100;
+    event.actor = &owner;
+    owner.worldforgedCooldown = true;
+    assert(!FighterProc(event));
+    owner.worldforgedCooldown = false;
+    assert(FighterProc(event));
+    for (uint32 level : {1, 40, 80})
+        for (enchantCopies = 1; enchantCopies <= 3; ++enchantCopies)
+        {
+            owner.level = level;
+            owner.custom.clear();
+            FighterDispatch(event);
+            int32 attackPower = level * enchantCopies;
+            assert((owner.custom == std::vector<std::array<int32, 3>>{
+                {781000, attackPower, attackPower}, {781001, 10 * enchantCopies, 0},
+                {781002, 100 * enchantCopies, 0}}));
+        }
 }
 '''
 
@@ -979,7 +1009,29 @@ FROSTBRAND_CASES = r'''
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--dbc-dir')
-    parser.parse_args()
+    args = parser.parse_args()
+    if args.dbc_dir:
+        sys.path.insert(0, str(ROOT / 'apps/coa-dbc'))
+        from inspect_dbc import DataSet
+        data = DataSet(Path(args.dbc_dir))
+        def fields(table, identity):
+            return {field['name']: field['value'] for field in data.record(table, identity)['fields']}
+        assert fields('Spell', 781047)['ProcChance'] == 50
+        assert fields('Spell', 984937)['ProcChance'] == 20
+        assert fields('Spell', 781046)['StackAmount'] == 3
+        buff = fields('Spell', 781000)
+        assert buff['EffectApplyAuraName[0]'] == 344 and buff['EffectApplyAuraName[1]'] == 124
+        assert buff['Effect[2]'] == 64 and buff['EffectTriggerSpell[2]'] == 780999
+        assert fields('SpellDuration', buff['DurationIndex'])['Duration'] == 12000
+        cooldown = fields('Spell', 780999)
+        assert fields('SpellDuration', cooldown['DurationIndex'])['Duration'] == 20000
+        for identity, power in [(781001, 3), (781002, 1)]:
+            resource = fields('Spell', identity)
+            assert resource['Effect[0]'] == 30 and resource['EffectMiscValue[0]'] == power
+        for identity, level in zip((984935, 984970, 984971, 984972, 984973, 984974, 984975),
+                                   (1, 30, 40, 50, 60, 70, 80)):
+            rank = fields('Spell', identity)
+            assert rank['SpellLevel'] == level and rank['CasterAuraSpell'] == 984936
     source = (ROOT / 'src/server/coa/AscensionWhiteWalkerSupport.cpp').read_text()
     migration = (ROOT / 'data/sql/updates/pending_db_world/rev_20261014000001_area52_benediction.sql').read_text()
     with sqlite3.connect(':memory:') as database:
@@ -1035,6 +1087,12 @@ def main():
                                 'FROM spell_proc WHERE SpellId=984937').fetchone() == (0x15510, 7, 1, 0, 0)
         assert database.execute('SELECT ScriptName FROM spell_script_names WHERE spell_id=984937').fetchall() == [
             ('aura_area52_slice_and_ice_availability',)]
+        database.execute('INSERT INTO spell_proc (SpellId, Chance, Cooldown) VALUES (781046, 100, 4321)')
+        fighter_migration = (ROOT / 'data/sql/updates/pending_db_world/rev_20261014000007_area52_fighters_proc.sql').read_text()
+        database.executescript(fighter_migration)
+        database.executescript(fighter_migration)
+        assert database.execute('SELECT ProcFlags, Chance, Cooldown FROM spell_proc WHERE SpellId=781046').fetchone() == (
+            16, 0, 4321)
     effects = (ROOT / 'src/server/game/Spells/SpellEffects.cpp').read_text()
     eviscerate = effects.split('// Eviscerate\n', 1)[1].split('break;', 1)[0]
     assert 'EviscerateScalingBonus(area52, ap,' in eviscerate
@@ -1091,6 +1149,8 @@ def main():
     proc_generated += '\nvoid RemoveAvailability' + slice_body.split('void Remove', 1)[1].split('bool CheckProc', 1)[0]
     spear = source.split('class white_walker_ice_spear :', 1)[1].split('void OnSpellBeforeEffects', 1)[1].split('\n};', 1)[0]
     proc_generated += '\nclass IceSpearCallbacks { public: void OnSpellBeforeEffects' + spear.replace(' override', '') + '\n};\n'
+    fighter_dispatch = source.split('class aura_area52_fighters_sinister_strike :', 1)[1].split('void Proc', 1)[1].split('void Register()', 1)[0]
+    proc_generated += '\nvoid FighterDispatch' + fighter_dispatch.replace('ProcEventInfo& event', 'ProcEventInfo&')
     proc_generated += PROC_RANK_CASES
     assert 'event.GetDamageInfo()->GetDamage()' in source
     assert 'AscensionWhiteWalkerSupport::FightersPower' in source
