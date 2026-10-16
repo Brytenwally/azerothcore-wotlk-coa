@@ -1,0 +1,119 @@
+--- a/src/server/coa/AscensionFreePick.cpp
++++ b/src/server/coa/AscensionFreePick.cpp
+@@ -34,6 +34,7 @@
+ Catalog Data;
+ bool Active = false;
+ std::set<std::uint32_t> ClassSpells;
++std::set<uint32> TalentSpells;
+ constexpr char SelectionSetting[] = "core.ascension_freepick_entries";
+ 
+ bool RacialSpell(Player const* player, uint32 spell)
+@@ -148,12 +149,15 @@
+ {
+     Active = enabled && LoadCatalog(Data);
+     ClassSpells.clear();
++    TalentSpells.clear();
+     if (Active)
+     {
+         for (auto const& [id, entry] : Data.Entries)
+             for (auto spell : entry.Spells)
+             {
+                 ClassSpells.insert(spell);
++                if (entry.TE)
++                    TalentSpells.insert(spell);
+                 std::set<std::uint32_t> visited;
+                 for (auto rank = sSpellMgr->GetFirstSpellInChain(spell); rank && visited.insert(rank).second;
+                     rank = sSpellMgr->GetNextSpellInChain(rank))
+@@ -184,8 +188,49 @@
+     return !mask || !(*mask & ~QualityMode);
+ }
+ 
++bool IsTalentRank(Player const* player, std::uint32_t spell)
++{
++    return Applies(player) && TalentSpells.contains(spell);
++}
++
++std::set<std::uint32_t> AuthorizedTalentSpells(Player const* player)
++{
++    auto spells = SelectedSpells(KnownEntries(player));
++    for (auto const& grant : AscensionMysticEnchant::SpellGrants)
++        if (AscensionMysticEnchant::GrantsActive(player, grant.Enchant))
++            spells.insert(grant.Spell);
++    ExpandGrantedSpells(spells, false);
++    return spells;
++}
++
++bool SynchronizeTalentRanks(Player* player)
++{
++    auto const approved = AuthorizedTalentSpells(player);
++    bool changed = false;
++    for (auto spell : TalentSpells)
++        if (!approved.contains(spell) && (player->HasSpell(spell) || player->HasAura(spell)))
++        {
++            player->removeSpell(spell, SPEC_MASK_ALL, false);
++            player->RemoveAurasDueToSpell(spell, player->GetGUID());
++            changed = true;
++        }
++    if (changed)
++        for (auto spell : TalentSpells)
++            if (approved.contains(spell) && player->HasSpell(spell))
++                if (auto const* info = sSpellMgr->GetSpellInfo(spell); info && info->IsPassive()
++                    && player->IsNeedCastPassiveSpellAtLearn(info) && !player->HasAura(spell))
++                {
++                    auto next = sSpellMgr->GetNextSpellInChain(spell);
++                    if (!next || !approved.contains(next))
++                        player->CastSpell(player, spell, true);
++                }
++    return changed;
++}
++
+ bool CanLearnSpell(Player const* player, std::uint32_t spell, bool temporary, bool alreadyOwned)
+ {
++    if (IsTalentRank(player, spell))
++        return AuthorizedTalentSpells(player).contains(spell);
+     if (Applies(player) && (spell == 6991 || spell == 1106991 || spell == 1356991))
+         return false;
+     bool const companion = std::any_of(LinkedSpellGroups.begin(), LinkedSpellGroups.end(),
+@@ -289,7 +334,7 @@
+             if (player->HasSpell(Area52CompanionTraining::Parent(spell)))
+                 wanted.insert(spell);
+         }
+-    bool changed = false;
++    bool changed = SynchronizeTalentRanks(player);
+     SpellLearningScope learning(player, wanted);
+     for (auto child : managed)
+     {
+@@ -393,7 +438,11 @@
+             return { "CA_UPDATE_ENTRIES_BAD_ENTRY", "CA_LEARN_BAD_ABILITY" };
+ 
+     if (SameSelection(before, wanted))
++    {
++        if (SynchronizeTalentRanks(player))
++            player->SaveToDB(false, false);
+         return {};
++    }
+     auto const actionSpells = AscensionRemovedSpellActionBars::Capture(player);
+     RemoveSelectionBuffs(player, oldSpells, newSpells);
+     auto const* settings = player->FindPlayerSettings(SelectionSetting);
+--- a/src/server/coa/AscensionFreePick.h
++++ b/src/server/coa/AscensionFreePick.h
+@@ -89,6 +89,7 @@
+     SpellLearningScope const* Previous;
+     static thread_local SpellLearningScope const* Current;
+ };
++bool IsTalentRank(Player const* player, std::uint32_t spell);
+ bool CanLearnSpell(Player const* player, std::uint32_t spell, bool temporary, bool alreadyOwned);
+ bool SynchronizeLinkedSpells(Player* player);
+ bool CanTrainCompanion(Player const* player, std::uint32_t spell);
+--- a/src/server/game/Entities/Player/Player.cpp
++++ b/src/server/game/Entities/Player/Player.cpp
+@@ -3656,7 +3656,8 @@
+     itr->second->specMask = (((uint8)itr->second->specMask) & ~removeSpecMask); // pussywizard: update specMask in map
+ 
+     // pussywizard: some more conditions needed for spells like pyroblast (shouldn't be fully removed when not available in any spec, should stay in db with specMask = 0)
+-    if (GetTalentSpellCost(firstRankSpellId) == 0 && !sSpellMgr->IsAdditionalTalentSpell(firstRankSpellId) && itr->second->specMask == 0)
++    if (itr->second->specMask == 0 && (AscensionFreePick::IsTalentRank(this, spell_id) ||
++        (GetTalentSpellCost(firstRankSpellId) == 0 && !sSpellMgr->IsAdditionalTalentSpell(firstRankSpellId))))
+     {
+         if (itr->second->State == PLAYERSPELL_NEW || itr->second->State == PLAYERSPELL_TEMPORARY)
+         {
