@@ -4872,6 +4872,11 @@ bool Unit::CanCastSpellWhileMoving(SpellInfo const* info) const
 {
     if (!info)
         return false;
+    for (uint32 auraId : { 53817u, 853817u, 853818u })
+        if (Aura const* aura = GetAura(auraId))
+            if (AuraEffect const* effect = aura->GetEffect(EFFECT_0))
+                if (aura->GetStackAmount() && effect->IsAffectedOnSpell(info))
+                    return true;
     if (IsPlayer() && getClass() == CLASS_STARCALLER &&
         (info->Id == 801990 || info->Id == 802682 || (HasAura(704772) && !info->IsPositive())))
         return true;

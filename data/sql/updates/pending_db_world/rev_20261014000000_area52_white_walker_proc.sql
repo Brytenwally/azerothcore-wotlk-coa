@@ -28,3 +28,11 @@ WHERE `spell_id` = 978744 AND `ScriptName` = 'aura_area52_tides_of_battle';
 INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`)
 VALUES (978744, 'aura_area52_tides_of_battle');
 
+DELETE FROM `spell_script_names`
+WHERE (`spell_id`, `ScriptName`) IN
+    ((954521, 'spell_area52_demonic_leap'), (760080, 'spell_area52_roll_the_bones'));
+
+INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`) VALUES
+(954521, 'spell_area52_demonic_leap'),
+(760080, 'spell_area52_roll_the_bones');
+

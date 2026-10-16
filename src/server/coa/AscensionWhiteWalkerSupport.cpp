@@ -1,10 +1,12 @@
 /* Copyright (C) 2016+ AzerothCore, GNU AGPL v3. */
 #include "AscensionWhiteWalkerSupportRules.h"
 #include "Config.h"
+#include "Creature.h"
 #include "AllItemScript.h"
 #include "AllSpellScript.h"
 #include "Player.h"
 #include "PlayerScript.h"
+#include "Random.h"
 #include "ScriptMgr.h"
 #include "SpellAuraEffects.h"
 #include "SpellAuras.h"
@@ -38,6 +40,27 @@ void ApplySliceAndIceStats(SpellInfo* info, SpellInfo const* helper)
     rating.MiscValueB = source.MiscValueB;
 }
 
+void ApplyWhiteWalkerDamageCharges(SpellInfo* info)
+{
+    if (!info || (info->Id != 979011 && info->Id != 979053))
+        return;
+    bool const blades = info->Id == 979011;
+    info->ProcCharges = blades ? 5 : 1;
+    info->ProcFlags = blades ? PROC_FLAG_DONE_SPELL_MELEE_DMG_CLASS : PROC_FLAG_DONE_SPELL_MAGIC_DMG_CLASS_NEG;
+    info->ProcChance = 100;
+    auto& proc = info->Effects[EFFECT_2];
+    proc.Effect = SPELL_EFFECT_APPLY_AURA;
+    proc.ApplyAuraName = SPELL_AURA_DUMMY;
+    proc.BasePoints = -1;
+    proc.DieSides = 1;
+    proc.MiscValue = 0;
+    proc.MiscValueB = 0;
+    proc.TriggerSpell = 0;
+    proc.SpellClassMask = blades ? flag96(131074, 0, 0) : flag96(0, 0, 32);
+    proc.TargetA = SpellImplicitTargetInfo(TARGET_UNIT_CASTER);
+    proc.TargetB = SpellImplicitTargetInfo();
+}
+
 void RefreshWhiteWalker(Player* player)
 {
     using namespace AscensionWhiteWalkerSupport;
@@ -62,6 +85,17 @@ void RefreshWhiteWalker(Player* player)
         replace(root, SliceAndIce);
     for (std::size_t rank = 0; rank < ConeOfColdRanks.size(); ++rank)
         replace(ConeOfColdRanks[rank], WindsOfWinterRanks[rank]);
+    bool const sliceKnown = desired.contains(SliceAndIce) ||
+        (player->HasActiveSpell(SliceAndIce) && !granted.contains(SliceAndIce));
+    if (active && sliceKnown && player->HasActiveSpell(44545))
+    {
+        desired.insert(FrozenBlade);
+        if (!player->HasActiveSpell(FrozenBlade))
+        {
+            player->learnSpell(FrozenBlade, true);
+            granted.insert(FrozenBlade);
+        }
+    }
     uint32 iceSpear = 0;
     for (auto rank = IceSpearRanks.rbegin(); rank != IceSpearRanks.rend(); ++rank)
     {
@@ -140,11 +174,30 @@ public:
     void OnPlayerSpellCast(Player* player, Spell* spell, bool) override
     {
         using namespace AscensionWhiteWalkerSupport;
-        if (!Area52Enabled || spell->IsTriggered() || !player->HasAura(TidesOfBattle) ||
-            sSpellMgr->GetFirstSpellInChain(spell->GetSpellInfo()->Id) != SinisterStrike)
+        if (!Area52Enabled || spell->IsTriggered())
             return;
-        spell->SetScriptValue(TidesOfBattle, uint64(player->GetPower(POWER_ENERGY)) + 1);
-        spell->SetScriptValue(Ebb, player->GetMaxPower(POWER_ENERGY));
+        for (uint32 auraId : { 53817u, 853817u, 853818u })
+        {
+            Aura const* aura = player->GetAura(auraId);
+            AuraEffect const* effect = aura ? aura->GetEffect(EFFECT_0) : nullptr;
+            if (effect && aura->GetStackAmount() && effect->IsAffectedOnSpell(spell->GetSpellInfo()))
+            {
+                spell->SetScriptValue(MaelstromWeapon, aura->GetStackAmount());
+                break;
+            }
+        }
+        uint32 const id = spell->GetSpellInfo()->Id;
+        uint32 const root = sSpellMgr->GetFirstSpellInChain(id);
+        if (player->HasAura(TidesOfBattle) && root == SinisterStrike)
+        {
+            spell->SetScriptValue(TidesOfBattle, uint64(player->GetPower(POWER_ENERGY)) + 1);
+            spell->SetScriptValue(Ebb, player->GetMaxPower(POWER_ENERGY));
+        }
+        bool const winds = std::find(WindsOfWinterRanks.begin(), WindsOfWinterRanks.end(), id) != WindsOfWinterRanks.end();
+        if (player->HasAura(FrozenBlade) && (root == 2098 || winds))
+            spell->SetScriptValue(FrozenBlade, uint64(player->GetComboPoints()) + 1);
+        if (winds && player->HasAura(WhiteWalker) && player->IsTwoHandUsed())
+            spell->SetScriptValue(979052, 1);
     }
 
     void OnPlayerUpdate(Player* player, uint32) override
@@ -176,6 +229,8 @@ public:
     {
         if (!Area52Enabled)
             return;
+
+        ApplyWhiteWalkerDamageCharges(info);
 
         if (info->SpellFamilyName == SPELLFAMILY_ROGUE && (info->SpellFamilyFlags[0] & 0x00020000) &&
             info->Effects[EFFECT_0].Effect == SPELL_EFFECT_SCHOOL_DAMAGE)
@@ -490,11 +545,65 @@ public:
 
     void OnSpellHitResult(Spell* spell, Unit* target, uint8 miss, uint32 damage, uint32, bool) override
     {
-        if (!Area52Enabled || !target || miss != SPELL_MISS_NONE || !damage ||
-            !spell->GetScriptValue(AscensionWhiteWalkerSupport::WintersFury) || spell->GetScriptValue(979053))
+        using namespace AscensionWhiteWalkerSupport;
+        if (!Area52Enabled || !target || miss != SPELL_MISS_NONE || !damage)
             return;
-        spell->SetScriptValue(979053, 1);
-        spell->GetCaster()->CastSpell(spell->GetCaster(), 979053, TRIGGERED_FULL_MASK);
+        if (uint64 const snapshot = spell->GetScriptValue(FrozenBlade))
+        {
+            spell->SetScriptValue(FrozenBlade, 0);
+            if (roll_chance_i(std::min<uint64>(100, (snapshot - 1) * 20)))
+            {
+                uint32 const proc = sSpellMgr->GetFirstSpellInChain(spell->GetSpellInfo()->Id) == 2098 ?
+                    FingersOfFrost : BladesOfIce;
+                spell->GetCaster()->CastSpell(spell->GetCaster(), proc, TRIGGERED_FULL_MASK);
+            }
+        }
+        if ((spell->GetScriptValue(WintersFury) || spell->GetScriptValue(979052)) && !spell->GetScriptValue(979053))
+        {
+            spell->SetScriptValue(979053, 1);
+            spell->GetCaster()->CastSpell(spell->GetCaster(), 979053, TRIGGERED_FULL_MASK);
+        }
+    }
+};
+
+class aura_area52_frozen_blade_fingers_guard : public AuraScript
+{
+    PrepareAuraScript(aura_area52_frozen_blade_fingers_guard);
+
+    bool Load() override { return Area52Enabled; }
+
+    bool CheckProc(ProcEventInfo&)
+    {
+        return !GetTarget()->HasAura(AscensionWhiteWalkerSupport::WhiteWalker) || !GetTarget()->ToPlayer() ||
+            !GetTarget()->ToPlayer()->IsTwoHandUsed() || !GetTarget()->HasAura(AscensionWhiteWalkerSupport::FrozenBlade);
+    }
+
+    void Register() override
+    {
+        DoCheckProc += AuraCheckProcFn(aura_area52_frozen_blade_fingers_guard::CheckProc);
+    }
+};
+
+class spell_area52_deep_freeze : public SpellScript
+{
+    PrepareSpellScript(spell_area52_deep_freeze);
+
+    bool Load() override { return Area52Enabled && GetCaster()->IsPlayer(); }
+    bool Validate(SpellInfo const*) override { return ValidateSpellInfo({844572, 71757}); }
+
+    void Hit(SpellEffIndex)
+    {
+        Unit* target = GetHitUnit();
+        if (!target)
+            return;
+        bool const permanent = target->IsCreature() &&
+            target->ToCreature()->HasMechanicTemplateImmunity(1ULL << MECHANIC_STUN);
+        GetCaster()->CastSpell(target, permanent ? 71757 : 844572, true);
+    }
+
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(spell_area52_deep_freeze::Hit, EFFECT_0, SPELL_EFFECT_DUMMY);
     }
 };
 
@@ -525,6 +634,91 @@ class spell_area52_cold_blood_activation : public SpellScript
     void Register() override
     {
         AfterCast += SpellCastFn(spell_area52_cold_blood_activation::Activate);
+    }
+};
+
+class aura_area52_cold_blood_support : public AuraScript
+{
+    PrepareAuraScript(aura_area52_cold_blood_support);
+
+    bool Validate(SpellInfo const*) override
+    {
+        return ValidateSpellInfo({ AscensionWhiteWalkerSupport::ColdBloodSupport });
+    }
+
+    bool Load() override { return Area52Enabled && GetUnitOwner()->IsPlayer(); }
+
+    void Apply(AuraEffect const*, AuraEffectHandleModes)
+    {
+        GetTarget()->CastSpell(GetTarget(), AscensionWhiteWalkerSupport::ColdBloodSupport, TRIGGERED_FULL_MASK);
+    }
+
+    void Remove(AuraEffect const*, AuraEffectHandleModes)
+    {
+        GetTarget()->RemoveAurasDueToSpell(AscensionWhiteWalkerSupport::ColdBloodSupport, GetTarget()->GetGUID());
+    }
+
+    void Register() override
+    {
+        AfterEffectApply += AuraEffectApplyFn(aura_area52_cold_blood_support::Apply,
+            EFFECT_0, SPELL_AURA_ADD_FLAT_MODIFIER, AURA_EFFECT_HANDLE_REAL);
+        AfterEffectRemove += AuraEffectRemoveFn(aura_area52_cold_blood_support::Remove,
+            EFFECT_0, SPELL_AURA_ADD_FLAT_MODIFIER, AURA_EFFECT_HANDLE_REAL);
+    }
+};
+
+class spell_area52_demonic_leap : public SpellScript
+{
+    PrepareSpellScript(spell_area52_demonic_leap);
+
+    bool _reactivated = false;
+
+    bool Load() override { return Area52Enabled && GetCaster()->IsPlayer(); }
+
+    void Before()
+    {
+        _reactivated = GetCaster()->HasAura(AscensionWhiteWalkerSupport::DemonicLeap);
+    }
+
+    void After()
+    {
+        if (!_reactivated)
+            GetCaster()->ToPlayer()->RemoveSpellCooldown(AscensionWhiteWalkerSupport::DemonicLeap, true);
+    }
+
+    void Register() override
+    {
+        BeforeCast += SpellCastFn(spell_area52_demonic_leap::Before);
+        AfterCast += SpellCastFn(spell_area52_demonic_leap::After);
+    }
+};
+
+class spell_area52_roll_the_bones : public SpellScript
+{
+    PrepareSpellScript(spell_area52_roll_the_bones);
+
+    bool Validate(SpellInfo const*) override
+    {
+        return ValidateSpellInfo({ AscensionWhiteWalkerSupport::RollTheBonesLesser,
+            AscensionWhiteWalkerSupport::RollTheBonesGreater });
+    }
+
+    bool Load() override { return Area52Enabled; }
+
+    void Enhance(SpellEffIndex index)
+    {
+        PreventHitDefaultEffect(index);
+        Unit* caster = GetCaster();
+        caster->RemoveAurasDueToSpell(AscensionWhiteWalkerSupport::RollTheBonesLesser, caster->GetGUID());
+        caster->RemoveAurasDueToSpell(AscensionWhiteWalkerSupport::RollTheBonesGreater, caster->GetGUID());
+        caster->CastSpell(caster, AscensionWhiteWalkerSupport::RollTheBonesEnhancement(urand(0, 1)),
+            TRIGGERED_FULL_MASK);
+    }
+
+    void Register() override
+    {
+        OnEffectHit += SpellEffectFn(spell_area52_roll_the_bones::Enhance, EFFECT_1,
+            SPELL_EFFECT_ASCENSION_TRIGGER_RANDOM_SPELL);
     }
 };
 
@@ -824,6 +1018,7 @@ class aura_area52_ebb_drain : public AuraScript
             EFFECT_2, SPELL_AURA_PERIODIC_TRIGGER_SPELL);
     }
 };
+
 }
 
 void AddSC_AscensionWhiteWalkerSupport()
@@ -837,8 +1032,13 @@ void AddSC_AscensionWhiteWalkerSupport()
     RegisterSpellScript(aura_area52_white_walker);
     RegisterSpellScript(aura_area52_slice_and_ice);
     RegisterSpellScript(aura_area52_slice_and_ice_availability);
+    RegisterSpellScript(spell_area52_deep_freeze);
+    RegisterSpellScript(aura_area52_frozen_blade_fingers_guard);
     RegisterSpellScript(aura_area52_freezing_blood);
     RegisterSpellScript(spell_area52_cold_blood_activation);
+    RegisterSpellScript(aura_area52_cold_blood_support);
+    RegisterSpellScript(spell_area52_demonic_leap);
+    RegisterSpellScript(spell_area52_roll_the_bones);
     RegisterSpellScript(aura_area52_freezing_blood_consumed);
     RegisterSpellScript(aura_area52_freezing_blood_damage);
     RegisterSpellScript(aura_area52_benediction);

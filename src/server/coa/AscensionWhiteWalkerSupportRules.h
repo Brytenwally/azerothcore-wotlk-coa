@@ -26,6 +26,24 @@ constexpr std::uint32_t SinisterStrike = 1752;
 constexpr std::uint32_t TidesOfBattle = 978744;
 constexpr std::uint32_t Ebb = 978746;
 constexpr std::uint32_t Flow = 978747;
+constexpr std::uint32_t MaelstromWeapon = 1037;
+constexpr std::uint32_t ColdBloodSupport = 530921;
+constexpr std::uint32_t DemonicLeap = 954521;
+constexpr std::uint32_t RollTheBonesLesser = 760082;
+constexpr std::uint32_t RollTheBonesGreater = 760083;
+
+constexpr std::uint32_t RollTheBonesEnhancement(bool greater)
+{
+    return greater ? RollTheBonesGreater : RollTheBonesLesser;
+}
+
+constexpr std::int32_t MaelstromPvpDamage(std::int32_t damage, std::uint32_t stacks, bool playerTarget)
+{
+    if (damage <= 0 || !playerTarget || !stacks)
+        return damage;
+    std::uint32_t const reduction = 2 * (stacks > 5 ? 5 : stacks);
+    return damage - damage * std::int32_t(reduction) / 100;
+}
 
 constexpr bool BenedictionCooldownReady(bool hasProc, std::uint32_t elapsed)
 {
@@ -56,6 +74,9 @@ constexpr std::uint32_t IceLance = 30455;
 constexpr std::uint32_t IceSpear = 984935;
 constexpr std::uint32_t WintersFury = 984936;
 constexpr std::uint32_t WintersVitality = 978525;
+constexpr std::uint32_t FrozenBlade = 978857;
+constexpr std::uint32_t BladesOfIce = 979011;
+constexpr std::uint32_t FingersOfFrost = 74396;
 constexpr std::array<std::uint32_t, 2> SliceAndDiceRanks = { 5171, 6774 };
 constexpr std::array<std::uint32_t, 8> ConeOfColdRanks = { 120, 8492, 10159, 10160, 10161, 27087, 42930, 42931 };
 constexpr std::array<std::uint32_t, 5> IceLanceRanks = { 30455, 300908, 300909, 42913, 42914 };

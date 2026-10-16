@@ -1,10 +1,6 @@
-UPDATE `spell_proc`
-SET `SchoolMask` = 16,
-    `SpellFamilyName` = 0,
-    `SpellFamilyMask0` = 0,
-    `SpellFamilyMask1` = 0,
-    `SpellFamilyMask2` = 0,
-    `ProcFlags` = 65536,
-    `SpellTypeMask` = 1,
-    `SpellPhaseMask` = 2
-WHERE `SpellId` = 978302;
+DELETE FROM `spell_proc` WHERE `SpellId` = 978302;
+
+INSERT INTO `spell_proc` (`SpellId`, `SchoolMask`, `SpellFamilyName`, `SpellFamilyMask0`, `SpellFamilyMask1`,
+    `SpellFamilyMask2`, `ProcFlags`, `SpellTypeMask`, `SpellPhaseMask`, `HitMask`, `AttributesMask`,
+    `DisableEffectsMask`, `ProcsPerMinute`, `Chance`, `Cooldown`, `Charges`)
+VALUES (978302, 16, 0, 0, 0, 0, 65536, 1, 2, 0, 0, 0, 0, 0, 0, 0);

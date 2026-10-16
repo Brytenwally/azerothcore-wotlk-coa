@@ -16,6 +16,7 @@
  */
 
 #include "Spell.h"
+#include "../../coa/AscensionWhiteWalkerSupportRules.h"
 #include "ArenaSpectator.h"
 #include "AscensionPooledVitality.h"
 #include "BattlefieldMgr.h"
@@ -2885,6 +2886,10 @@ void Spell::DoAllEffectOnTarget(TargetInfo* target)
             }
             else
                 caster->CalculateSpellDamageTaken(&damageInfo, m_damage, m_spellInfo, m_attackType,  target->crit);
+
+            damageInfo.damage = AscensionWhiteWalkerSupport::MaelstromPvpDamage(damageInfo.damage,
+                uint32(GetScriptValue(AscensionWhiteWalkerSupport::MaelstromWeapon)),
+                unitTarget->IsCharmedOwnedByPlayerOrPlayer());
 
             // xinef: override miss info after absorb / block calculations
             if (missInfo == SPELL_MISS_NONE && damageInfo.damage == 0)

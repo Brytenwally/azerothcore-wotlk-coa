@@ -40,12 +40,11 @@ struct Unit
     }
     auto const& GetAuraEffectsByType(int) const { return effects; }
 };
-bool Ready = true;
+bool Active = true;
 struct Catalog
 {
-    std::set<uint32> spells{84561, 911160, 1329440};
-    bool FindSpell(uint32 id) const { return spells.contains(id); }
-} Loaded;
+    std::set<uint32> BySpell{84561, 911160, 1329440};
+} Data;
 '''
 
 COST_CASES = r'''
@@ -74,9 +73,9 @@ int main()
     caster.effects = {&channeling, &talent};
     assert(NonstackingCostCorrection(&caster, 16) == 0);
     caster.effects = {&athletic, &channeling};
-    Ready = false;
+    Active = false;
     assert(NonstackingCostCorrection(&caster, 16) == 0);
-    Ready = true;
+    Active = true;
     athletic.type = 4;
     assert(NonstackingCostCorrection(&caster, 16) == 0);
     athletic.type = SPELL_AURA_MOD_POWER_COST_SCHOOL_PCT;
@@ -183,6 +182,84 @@ int main()
 }
 '''
 
+CHARGE_MOCKS = r'''
+#include <cassert>
+#include <cstdint>
+#include <initializer_list>
+using uint8 = std::uint8_t;
+using uint32 = std::uint32_t;
+using TimePoint = int;
+#define ASSERT(value) assert(value)
+constexpr int SPELL_ATTR6_DO_NOT_CONSUME_RESOURCES = 1;
+constexpr int PROC_ATTR_USE_STACKS_FOR_CHARGES = 16;
+struct SpellInfo { bool preserve = false; bool HasAttribute(int) const { return preserve; } };
+struct SpellProcEntry { uint32 AttributesMask = 0; int Cooldown = 0; };
+struct SpellMgr
+{
+    SpellProcEntry entry;
+    SpellProcEntry const* GetSpellProcEntry(uint32) const { return &entry; }
+} manager;
+SpellMgr* sSpellMgr = &manager;
+struct ProcEventInfo { SpellInfo* info; SpellInfo const* GetSpellInfo() const { return info; } };
+struct AuraApplication { };
+struct Aura
+{
+    uint8 m_procCharges = 0;
+    bool m_isUsingCharges = false;
+    bool prepare = true;
+    bool removed = false;
+    int cooldown = 0;
+    bool IsUsingCharges() const { return m_isUsingCharges; }
+    uint8 GetCharges() const { return m_procCharges; }
+    uint32 GetId() const { return 979011; }
+    bool CallScriptPrepareProcHandlers(AuraApplication*, ProcEventInfo&) { return prepare; }
+    void SetNeedClientUpdateForTargets() { }
+    void AddProcCooldown(TimePoint value) { cooldown = value; }
+    void Remove() { removed = true; }
+    void ModStackAmount(int) { assert(false); }
+    void SetCharges(uint8);
+    void PrepareProcToTrigger(AuraApplication*, ProcEventInfo&, TimePoint);
+    void ConsumeProcCharges(SpellProcEntry const*);
+};
+'''
+
+CHARGE_CASES = r'''
+int main()
+{
+    SpellInfo spell;
+    ProcEventInfo event{&spell};
+    for (uint8 maximum : {uint8(1), uint8(5)})
+    {
+        Aura aura;
+        aura.SetCharges(maximum);
+        for (uint8 remaining = maximum; remaining > 0; --remaining)
+        {
+            aura.PrepareProcToTrigger(nullptr, event, 123);
+            assert(aura.GetCharges() == remaining - 1);
+            aura.ConsumeProcCharges(&manager.entry);
+            assert(aura.removed == (remaining == 1));
+        }
+        aura = Aura{};
+        aura.SetCharges(maximum);
+        aura.prepare = false;
+        aura.PrepareProcToTrigger(nullptr, event, 0);
+        assert(aura.GetCharges() == maximum);
+        aura.prepare = true;
+        spell.preserve = true;
+        aura.PrepareProcToTrigger(nullptr, event, 0);
+        assert(aura.GetCharges() == maximum);
+        spell.preserve = false;
+        if (maximum == 5)
+        {
+            aura.PrepareProcToTrigger(nullptr, event, 0);
+            assert(aura.GetCharges() == 4);
+            aura.SetCharges(5);
+            assert(aura.GetCharges() == 5 && !aura.removed);
+        }
+    }
+}
+'''
+
 PROC_RANK_MOCKS = r'''
 #include "AscensionWhiteWalkerSupportRules.h"
 #include <algorithm>
@@ -196,6 +273,8 @@ using int32 = std::int32_t;
 using int64 = std::int64_t;
 bool Area52Enabled = true;
 constexpr uint32 PROC_HIT_CRITICAL = 2;
+constexpr int EFFECT_0 = 0;
+struct Aura;
 struct Unit
 {
     bool twoHanded = true;
@@ -204,24 +283,37 @@ struct Unit
     bool worldforgedCooldown = false;
     uint32 level = 80;
     bool tides = true;
+    bool player = true;
+    bool stunImmune = false;
+    bool frozenBlade = false;
+    bool whiteWalker = true;
+    uint8 comboPoints = 0;
     int32 energy = 100;
     uint32 maximumEnergy = 100;
     int critModifier = 0;
+    Aura* maelstrom = nullptr;
     std::vector<uint32> casts;
+    std::vector<Unit*> castTargets;
     std::vector<uint32> removed;
     std::vector<std::array<int32, 3>> custom;
-    Unit* ToPlayer() { return this; }
-    bool IsPlayer() const { return true; }
+    Unit* ToPlayer() { return player ? this : nullptr; }
+    bool IsPlayer() const { return player; }
+    bool IsCreature() const { return !player; }
+    Unit* ToCreature() { return this; }
+    bool HasMechanicTemplateImmunity(uint64) const { return stunImmune; }
     bool IsTwoHandUsed() const { return twoHanded; }
     bool HasAura(uint32 id) const
     {
         return (id == AscensionWhiteWalkerSupport::SliceAndIce && slice) ||
             (id == AscensionWhiteWalkerSupport::WintersFury && fury) || (id == 780999 && worldforgedCooldown) ||
-            (id == AscensionWhiteWalkerSupport::TidesOfBattle && tides);
+            (id == AscensionWhiteWalkerSupport::TidesOfBattle && tides) ||
+            (id == AscensionWhiteWalkerSupport::FrozenBlade && frozenBlade) ||
+            (id == AscensionWhiteWalkerSupport::WhiteWalker && whiteWalker);
     }
-    void CastSpell(Unit*, uint32 id, int) { casts.push_back(id); }
+    void CastSpell(Unit* target, uint32 id, int) { casts.push_back(id); castTargets.push_back(target); }
     uint32 GetGUID() const { return 1; }
     uint32 GetLevel() const { return level; }
+    uint8 GetComboPoints() const { return comboPoints; }
     uint32 GetPower(int) const { return energy; }
     uint32 GetMaxPower(int) const { return maximumEnergy; }
     void ModifyPower(int, int32 change) { energy = std::clamp<int32>(energy + change, 0, maximumEnergy); }
@@ -236,6 +328,7 @@ struct Unit
         if (id == AscensionWhiteWalkerSupport::WintersFury) fury = false;
     }
     int GetTotalAuraModifier(int) const { return critModifier; }
+    Aura* GetAura(uint32) const { return maelstrom; }
 };
 using Player = Unit;
 struct SpellInfo
@@ -288,10 +381,28 @@ SpellMgr manager;
 SpellMgr* sSpellMgr = &manager;
 Unit owner, other;
 Unit* GetTarget() { return &owner; }
+Unit* hitTarget = &other;
+Unit* GetHitUnit() { return hitTarget; }
+Unit* GetCaster() { return &owner; }
+using SpellEffIndex = int;
+constexpr int MECHANIC_STUN = 12;
 constexpr int TRIGGERED_FULL_MASK = 1;
 bool prevented = false;
 void PreventDefaultAction() { prevented = true; }
-struct AuraEffect { int32 amount = -3; int32 GetAmount() const { return amount; } };
+struct AuraEffect
+{
+    int32 amount = -3;
+    bool affected = true;
+    int32 GetAmount() const { return amount; }
+    bool IsAffectedOnSpell(SpellInfo const*) const { return affected; }
+};
+struct Aura
+{
+    uint32 stacks = 0;
+    AuraEffect effect{};
+    uint32 GetStackAmount() const { return stacks; }
+    AuraEffect const* GetEffect(int) const { return &effect; }
+};
 AuraEffect drainEffect;
 AuraEffect const* GetEffect(int) { return &drainEffect; }
 constexpr int POWER_ENERGY = 3;
@@ -299,6 +410,9 @@ constexpr int EFFECT_1 = 1;
 using AuraEffectHandleModes = int;
 uint8 enchantCopies = 1;
 uint8 GetStackAmount() { return enchantCopies; }
+int rollValue = 0;
+std::vector<uint64> rolls;
+bool roll_chance_i(uint64 chance) { rolls.push_back(chance); return chance > uint64(rollValue); }
 '''
 
 PROC_RANK_CASES = r'''
@@ -316,7 +430,16 @@ int main()
     ProcEventInfo event{&owner, &spell, &damage};
     event.cast.caster = &owner;
     event.cast.info = &spell;
+    Aura maelstrom{5, {-3, true}};
+    owner.maelstrom = &maelstrom;
     SnapshotTides(&owner, &event.cast, false);
+    assert(event.cast.GetScriptValue(AscensionWhiteWalkerSupport::MaelstromWeapon) == 5);
+    maelstrom.effect.affected = false;
+    event.cast.values.clear();
+    SnapshotTides(&owner, &event.cast, false);
+    assert(!event.cast.GetScriptValue(AscensionWhiteWalkerSupport::MaelstromWeapon));
+    maelstrom.effect.affected = true;
+    owner.maelstrom = nullptr;
     for (uint32 rank : sinister)
     {
         spell.Id = rank;
@@ -496,6 +619,67 @@ int main()
     owner.energy = 50;
     EbbTick(nullptr);
     assert(owner.energy == 50);
+    owner.casts.clear();
+    other.player = false;
+    other.stunImmune = false;
+    DeepFreezeHit(0);
+    assert(owner.casts.back() == 844572 && owner.castTargets.back() == &other);
+    other.stunImmune = true;
+    DeepFreezeHit(0);
+    assert(owner.casts.back() == 71757 && owner.castTargets.back() == &other);
+    other.player = true;
+    DeepFreezeHit(0);
+    assert(owner.casts.back() == 844572);
+    owner.casts.clear();
+    hitTarget = nullptr;
+    DeepFreezeHit(0);
+    assert(owner.casts.empty());
+    hitTarget = &other;
+    owner.frozenBlade = true;
+    for (uint32 id : {48668u, 978846u, 978853u})
+        for (uint8 points = 0; points <= 5; ++points)
+        {
+            SpellInfo info{id};
+            Spell cast;
+            cast.caster = &owner;
+            cast.info = &info;
+            owner.comboPoints = points;
+            owner.casts.clear();
+            rolls.clear();
+            SnapshotTides(&owner, &cast, false);
+            owner.comboPoints = 0;
+            spear.OnSpellHitResult(&cast, &other, 0, 100, 0, false);
+            spear.OnSpellHitResult(&cast, &other, 0, 100, 0, false);
+            assert(rolls == std::vector<uint64>{uint64(points) * 20});
+            bool const eviscerate = id == 48668;
+            uint32 const proc = eviscerate ? AscensionWhiteWalkerSupport::FingersOfFrost :
+                AscensionWhiteWalkerSupport::BladesOfIce;
+            assert(std::count(owner.casts.begin(), owner.casts.end(), proc) == (points ? 1 : 0));
+            assert(std::count(owner.casts.begin(), owner.casts.end(), 979053u) == (eviscerate ? 0 : 1));
+        }
+    assert(!FingersGuard(event));
+    owner.twoHanded = false;
+    assert(FingersGuard(event));
+    owner.twoHanded = true;
+    owner.frozenBlade = false;
+    assert(FingersGuard(event));
+    owner.frozenBlade = true;
+    owner.whiteWalker = false;
+    assert(FingersGuard(event));
+    owner.whiteWalker = true;
+    for (int threshold : {19, 20})
+    {
+        SpellInfo info{48668};
+        Spell cast;
+        cast.caster = &owner;
+        cast.info = &info;
+        owner.comboPoints = 1;
+        owner.casts.clear();
+        rollValue = threshold;
+        SnapshotTides(&owner, &cast, false);
+        spear.OnSpellHitResult(&cast, &other, 0, 100, 0, false);
+        assert(owner.casts.size() == (threshold == 19 ? 1u : 0u));
+    }
 }
 '''
 
@@ -507,9 +691,13 @@ using uint32 = std::uint32_t;
 using uint8 = std::uint8_t;
 constexpr int EFFECT_0 = 0;
 constexpr int EFFECT_1 = 1;
+constexpr int EFFECT_2 = 2;
 constexpr int SPELL_EFFECT_APPLY_AURA = 6;
 constexpr int SPELL_AURA_ADD_FLAT_MODIFIER = 107;
 constexpr int SPELL_AURA_ADD_PCT_MODIFIER = 108;
+constexpr int SPELL_AURA_DUMMY = 4;
+constexpr uint32 PROC_FLAG_DONE_SPELL_MELEE_DMG_CLASS = 16;
+constexpr uint32 PROC_FLAG_DONE_SPELL_MAGIC_DMG_CLASS_NEG = 65536;
 constexpr int SPELL_AURA_MOD_RATING_FROM_STAT = 220;
 constexpr int SPELL_AURA_MOD_DAMAGE_DONE_VERSUS_AURASTATE = 303;
 constexpr int ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE = 20012;
@@ -523,6 +711,7 @@ struct flag96
     bool operator==(flag96 const&) const = default;
 };
 struct Target { int value; int GetTarget() const { return value; } };
+using SpellImplicitTargetInfo = Target;
 struct SpellEffectInfo
 {
     int Effect = SPELL_EFFECT_APPLY_AURA;
@@ -534,8 +723,17 @@ struct SpellEffectInfo
     Target TargetB{0};
     int BasePoints = 99;
     int DieSides = 1;
+    uint32 TriggerSpell = 0;
 };
-struct SpellInfo { uint32 Id; std::array<SpellEffectInfo, 3> Effects; uint32 SpellFamilyName = 8; };
+struct SpellInfo
+{
+    uint32 Id;
+    std::array<SpellEffectInfo, 3> Effects;
+    uint32 SpellFamilyName = 8;
+    uint8 ProcCharges = 0;
+    uint32 ProcFlags = 0;
+    int ProcChance = 0;
+};
 '''
 
 FROZEN_POWER_CASES = r'''
@@ -612,6 +810,19 @@ int main()
     ApplyArea52TargetDamageContracts(&wrongFamily);
     assert(wrongFamily.Effects[0].ApplyAuraName == SPELL_AURA_ADD_PCT_MODIFIER);
     ApplyArea52TargetDamageContracts(nullptr);
+    SpellInfo blades{979011, {}};
+    ApplyWhiteWalkerDamageCharges(&blades);
+    assert(blades.ProcCharges == 5 && blades.ProcChance == 100 && blades.ProcFlags == 16);
+    assert(blades.Effects[2].ApplyAuraName == SPELL_AURA_DUMMY);
+    assert(blades.Effects[2].BasePoints + blades.Effects[2].DieSides == 0);
+    assert((blades.Effects[2].SpellClassMask == flag96(131074, 0, 0)));
+    SpellInfo howl{979053, {}};
+    ApplyWhiteWalkerDamageCharges(&howl);
+    assert(howl.ProcCharges == 1 && howl.ProcFlags == 65536);
+    assert((howl.Effects[2].SpellClassMask == flag96(0, 0, 32)));
+    ApplyWhiteWalkerDamageCharges(&unrelated);
+    assert(unrelated.ProcCharges == 0);
+    ApplyWhiteWalkerDamageCharges(nullptr);
 }
 '''
 
@@ -1107,6 +1318,29 @@ int main()
         assert(!player.HasActiveSpell(IceSpearRanks.back()));
         assert(player.replacements[root] == 0);
     }
+    player = Player{};
+    WhiteWalkerGranted.clear();
+    player.spells[SliceAndDice] = true;
+    player.spells[44543] = true;
+    RefreshWhiteWalker(&player);
+    assert(!player.HasActiveSpell(FrozenBlade));
+    player.spells[44545] = true;
+    RefreshWhiteWalker(&player);
+    assert(player.HasActiveSpell(FrozenBlade) && WhiteWalkerGranted[1].contains(FrozenBlade));
+    RefreshWhiteWalker(&player);
+    assert(WhiteWalkerGranted[1].contains(FrozenBlade));
+    player.spells.erase(SliceAndDice);
+    RefreshWhiteWalker(&player);
+    assert(!player.HasActiveSpell(FrozenBlade));
+    player.spells[SliceAndDice] = true;
+    RefreshWhiteWalker(&player);
+    player.spells.erase(44545);
+    RefreshWhiteWalker(&player);
+    assert(!player.HasActiveSpell(FrozenBlade));
+    player.spells[FrozenBlade] = true;
+    player.active = false;
+    RefreshWhiteWalker(&player);
+    assert(player.HasActiveSpell(FrozenBlade));
 }
 '''
 
@@ -1121,6 +1355,14 @@ using namespace AscensionWhiteWalkerSupport;
 int main()
 {
     static_assert(AthleticCostPercent == -4 && AthleticSchools == 17);
+    static_assert(MaelstromPvpDamage(1000, 0, true) == 1000);
+    static_assert(MaelstromPvpDamage(1000, 1, true) == 980);
+    static_assert(MaelstromPvpDamage(1000, 5, true) == 900);
+    static_assert(MaelstromPvpDamage(1000, 6, true) == 900);
+    static_assert(MaelstromPvpDamage(1000, 5, false) == 1000);
+    static_assert(MaelstromPvpDamage(0, 5, true) == 0);
+    static_assert(RollTheBonesEnhancement(false) == 760082);
+    static_assert(RollTheBonesEnhancement(true) == 760083);
     assert(BenedictionCooldownReady(false, 0));
     assert(!BenedictionCooldownReady(true, 4999));
     assert(BenedictionCooldownReady(true, 5000));
@@ -1310,8 +1552,82 @@ def main():
         assert channeling['EffectApplyAuraName[0]'] == 72
         assert channeling['EffectBasePoints[0]'] + channeling['EffectDieSides[0]'] == -3
         assert channeling['EffectMiscValue[0]'] == 84 and channeling['StackAmount'] == 3
+        frozen_blade = fields('Spell', 978857)
+        assert frozen_blade['CasterAuraSpell'] == 44545
+        assert frozen_blade['EffectPointsPerComboPoint[0]'] == 20
+        molten_ranks = ((30482, 34913), (43045, 43043), (43046, 43044))
+        for armor_id, damage_id in molten_ranks:
+            armor = fields('Spell', armor_id)
+            assert armor['EffectApplyAuraName[0]'] == 42
+            assert armor['EffectTriggerSpell[0]'] == damage_id
+            assert armor['EffectApplyAuraName[1]'] == 197
+            assert armor['EffectBasePoints[1]'] + armor['EffectDieSides[1]'] == -1
+            assert armor['EffectApplyAuraName[2]'] == 220
+            assert armor['EffectMiscValue[2]'] == 1792
+            assert armor['EffectMiscValueB[2]'] == 3
+            assert armor['EffectBasePoints[2]'] + armor['EffectDieSides[2]'] == 5
+            reflected = fields('Spell', damage_id)
+            assert reflected['SchoolMask'] == 4
+            assert reflected['Effect[0]'] == 2 and reflected['EffectImplicitTargetA[0]'] == 6
+        mastery = fields('Spell', 92155)
+        assert mastery['Attributes'] & 64 and mastery['Effect[0]'] == 0
+        seal = fields('Spell', 20166)
+        assert seal['EffectApplyAuraName[0]'] == 42 and seal['EffectTriggerSpell[0]'] == 20168
+        assert seal['EffectApplyAuraName[1]'] == 108 and seal['EffectMiscValue[1]'] == 14
+        seal_mana = fields('Spell', 20168)
+        assert seal_mana['Effect[0]'] == 166
+        assert seal_mana['EffectBasePoints[0]'] + seal_mana['EffectDieSides[0]'] == 12
+        seal_mastery = fields('Spell', 954707)
+        assert seal_mastery['Attributes'] & 64 and seal_mastery['Effect[0]'] == 0
+        for identity, mask in ((53817, (131, 69632, 0)), (853817, (32, 0, 0)), (853818, (1, 0, 0))):
+            maelstrom = fields('Spell', identity)
+            assert maelstrom['StackAmount'] == 5
+            assert maelstrom['EffectApplyAuraName[0]'] == 108
+            assert maelstrom['EffectBasePoints[0]'] + maelstrom['EffectDieSides[0]'] == -20
+            assert tuple(maelstrom[f'EffectSpellClassMask[{i}]'] for i in range(3)) == mask
+        cold_support = fields('Spell', 530921)
+        assert cold_support['EffectApplyAuraName[0]'] == 108 and cold_support['EffectMiscValue[0]'] == 36
+        assert cold_support['EffectBasePoints[0]'] + cold_support['EffectDieSides[0]'] == 10
+        assert cold_support['EffectApplyAuraName[1]'] == 108 and cold_support['EffectMiscValue[1]'] == 38
+        assert cold_support['EffectBasePoints[1]'] + cold_support['EffectDieSides[1]'] == 20
+        assert cold_support['EffectApplyAuraName[2]'] == 107 and cold_support['EffectMiscValue[2]'] == 5
+        assert cold_support['EffectBasePoints[2]'] + cold_support['EffectDieSides[2]'] == 9
+        leap = fields('Spell', 954521)
+        assert leap['RecoveryTime'] == 40000 and leap['DurationIndex'] == 36
+        assert leap['Effect[0]'] == 138 and leap['EffectMiscValue[0]'] == 200
+        assert leap['Effect[1]'] == 6 and leap['EffectApplyAuraName[1]'] == 4
+        lesser = fields('Spell', 760082)
+        greater = fields('Spell', 760083)
+        assert lesser['DurationIndex'] == greater['DurationIndex']
     source = (ROOT / 'src/server/coa/AscensionWhiteWalkerSupport.cpp').read_text()
+    aura_source = (ROOT / 'src/server/game/Spells/Auras/SpellAuras.cpp').read_text()
+    charge_generated = CHARGE_MOCKS
+    for name, next_name in [('void Aura::SetCharges', 'uint8 Aura::CalcMaxCharges'),
+                            ('void Aura::PrepareProcToTrigger', 'uint8 Aura::GetProcEffectMask'),
+                            ('void Aura::ConsumeProcCharges', 'void Aura::_DeleteRemovedApplications')]:
+        charge_generated += '\n' + name + aura_source.split(name, 1)[1].split(next_name, 1)[0]
+    charge_generated += CHARGE_CASES
     unit_source = (ROOT / 'src/server/game/Entities/Unit/Unit.cpp').read_text()
+    moving = unit_source.split('bool Unit::CanCastSpellWhileMoving', 1)[1].split('bool Unit::IsMovementPreventedByCasting', 1)[0]
+    assert '53817u, 853817u, 853818u' in moving
+    assert 'effect->IsAffectedOnSpell(info)' in moving and 'aura->GetStackAmount()' in moving
+    player_cast = source.split('void OnPlayerSpellCast(Player* player, Spell* spell, bool)', 1)[1].split('\n    void OnPlayerUpdate', 1)[0]
+    assert 'effect->IsAffectedOnSpell(spell->GetSpellInfo())' in player_cast
+    assert 'spell->SetScriptValue(MaelstromWeapon, aura->GetStackAmount())' in player_cast
+    spell_source = (ROOT / 'src/server/game/Spells/Spell.cpp').read_text()
+    maelstrom_damage = spell_source.split('AscensionWhiteWalkerSupport::MaelstromPvpDamage', 1)[1].split(';', 1)[0]
+    assert 'GetScriptValue(AscensionWhiteWalkerSupport::MaelstromWeapon)' in maelstrom_damage
+    assert 'unitTarget->IsCharmedOwnedByPlayerOrPlayer()' in maelstrom_damage
+    cold_support = source.split('class aura_area52_cold_blood_support :', 1)[1].split('\n};', 1)[0]
+    assert 'CastSpell(GetTarget(), AscensionWhiteWalkerSupport::ColdBloodSupport' in cold_support
+    assert 'RemoveAurasDueToSpell(AscensionWhiteWalkerSupport::ColdBloodSupport' in cold_support
+    leap_support = source.split('class spell_area52_demonic_leap :', 1)[1].split('\n};', 1)[0]
+    assert '_reactivated = GetCaster()->HasAura(AscensionWhiteWalkerSupport::DemonicLeap)' in leap_support
+    assert 'RemoveSpellCooldown(AscensionWhiteWalkerSupport::DemonicLeap, true)' in leap_support
+    roll_support = source.split('class spell_area52_roll_the_bones :', 1)[1].split('\n};', 1)[0]
+    assert 'RemoveAurasDueToSpell(AscensionWhiteWalkerSupport::RollTheBonesLesser' in roll_support
+    assert 'RemoveAurasDueToSpell(AscensionWhiteWalkerSupport::RollTheBonesGreater' in roll_support
+    assert 'RollTheBonesEnhancement(urand(0, 1))' in roll_support
     predicates = unit_source.split('DoneTotalMod *= GetTotalAuraMultiplier(SPELL_AURA_MOD_DAMAGE_DONE_VERSUS_AURASTATE, ', 2)[1:]
     damage_generated = DAMAGE_PREDICATE_MOCKS
     for name, body, arguments in [('SpellPredicate', predicates[0], ', int damagetype'),
@@ -1321,7 +1637,7 @@ def main():
                              'Unit const* caster' + arguments + ') { return ' + expression.replace('this', 'caster') + '; }\n')
     damage_generated += DAMAGE_PREDICATE_CASES
     mystic_source = (ROOT / 'src/server/coa/AscensionMysticEnchant.cpp').read_text()
-    correction = mystic_source.split('float NonstackingCostCorrection', 1)[1].split('bool ApplyGuide', 1)[0]
+    correction = mystic_source.split('float NonstackingCostCorrection', 1)[1].split('\n}\n}', 1)[0] + '\n}\n'
     cost_generated = COST_MOCKS + '\nfloat NonstackingCostCorrection' + correction + COST_CASES
     assert 'NonstackingCostCorrection(caster, uint32(1) << school)' in (
         ROOT / 'src/server/game/Spells/SpellInfo.cpp').read_text()
@@ -1361,7 +1677,8 @@ def main():
         database.executescript(freezing_migration)
         database.executescript(freezing_migration)
         assert database.execute('SELECT ScriptName FROM spell_script_names WHERE spell_id=14177 ORDER BY ScriptName').fetchall() == [
-            ('spell_area52_cold_blood_activation',), ('spell_rog_cold_blood',)]
+            ('aura_area52_cold_blood_support',), ('spell_area52_cold_blood_activation',),
+            ('spell_rog_cold_blood',)]
         assert database.execute('SELECT ProcFlags, SchoolMask FROM spell_proc WHERE SpellId=979135').fetchone() == (0x10010, 16)
         assert database.execute('SELECT ScriptName FROM spell_script_names WHERE spell_id=530920').fetchall() == [
             ('aura_area52_freezing_blood_consumed',)]
@@ -1390,6 +1707,18 @@ def main():
         database.executescript(ebb_migration)
         assert database.execute('SELECT ScriptName FROM spell_script_names WHERE spell_id=978746').fetchall() == [
             ('aura_area52_ebb_drain',)]
+        damage_charge_migration = (ROOT / 'data/sql/updates/pending_db_world/rev_20261014000009_area52_white_walker_damage_charges.sql').read_text()
+        database.executescript(damage_charge_migration)
+        database.executescript(damage_charge_migration)
+        assert database.execute('SELECT SpellId, Charges, AttributesMask, SpellFamilyMask2 FROM spell_proc '
+                                'WHERE SpellId IN (979011, 979053) ORDER BY SpellId').fetchall() == [
+            (979011, 5, 0, 0), (979053, 1, 2, 32)]
+        fingers_migration = (ROOT / 'data/sql/updates/pending_db_world/rev_20261014000010_area52_frozen_blade_fingers.sql').read_text()
+        database.executescript(fingers_migration)
+        database.executescript(fingers_migration)
+        assert database.execute('SELECT spell_id FROM spell_script_names WHERE '
+                                "ScriptName='aura_area52_frozen_blade_fingers_guard' ORDER BY spell_id").fetchall() == [
+            (44543,), (44545,)]
     effects = (ROOT / 'src/server/game/Spells/SpellEffects.cpp').read_text()
     eviscerate = effects.split('// Eviscerate\n', 1)[1].split('break;', 1)[0]
     assert 'EviscerateScalingBonus(area52, ap,' in eviscerate
@@ -1454,6 +1783,10 @@ def main():
     proc_generated += '\nvoid TidesDispatch' + tides_dispatch
     ebb_tick = source.split('class aura_area52_ebb_drain :', 1)[1].split('void Tick', 1)[1].split('void Register()', 1)[0]
     proc_generated += '\nvoid EbbTick' + ebb_tick
+    deep_freeze = source.split('class spell_area52_deep_freeze :', 1)[1].split('void Hit', 1)[1].split('void Register()', 1)[0]
+    proc_generated += '\nvoid DeepFreezeHit' + deep_freeze
+    fingers_guard = source.split('class aura_area52_frozen_blade_fingers_guard :', 1)[1].split('bool CheckProc', 1)[1].split('void Register()', 1)[0]
+    proc_generated += '\nbool FingersGuard' + fingers_guard
     proc_generated += PROC_RANK_CASES
     assert 'event.GetDamageInfo()->GetDamage()' in source
     assert 'AscensionWhiteWalkerSupport::FightersPower' in source
@@ -1468,6 +1801,21 @@ def main():
     assert 'ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE' in conditional
     assert 'FrozenPowerTalentPercent' in conditional and 'FrozenPowerMysticPercent' in conditional
     assert '8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799' in (ROOT / 'src/server/game/Entities/Unit/Unit.cpp').read_text()
+    mage_source = (ROOT / 'src/server/scripts/Spells/spell_mage.cpp').read_text()
+    molten_handler = mage_source.split('class spell_mage_molten_armor :', 1)[1].split('class spell_mage_mirror_image', 1)[0]
+    assert 'PROC_FLAG_TAKEN_MELEE_AUTO_ATTACK' in molten_handler
+    assert 'RegisterSpellScript(spell_mage_molten_armor)' in mage_source
+    spell_info_source = (ROOT / 'src/server/game/Spells/SpellInfo.cpp').read_text()
+    mage_armor_family = spell_info_source.split('case SPELLFAMILY_MAGE:', 1)[1].split('case SPELLFAMILY_WARLOCK:', 1)[0]
+    assert '0x12040000' in mage_armor_family and 'SPELL_SPECIFIC_MAGE_ARMOR' in mage_armor_family
+    aura_source_handlers = (ROOT / 'src/server/game/Spells/Auras/SpellAuraEffects.cpp').read_text()
+    assert 'HandleModRatingFromStat' in aura_source_handlers
+    paladin_source = (ROOT / 'src/server/scripts/Spells/spell_paladin.cpp').read_text()
+    seal_handler = paladin_source.split('class spell_pal_seal_of_light :', 1)[1].split('class spell_pal_sacred_shield', 1)[0]
+    assert 'eventInfo.GetActor() != eventInfo.GetProcTarget()' in seal_handler
+    judgement_handler = paladin_source.split('class spell_pal_judgement :', 1)[1].split('class spell_pal_judgement_of_command', 1)[0]
+    assert 'SPELL_PALADIN_JUDGEMENT_DAMAGE' in judgement_handler
+    assert 'GetCaster()->CastSpell(GetHitUnit(), spellId2, true)' in judgement_handler
     handler = source.split('class item_area52_frostbrand :', 1)[1].split('class player_area52_frostbrand', 1)[0]
     handler = 'class item_area52_frostbrand :' + handler
     lifecycle = source.split('class player_area52_frostbrand :', 1)[1].split('class aura_area52_slice_and_ice', 1)[0]
@@ -1495,6 +1843,10 @@ def main():
                         str(source), '-o', str(binary)], check=True)
         subprocess.run([str(binary)], check=True)
         source.write_text(damage_generated)
+        subprocess.run([compiler, '-std=c++20', '-Wall', '-Wextra', '-Werror',
+                        str(source), '-o', str(binary)], check=True)
+        subprocess.run([str(binary)], check=True)
+        source.write_text(charge_generated)
         subprocess.run([compiler, '-std=c++20', '-Wall', '-Wextra', '-Werror',
                         str(source), '-o', str(binary)], check=True)
         subprocess.run([str(binary)], check=True)
