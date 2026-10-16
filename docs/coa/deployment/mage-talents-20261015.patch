@@ -1,0 +1,284 @@
+--- a/src/server/game/Spells/SpellInfo.cpp
++++ b/src/server/game/Spells/SpellInfo.cpp
+@@ -15,6 +15,7 @@
+  * with this program. If not, see <http://www.gnu.org/licenses/>.
+  */
+ 
++#include "../../coa/AscensionMageTalentTargets.h"
+ #include "SpellInfo.h"
+ #include "../../coa/AscensionMysticEnchant.h"
+ #include "Chat.h"
+@@ -1504,6 +1505,9 @@
+     if (mod->targetSpellId && mod->targetSpellId != Id)
+         return false;
+ 
++    if (auto const target = AscensionMageTalentTarget(mod->spellId, Id))
++        return *target;
++
+     if (SpellFamilyName == 31 && affectSpell->SpellFamilyName == 31)
+     {
+         // The copied Dark Veil mask collides with Hammer. Route these modifiers
+--- a/src/server/game/Spells/Spell.cpp
++++ b/src/server/game/Spells/Spell.cpp
+@@ -15,6 +15,7 @@
+  * with this program. If not, see <http://www.gnu.org/licenses/>.
+  */
+ 
++#include "../../coa/AscensionPowerSurge.h"
+ #include "Spell.h"
+ #include "../../coa/AscensionWhiteWalkerSupportRules.h"
+ #include "DungeonHealth.h"
+@@ -4544,6 +4545,7 @@
+ 
+     if (m_spellState == SPELL_STATE_FINISHED)
+         return;
++    AscensionPowerSurge::Finish(m_caster, m_spellInfo->Id, ok);
+     m_spellState = SPELL_STATE_FINISHED;
+ 
+     // FindMap() check: pending spell events are destroyed after the caster has left the map,
+--- a/src/server/game/Entities/Unit/Unit.cpp
++++ b/src/server/game/Entities/Unit/Unit.cpp
+@@ -578,8 +578,11 @@
+     HandleSafeUnitPointersOnDelete(this);
+ }
+ 
++#include "../../coa/AscensionPowerSurge.inc"
++
+ void Unit::Update(uint32 p_time)
+ {
++    AscensionPowerSurge::Update(this, p_time);
+     sScriptMgr->OnUnitUpdate(this, p_time);
+ 
+     // WARNING! Order of execution here is important, do not change.
+@@ -1103,6 +1106,9 @@
+             return 0;
+         }
+     }
++
++    AscensionPowerSurge::Damage(victim, attacker, damage, cleanDamage ? cleanDamage->absorbed_damage : 0,
++        damagetype == DIRECT_DAMAGE && cleanDamage && cleanDamage->attackType != RANGED_ATTACK);
+ 
+     // Signal the pet it was attacked so the AI can respond if needed
+     if (victim->IsCreature() && attacker != victim && victim->IsPet() && victim->IsAlive())
+--- a/src/server/coa/Area52Dependencies.inc
++++ b/src/server/coa/Area52Dependencies.inc
+@@ -82,6 +82,20 @@
+             return;
+         switch (info->Id)
+         {
++            case 828574:
++            case 828575:
++            case 828576:
++                info->Effects[EFFECT_0].ApplyAuraName = SPELL_AURA_DUMMY;
++                break;
++            case 828590:
++            case 828591:
++            case 828594:
++            case 828595:
++            case 828596:
++            case 828597:
++                info->SpellFamilyName = SPELLFAMILY_GENERIC;
++                info->AttributesCu |= SPELL_ATTR0_CU_SHARE_DAMAGE;
++                break;
+             case 34935:
+             case 34938:
+             case 34939:
+--- /dev/null
++++ b/src/server/coa/AscensionMageTalentTargets.h
+@@ -0,0 +1,28 @@
++#ifndef ASCENSION_MAGE_TALENT_TARGETS_H
++#define ASCENSION_MAGE_TALENT_TARGETS_H
++
++#include <cstdint>
++#include <optional>
++
++inline std::optional<bool> AscensionMageTalentTarget(std::uint32_t modifier, std::uint32_t target)
++{
++    switch (modifier)
++    {
++        case 828574:
++        case 828575:
++        case 828576:
++            return false;
++        case 31682:
++        case 31683:
++        case 31684:
++            return target == 831682;
++        case 54659:
++            return target == 701464;
++        case 701464:
++            return target == 28574 || target == 54658 || target == 54659;
++        default:
++            return std::nullopt;
++    }
++}
++
++#endif
+--- /dev/null
++++ b/src/server/coa/AscensionPowerSurge.h
+@@ -0,0 +1,14 @@
++#ifndef ASCENSION_POWER_SURGE_H
++#define ASCENSION_POWER_SURGE_H
++
++#include <cstdint>
++
++class Unit;
++namespace AscensionPowerSurge
++{
++void Damage(Unit* victim, Unit* attacker, std::uint32_t damage, std::uint32_t absorbed, bool melee);
++void Update(Unit* unit, std::uint32_t diff);
++void Finish(Unit* unit, std::uint32_t spell, bool completed);
++}
++
++#endif
+--- /dev/null
++++ b/src/server/coa/AscensionPowerSurgeRules.h
+@@ -0,0 +1,63 @@
++#ifndef ASCENSION_POWER_SURGE_RULES_H
++#define ASCENSION_POWER_SURGE_RULES_H
++
++#include <algorithm>
++#include <cstdint>
++
++namespace AscensionPowerSurge
++{
++inline unsigned Chance(unsigned rank)
++{
++    return rank <= 3 ? rank * 2 : 0;
++}
++
++inline unsigned Burst(unsigned school)
++{
++    switch (school)
++    {
++        case 2: return 828597;
++        case 4: return 828591;
++        case 8: return 828594;
++        case 16: return 828595;
++        case 32: return 828596;
++        case 64: return 828590;
++        default: return 0;
++    }
++}
++
++struct ReturnState
++{
++    std::uint64_t stored = 0;
++    std::uint64_t remaining = 0;
++    unsigned ticks = 0;
++    unsigned elapsed = 0;
++
++    void Capture(unsigned damage, unsigned absorbed)
++    {
++        stored += std::uint64_t(damage) + absorbed;
++    }
++
++    void Finish(bool completed)
++    {
++        if (completed && stored)
++        {
++            remaining += stored;
++            ticks = 10;
++            elapsed = 0;
++        }
++        stored = 0;
++    }
++
++    std::uint64_t Tick()
++    {
++        if (!ticks)
++            return 0;
++        auto amount = remaining / ticks;
++        remaining -= amount;
++        --ticks;
++        return amount;
++    }
++};
++}
++
++#endif
+--- /dev/null
++++ b/src/server/coa/AscensionPowerSurge.inc
+@@ -0,0 +1,82 @@
++#include "AscensionPowerSurge.h"
++#include "AscensionPowerSurgeRules.h"
++#include "AscensionFreePick.h"
++
++namespace AscensionPowerSurge
++{
++struct State : DataMap::Base
++{
++    ReturnState mana;
++    bool dispatching = false;
++};
++
++unsigned Rank(Unit* unit)
++{
++    if (unit->HasAura(828576)) return 3;
++    if (unit->HasAura(828575)) return 2;
++    if (unit->HasAura(828574)) return 1;
++    return 0;
++}
++
++void Damage(Unit* victim, Unit* attacker, std::uint32_t damage, std::uint32_t absorbed, bool melee)
++{
++    Player* player = victim ? victim->ToPlayer() : nullptr;
++    if (!player || !AscensionFreePick::Applies(player) || !player->IsAlive())
++        return;
++    unsigned rank = Rank(player);
++    if (!rank)
++        return;
++    Spell* cast = player->GetCurrentSpell(CURRENT_CHANNELED_SPELL);
++    if (!cast)
++        cast = player->GetCurrentSpell(CURRENT_GENERIC_SPELL);
++    if (!cast || cast->getState() == SPELL_STATE_FINISHED)
++        return;
++    auto const* info = cast->GetSpellInfo();
++    State* state = player->CustomData.GetDefault<State>("area52.power_surge");
++    if (rank == 3 && info->Id == 986067)
++        state->mana.Capture(damage, absorbed);
++    if (!melee || !attacker || attacker == victim || (!damage && !absorbed) || state->dispatching)
++        return;
++    if (!info->IsChanneled() && !info->HasEffect(SPELL_EFFECT_SCHOOL_DAMAGE) &&
++        !info->HasEffect(SPELL_EFFECT_HEALTH_LEECH) && !info->HasAura(SPELL_AURA_PERIODIC_DAMAGE))
++        return;
++    unsigned spell = Burst(info->SchoolMask);
++    if (!spell || !roll_chance_i(Chance(rank)))
++        return;
++    state->dispatching = true;
++    player->CastSpell(player, spell, true);
++    state->dispatching = false;
++}
++
++void Finish(Unit* unit, std::uint32_t spell, bool completed)
++{
++    if (spell != 986067 || !unit)
++        return;
++    if (State* state = unit->CustomData.Get<State>("area52.power_surge"))
++        state->mana.Finish(completed && Rank(unit) == 3 && unit->IsAlive());
++}
++
++void Update(Unit* unit, std::uint32_t diff)
++{
++    State* state = unit->CustomData.Get<State>("area52.power_surge");
++    if (!state)
++        return;
++    if (!unit->IsAlive() || Rank(unit) != 3)
++    {
++        state->mana = {};
++        return;
++    }
++    if (!state->mana.ticks)
++        return;
++    state->mana.elapsed += diff;
++    while (state->mana.elapsed >= 1000 && state->mana.ticks)
++    {
++        state->mana.elapsed -= 1000;
++        auto amount = state->mana.Tick();
++        auto maximum = unit->GetMaxPower(POWER_MANA);
++        auto current = unit->GetPower(POWER_MANA);
++        auto missing = maximum > current ? maximum - current : 0;
++        unit->EnergizeBySpell(unit, 828573, std::min<std::uint64_t>(amount, missing), POWER_MANA);
++    }
++}
++}
