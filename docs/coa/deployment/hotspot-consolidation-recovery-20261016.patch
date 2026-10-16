@@ -1,0 +1,122 @@
+--- a/src/server/coa/XPHotspotRules.h
++++ b/src/server/coa/XPHotspotRules.h
+@@ -39,22 +39,27 @@
+ enum Setting : size_t
+ {
+     Announcements, ActiveCount, DefaultBonus, DefaultDuration, DefaultCooldown,
+-    EasternKingdoms, Kalimdor, Outland, Northrend, Alliance, Horde, Neutral, SettingsRevision, SettingCount
++    EasternKingdoms, Kalimdor, Outland, Northrend, Alliance, Horde, Neutral, SettingsRevision, FullZoneOnly, SettingCount
+ };
+ 
+ struct GeneralSettings
+ {
+-    std::array<uint32_t, SettingCount> Values = {1, 3, 150, 3600, 3600, 20, 20, 20, 20, 20, 20, 20, 1};
++    std::array<uint32_t, SettingCount> Values = {1, 3, 150, 3600, 3600, 20, 20, 20, 20, 20, 20, 20, 1, 0};
+ };
+ 
+ inline bool ValidSettings(GeneralSettings const& settings)
+ {
+     auto const& v = settings.Values;
+-    return v[Announcements] <= 1 && v[ActiveCount] <= 20 && v[DefaultBonus] <= 1000 &&
++    return v[FullZoneOnly] <= 1 && v[Announcements] <= 1 && v[ActiveCount] <= 20 && v[DefaultBonus] <= 1000 &&
+         v[DefaultDuration] >= 60 && v[DefaultDuration] <= 86400 && v[DefaultCooldown] <= 604800 &&
+         v[SettingsRevision] > 0 && v[SettingsRevision] < UINT32_MAX &&
+         std::all_of(v.begin() + EasternKingdoms, v.begin() + SettingsRevision,
+             [](uint32_t cap) { return cap <= 20; });
++}
++
++inline bool RotationShapeAllowed(GeneralSettings const& settings, std::string const& kind)
++{
++    return !settings.Values[FullZoneOnly] || kind == "zone";
+ }
+ 
+ inline size_t ContinentQuota(uint32_t map, uint32_t zone)
+--- a/src/server/coa/XPHotspots.cpp
++++ b/src/server/coa/XPHotspots.cpp
+@@ -247,6 +247,11 @@
+         (r.Kind != "zone" || (area && area->mapid == r.Map && !area->zone));
+ }
+ 
++bool RotationAllowed(Location const& r)
++{
++    return Allowed(r) && RotationShapeAllowed(General, r.Kind);
++}
++
+ bool SaveMany(std::vector<Location> const& rows, GeneralSettings const* settings = nullptr)
+ {
+     auto transaction = WorldDatabase.BeginTransaction();
+@@ -278,7 +283,7 @@
+     {
+         auto const& r = rows[i];
+         Locations[r.Id] = r;
+-        if (r.Enabled && r.Ends > Now() && Allowed(r))
++        if (r.Enabled && r.Ends > Now() && RotationAllowed(r))
+             ActiveIds.insert(r.Id);
+         else
+             ActiveIds.erase(r.Id);
+@@ -352,7 +357,7 @@
+         std::transform(name.begin(), name.end(), name.begin(), [](unsigned char c) { return std::tolower(c); });
+         if (catalog && gm ? (map == UINT32_MAX || r.Map == map) && (!zone || r.Zone == zone) &&
+             (search.empty() || name.find(search) != std::string::npos || std::to_string(id) == search) :
+-            Allowed(r) && r.Ends > now)
++            RotationAllowed(r) && r.Ends > now)
+             rows.push_back(r);
+     }
+     uint32 perPage = catalog && gm ? 12 : 20;
+@@ -402,7 +407,7 @@
+         for (uint32 id : ActiveIds)
+         {
+             auto const& r = Locations.at(id);
+-            if (r.Ends > Now() && Allowed(r) && Contains(r, player->GetMapId(), player->GetZoneId(),
++            if (r.Ends > Now() && RotationAllowed(r) && Contains(r, player->GetMapId(), player->GetZoneId(),
+                 {player->GetPositionX(), player->GetPositionY()}) && (!best || r.Bonus > best->Bonus))
+                 best = &r;
+         }
+@@ -459,7 +464,7 @@
+         input >> id;
+         if (Locations.contains(id) && Locations.at(id).Kind == "zone" &&
+             !Masks.contains(Locations.at(id).Zone) && MaskRequests.size() < 20 &&
+-            (GM(player) || (Allowed(Locations.at(id)) && Locations.at(id).Ends > Now())))
++            (GM(player) || (RotationAllowed(Locations.at(id)) && Locations.at(id).Ends > Now())))
+             MaskRequests[Locations.at(id).Zone] = Locations.at(id);
+         return;
+     }
+@@ -1015,6 +1020,11 @@
+             Send(player, "ERROR|Location changed. Refresh before editing.");
+             return;
+         }
++        if (action == "next" && !RotationAllowed(r))
++        {
++            Send(player, "ERROR|Only full-zone hotspots can activate while the global filter is enabled.");
++            return;
++        }
+         if ((action == "enable" || action == "next") && (!Allowed(r) || !Valid(r)))
+         {
+             Send(player, "ERROR|Location geometry or realm map restrictions prevent activation.");
+@@ -1166,7 +1176,7 @@
+                     r.Valid = r.Valid && Valid(r);
+                     Records[r.Id] = t;
+                     Locations[r.Id] = r;
+-                    if (r.Enabled && r.Ends > Now() && Allowed(r))
++                    if (r.Enabled && r.Ends > Now() && RotationAllowed(r))
+                     {
+                         ActiveIds.insert(r.Id);
+                         if (r.Kind == "zone")
+@@ -1203,7 +1213,7 @@
+         for (auto const& [id, row] : Locations)
+         {
+             auto r = row;
+-            if (r.Ends && (r.Ends <= now || !Allowed(r) || !r.Enabled ||
++            if (r.Ends && (r.Ends <= now || !RotationAllowed(r) || !r.Enabled ||
+                 !QuotaAvailable(General, counts, ContinentQuota(r.Map, r.Zone), FactionQuota(r))))
+             {
+                 r.LastEnd = std::min(r.Ends, now);
+@@ -1224,7 +1234,7 @@
+             std::vector<Location> candidates;
+             uint32 total = 0;
+             for (auto const& [id, r] : Locations)
+-                if (Allowed(r) && Eligible(r, MaxContinent, now) &&
++                if (RotationAllowed(r) && Eligible(r, MaxContinent, now) &&
+                     QuotaAvailable(General, counts, ContinentQuota(r.Map, r.Zone), FactionQuota(r)) &&
+                     std::find(activeZones.begin(), activeZones.end(), r.Zone) == activeZones.end())
+                 {
