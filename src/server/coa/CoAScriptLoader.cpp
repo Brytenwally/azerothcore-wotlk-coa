@@ -280,6 +280,8 @@ void AddSC_AscensionClassBundleStore();
 void AddSC_AscensionLfgObjective();
 void AddSC_AscensionBushcraft();
 
+void AddSC_XPHotspots();
+
 void AddCoAScripts()
 {
     AddAscensionStockCoefficientScripts();
@@ -539,6 +541,7 @@ void AddCoAScripts()
     AddAscensionVenomancerVenomTalentScripts();
     AddAscensionVenomancerVenomPayloadScripts();
     AddAscensionTinkerCombatSymbiosisScripts();
+    AddSC_XPHotspots();
     AddCoABugReportScripts();
     AddCoAGameplayTestScripts();
     AddSC_AscensionResourceTalents();
