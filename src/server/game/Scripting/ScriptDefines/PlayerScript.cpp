@@ -160,6 +160,15 @@ uint8 ScriptMgr::GetMaxAllowedLevel(Player* player)
     return cap;
 }
 
+bool ScriptMgr::OnPlayerHasNoBonusExperience(Player* player)
+{
+    bool suppress = false;
+    CALL_ENABLED_HOOKS(PlayerScript, PLAYERHOOK_ON_HAS_NO_BONUS_EXPERIENCE,
+        if (script->OnPlayerHasNoBonusExperience(player))
+            suppress = true;);
+    return suppress;
+}
+
 bool ScriptMgr::OnPlayerReputationChange(Player* player, uint32 factionID, int32& standing, bool incremental)
 {
     CALL_ENABLED_BOOLEAN_HOOKS(PlayerScript, PLAYERHOOK_ON_REPUTATION_CHANGE, !script->OnPlayerReputationChange(player, factionID, standing, incremental));

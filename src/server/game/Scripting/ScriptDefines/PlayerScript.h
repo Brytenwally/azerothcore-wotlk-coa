@@ -234,6 +234,7 @@ enum PlayerHook
     PLAYERHOOK_ON_GET_MAX_ALLOWED_LEVEL,
     PLAYERHOOK_ON_BANKER_ACTIVATE,
     PLAYERHOOK_ON_BANK_WITHDRAW,
+    PLAYERHOOK_ON_HAS_NO_BONUS_EXPERIENCE,
     PLAYERHOOK_END
 };
 
@@ -314,6 +315,8 @@ public:
     // every multiplier (rate, RaF, rested, favored, other hook order), so it
     // cannot be bypassed by a large XP gain.
     virtual uint8 OnPlayerGetMaxAllowedLevel(Player* /*player*/) { return 0; }
+
+    virtual bool OnPlayerHasNoBonusExperience(Player* /*player*/) { return false; }
 
     // Called when a player's reputation changes (before it is actually changed)
     virtual bool OnPlayerReputationChange(Player* /*player*/, uint32 /*factionID*/, int32& /*standing*/, bool /*incremental*/) { return true; }

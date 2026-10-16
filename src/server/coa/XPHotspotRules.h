@@ -12,14 +12,6 @@
 
 namespace XPHotspots
 {
-template <typename Manager, typename PlayerType>
-bool SuppressesBonusExperience(Manager* manager, PlayerType* player)
-{
-    if constexpr (requires { manager->OnPlayerHasNoBonusExperience(player); })
-        return manager->OnPlayerHasNoBonusExperience(player);
-    return false;
-}
-
 inline bool CanManage(uint32_t security, std::string_view action)
 {
     return security >= 2 && (action != "delete" || security >= 3);

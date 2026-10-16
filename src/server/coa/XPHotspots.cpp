@@ -404,7 +404,7 @@ void SyncBuff(Player* player)
 {
     Location const* best = nullptr;
     if (Enabled && player->IsInWorld() && player->FindMap() && !player->GetMap()->Instanceable() &&
-        !SuppressesBonusExperience(sScriptMgr, player))
+        !sScriptMgr->OnPlayerHasNoBonusExperience(player))
         for (uint32 id : ActiveIds)
         {
             auto const& r = Locations.at(id);

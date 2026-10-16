@@ -7,21 +7,9 @@ source = r'''
 #include "XPHotspotRules.h"
 #include <cassert>
 #include <limits>
-struct PlainManager { };
-struct ChallengeManager
-{
-    bool OnPlayerHasNoBonusExperience(bool* suppressed) { return *suppressed; }
-};
 int main()
 {
     using namespace XPHotspots;
-    PlainManager plain;
-    ChallengeManager challenges;
-    bool suppressed = true;
-    assert(!SuppressesBonusExperience(&plain, &suppressed));
-    assert(SuppressesBonusExperience(&challenges, &suppressed));
-    suppressed = false;
-    assert(!SuppressesBonusExperience(&challenges, &suppressed));
     Location r;
     r.Name = "Test";
     r.Map = 0;
