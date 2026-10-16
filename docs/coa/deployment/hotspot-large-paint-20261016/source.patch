@@ -1,0 +1,127 @@
+--- a/src/server/coa/XPHotspotPainting.h
++++ b/src/server/coa/XPHotspotPainting.h
+@@ -7,8 +7,14 @@
+ 
+ namespace XPHotspots
+ {
+-inline bool Paint(Location& row, Point from, Point to, double radius, bool square)
++inline bool Paint(Location& row, Point from, Point to, double radius, bool square, std::string* error = nullptr)
+ {
++    auto fail = [&](char const* reason)
++    {
++        if (error)
++            *error = reason;
++        return false;
++    };
+     namespace bg = boost::geometry;
+     using XY = bg::model::d2::point_xy<double>;
+     using Polygon = bg::model::polygon<XY>;
+@@ -39,17 +45,24 @@
+         bg::correct(original);
+         std::vector<Polygon> joined;
+         bg::union_(original, stroke, joined);
+-        if (joined.size() != 1 || !joined.front().inners().empty())
+-            return false;
++        if (joined.size() != 1)
++            return fail("Brush must overlap the existing area; separate islands require another hotspot.");
++        if (!joined.front().inners().empty())
++            return fail("Stroke encloses a hole. Fill the gap or undo this stroke.");
+         result = joined.front();
+     }
+     if (result.outer().size() > MaxPolygonPoints + 1)
+     {
+-        Polygon reduced;
+-        bg::simplify(result, reduced, std::min(2.0, radius / 20));
+-        if (!bg::is_valid(reduced) || !bg::covered_by(result, reduced))
+-            return false;
+-        result = reduced;
++        for (double tolerance : {2.0, 5.0, 10.0, 20.0})
++        {
++            Polygon reduced;
++            bg::simplify(result, reduced, tolerance);
++            if (bg::is_valid(reduced) && reduced.outer().size() <= MaxPolygonPoints + 1)
++            {
++                result = std::move(reduced);
++                break;
++            }
++        }
+     }
+     std::vector<Point> points;
+     for (size_t i = 0; i + 1 < result.outer().size(); ++i)
+@@ -61,8 +74,10 @@
+     if (points.size() > 1 && std::hypot(points.front().X - points.back().X,
+         points.front().Y - points.back().Y) <= 1e-7)
+         points.pop_back();
++    if (points.size() > MaxPolygonPoints)
++        return fail("Boundary exceeds 256 points after 20-yard smoothing. Undo or simplify this stroke.");
+     if (!ValidPolygon(points))
+-        return false;
++        return fail("Boundary intersects itself or exceeds map coordinates. Undo this stroke.");
+     if (row.Points.size() < 3)
+         row.Center = from;
+     row.Points = std::move(points);
+@@ -111,9 +126,9 @@
+     row.Source = "gm-shape";
+     return true;
+ }
+-inline bool ApplyLocalPaint(Location& row, std::string const& edits)
++inline bool ApplyLocalPaint(Location& row, std::string const& edits, std::string* error = nullptr)
+ {
+-    if (edits.size() > 12000 || row.Kind != "polygon")
++    if (edits.size() > 24000 || row.Kind != "polygon")
+         return false;
+     Location candidate = row;
+     std::istringstream stream(edits);
+@@ -121,7 +136,7 @@
+     size_t count = 0;
+     while (std::getline(stream, operation, ';'))
+     {
+-        if (operation.empty() || ++count > 96)
++        if (operation.empty() || ++count > 192)
+             return false;
+         std::istringstream input(operation);
+         std::string kind, extra;
+@@ -143,7 +158,7 @@
+             double radius = 0;
+             uint32_t square = 0;
+             if (!(input >> from.X >> from.Y >> to.X >> to.Y >> radius >> square) || square > 1 ||
+-                !Paint(candidate, from, to, radius, square != 0))
++                !Paint(candidate, from, to, radius, square != 0, error))
+                 return false;
+         }
+         else
+--- a/src/server/coa/XPHotspots.cpp
++++ b/src/server/coa/XPHotspots.cpp
+@@ -485,7 +485,7 @@
+     {
+         uint32 id = 0, revision = 0, parts = 0;
+         LocalPaint.erase(owner);
+-        if (!(input >> id >> revision >> parts) || !parts || parts > 62 || !Drafts.contains(owner) ||
++        if (!(input >> id >> revision >> parts) || !parts || parts > 126 || !Drafts.contains(owner) ||
+             Drafts.at(owner).Id != id || Drafts.at(owner).Revision != revision)
+         {
+             Send(player, "ERROR|Draft changed. Local painting retained; reopen the original draft before retrying.");
+@@ -509,7 +509,7 @@
+         std::string part;
+         std::getline(input >> std::ws, part);
+         ++upload.Next;
+-        if (upload.Edits.size() + part.size() > 12000)
++        if (upload.Edits.size() + part.size() > 24000)
+         {
+             LocalPaint.erase(owner);
+             Send(player, "ERROR|Local drawing exceeds the upload limit. Undo some strokes and retry.");
+@@ -865,9 +865,11 @@
+                 Send(player, "ERROR|Incomplete upload or hotspot changed. Nothing saved; local drawing retained.");
+                 return;
+             }
+-            if (!ApplyLocalPaint(r, upload.Edits))
+-            {
+-                Send(player, "ERROR|Invalid painted boundary. Nothing saved; local painting retained for correction.");
++            std::string paintError;
++            if (!ApplyLocalPaint(r, upload.Edits, &paintError))
++            {
++                Send(player, "ERROR|" + (paintError.empty() ? std::string("Drawing exceeds input limits or has an invalid trace.") : paintError) +
++                    " Nothing saved; undo or correct the red preview.");
+                 return;
+             }
+         }
