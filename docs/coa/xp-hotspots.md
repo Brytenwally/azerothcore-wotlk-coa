@@ -26,6 +26,10 @@ expansion-2 client should explicitly set this option to 0. Blood elf and draenei
 physical map 530 count as Azeroth. Instances, battlegrounds and unsupported physical maps are
 excluded. Changing these options requires a restart; the GM announcement toggle is immediate.
 
+The optional host-core `OnPlayerHasNoBonusExperience` hook suppresses Hotspot buffs when present.
+Core revisions without that hook (including the main branch used for this PR) have no such challenge
+integration; the Hotspot system does not import an unrelated challenge module or its core changes.
+
 The original buff 993945 must exist with a monster-kill-only XP aura. Startup refuses to enable the
 service when the configured spell is incompatible. While enabled, that spell is reserved for hotspot
 ownership and cannot be saved as a character aura. Logout removes it; login and presence checks
