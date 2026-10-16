@@ -1,0 +1,29 @@
+--- a/src/server/coa/XPHotspots.cpp
++++ b/src/server/coa/XPHotspots.cpp
+@@ -242,7 +242,7 @@
+ bool Allowed(Location const& r)
+ {
+     auto map = sMapStore.LookupEntry(r.Map);
+-    auto area = GetAreaEntryByAreaID(r.Zone);
++    auto area = sAreaTableStore.LookupEntry(r.Zone);
+     return !r.Retired && r.Valid && map && !map->Instanceable() && r.Continent <= MaxContinent &&
+         (r.Kind != "zone" || (area && area->mapid == r.Map && !area->zone));
+ }
+@@ -321,7 +321,7 @@
+ 
+ size_t FactionQuota(Location const& r)
+ {
+-    auto area = GetAreaEntryByAreaID(r.Zone);
++    auto area = sAreaTableStore.LookupEntry(r.Zone);
+     if (area && area->team == AREATEAM_ALLY)
+         return Alliance;
+     if (area && area->team == AREATEAM_HORDE)
+@@ -581,7 +581,7 @@
+                 return;
+             }
+             auto entry = sMapStore.LookupEntry(r.Map);
+-            auto area = GetAreaEntryByAreaID(r.Zone);
++            auto area = sAreaTableStore.LookupEntry(r.Zone);
+             if (!entry || entry->Instanceable() || !area || area->mapid != r.Map || area->zone ||
+                 !std::isfinite(r.Center.X) || !std::isfinite(r.Center.Y) ||
+                 std::abs(r.Center.X) > 20000 || std::abs(r.Center.Y) > 20000)
