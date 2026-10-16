@@ -1,0 +1,31 @@
+--- a/src/server/coa/XPHotspotPainting.h
++++ b/src/server/coa/XPHotspotPainting.h
+@@ -53,7 +53,14 @@
+     }
+     std::vector<Point> points;
+     for (size_t i = 0; i + 1 < result.outer().size(); ++i)
+-        points.push_back({bg::get<0>(result.outer()[i]), bg::get<1>(result.outer()[i])});
++    {
++        Point point{bg::get<0>(result.outer()[i]), bg::get<1>(result.outer()[i])};
++        if (points.empty() || std::hypot(point.X - points.back().X, point.Y - points.back().Y) > 1e-7)
++            points.push_back(point);
++    }
++    if (points.size() > 1 && std::hypot(points.front().X - points.back().X,
++        points.front().Y - points.back().Y) <= 1e-7)
++        points.pop_back();
+     if (!ValidPolygon(points))
+         return false;
+     if (row.Points.size() < 3)
+--- a/src/server/coa/Area52BuildSelection.h
++++ b/src/server/coa/Area52BuildSelection.h
+@@ -40,9 +40,8 @@
+     if (retainExisting)
+         for (auto const& known : previous)
+             ranks[known.EntryId] = std::max(ranks[known.EntryId], known.Rank);
+-    if (plan.PrimaryStat)
+     {
+-        constexpr std::array<std::uint32_t, 7> paths = { 0, 1149, 1150, 1151, 1152, 0, 18149 };
++        constexpr std::array<std::uint32_t, 7> paths = { 1149, 1150, 0, 1151, 1152, 0, 18149 };
+         if (plan.PrimaryStat >= paths.size() || !paths[plan.PrimaryStat]
+             || !catalog.Entries.contains(paths[plan.PrimaryStat]))
+             return { "CA_UPDATE_ENTRIES_BAD_ENTRY", "CA_LEARN_BAD_ABILITY" };
