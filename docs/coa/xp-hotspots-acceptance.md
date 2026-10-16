@@ -33,6 +33,7 @@ and upstream PR publication separate from these tests.
 Use short one-minute durations and nearby custom areas for the first rotation/boundary tests. Keep
 the one-hour defaults for the seeded catalog. Reset test-only location settings after acceptance.
 
-Upstream PR gate: complete the multiplayer/lifecycle checks, preserve evidence and limitations,
-run full upstream qualification, review the focused diff, then publish the standalone PR. Do not
-include unrelated Area 52 client fixes, progression changes, launcher assets or private test data.
+Source PR review uses the offline engineering checks and records their scope and limitations.
+The multiplayer/lifecycle checks above are a separate tester acceptance checklist, not permission
+to launch gameplay or a prerequisite for publishing this source-only PR. Deployment remains separate.
+Do not include unrelated Area 52 client fixes, progression changes, launcher assets or private test data.
