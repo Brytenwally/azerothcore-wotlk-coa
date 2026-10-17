@@ -1,0 +1,36 @@
+--- a/src/server/game/Entities/Unit/Unit.cpp
++++ b/src/server/game/Entities/Unit/Unit.cpp
+@@ -14531,6 +14531,11 @@
+                         StartReactiveTimer(REACTIVE_DEFENSE);
+                     }
+                 }
++                if ((procExtra & PROC_EX_PARRY) && IsPlayer() && ToPlayer()->HasSpell(14251))
++                {
++                    ModifyAuraState(AURA_STATE_HUNTER_PARRY, true);
++                    StartReactiveTimer(REACTIVE_HUNTER_PARRY);
++                }
+                 // if and victim block attack
+                 if (procExtra & PROC_EX_BLOCK)
+                 {
+@@ -15087,7 +15092,7 @@
+ 
+     if (HasAuraState(AURA_STATE_DEFENSE))
+         ModifyAuraState(AURA_STATE_DEFENSE, false);
+-    if (IsClass(CLASS_HUNTER, CLASS_CONTEXT_ABILITY_REACTIVE) && HasAuraState(AURA_STATE_HUNTER_PARRY))
++    if (HasAuraState(AURA_STATE_HUNTER_PARRY))
+         ModifyAuraState(AURA_STATE_HUNTER_PARRY, false);
+     if (IsClass(CLASS_WARRIOR, CLASS_CONTEXT_ABILITY_REACTIVE) && IsPlayer())
+         ClearTargetComboPoints();
+@@ -15113,7 +15118,7 @@
+                         ModifyAuraState(AURA_STATE_DEFENSE, false);
+                     break;
+                 case REACTIVE_HUNTER_PARRY:
+-                    if (IsClass(CLASS_HUNTER, CLASS_CONTEXT_ABILITY_REACTIVE) && HasAuraState(AURA_STATE_HUNTER_PARRY))
++                    if (HasAuraState(AURA_STATE_HUNTER_PARRY))
+                         ModifyAuraState(AURA_STATE_HUNTER_PARRY, false);
+                     break;
+                 case REACTIVE_OVERPOWER:
+--- /dev/null
++++ b/data/sql/updates/pending_db_world/rev_20261017000000_riposte_slow_group.sql
+@@ -0,0 +1,1 @@
++INSERT IGNORE INTO `spell_group` (`id`, `spell_id`) VALUES (1059, 14251);
