@@ -1,0 +1,257 @@
+--- a/apps/coa-tests/respawn_clock/harness.cpp
++++ b/apps/coa-tests/respawn_clock/harness.cpp
+@@ -6,6 +6,8 @@
+ #include <cstring>
+ #include <ctime>
+ #include <map>
++#include <memory>
++#include <vector>
+ #include <string>
+ 
+ using namespace std::chrono_literals;
+@@ -44,8 +46,27 @@
+ World* sWorld = &world;
+ 
+ struct Creature;
++struct WorldObject
++{
++    bool IsUpdateNeeded() { return false; }
++};
++struct Visibility
++{
++    std::map<int, int> players;
++    auto const& GetVisiblePlayersMap() const { return players; }
++};
++struct Cell
++{
++    Cell GetCellCoord() const { return {}; }
++    uint32 GetId() const { return 0; }
++};
++constexpr uint32 WAYPOINT_MOTION_TYPE = 2;
++constexpr uint32 UNIT_STATE_EVADE = 0x40;
+ struct Map
+ {
++    bool queued = false;
++    void AddObjectToPendingUpdateList(Creature*) { queued = true; }
++    bool isCellMarked(uint32) const { return false; }
+     uint32 divisor = 1;
+     bool dungeon = false;
+     time_t saved = 0;
+@@ -61,7 +82,7 @@
+ struct CreatureAI { void CorpseRemoved(uint32&) { } };
+ struct CreatureTemplate { uint32 rank = 0; uint32 SkinLootId = 0; };
+ struct CreatureData { bool dbData = true; };
+-struct MotionMaster { void MoveFall(uint32, bool) { } };
++struct MotionMaster { void MoveFall(uint32, bool) { } bool HasMovementGeneratorType(uint32) { return false; } };
+ struct CreatureGroup { Creature* GetLeader() { return nullptr; } void FormationReset(bool, bool) { } };
+ struct Group { void EndRoll(Loot*) { } };
+ struct GroupMgr { Group group; Group* GetGroupByGUID(uint32) { return &group; } } groupMgr;
+@@ -71,7 +92,7 @@
+ struct ForcedDespawnDelayEvent : BasicEvent { ForcedDespawnDelayEvent(Creature&, Seconds) { } };
+ struct EventProcessor { void AddEventAtOffset(BasicEvent* event, Milliseconds) { delete event; } };
+ 
+-struct Unit
++struct Unit : WorldObject
+ {
+     DeathState m_deathState = DeathState::Alive;
+     EventProcessor m_Events;
+@@ -82,6 +103,15 @@
+ 
+ struct Creature : Unit
+ {
++    bool inWorld = true;
++    Visibility visibility;
++    bool IsInWorld() const { return inWorld; }
++    bool IsInCombat() const { return false; }
++    bool HasUnitState(uint32) const { return false; }
++    Cell GetCurrentCell() const { return {}; }
++    Visibility const& GetObjectVisibilityContainer() const { return visibility; }
++    Creature* ToTempSummon() { return summon ? this : nullptr; }
++    bool IsUpdateNeeded();
+     time_t m_corpseRemoveTime = 0;
+     time_t m_respawnTime = 0;
+     uint32 m_respawnDelay = 300;
+@@ -151,7 +181,7 @@
+ 
+ void Creature::setDeathState(DeathState state, bool despawn)
+ {
+-    Unit::setDeathState(state, despawn);
++// NATIVE_DEATH_PREFIX
+     if (state == DeathState::JustDied)
+ // NATIVE_JUST_DIED
+     else if (state == DeathState::JustRespawned)
+@@ -180,11 +210,75 @@
+     }
+     auto get = [&](char const* key, long long fallback) { return in.count(key) ? in[key] : fallback; };
+ 
++    if (in.count("longrun"))
++    {
++        struct Record
++        {
++            Creature creature;
++            bool updating = true;
++            bool replacementSpawned = false;
++        };
++        std::vector<std::unique_ptr<Record>> population;
++        int created = 0, removed = 0, maximum = 0;
++        auto spawn = [&]()
++        {
++            auto record = std::make_unique<Record>();
++            record->creature._respawnCompatibilityMode = false;
++            record->creature.m_respawnDelay = 30;
++            record->creature.cinfo.rank = 1;
++            record->creature.setDeathState(DeathState::JustDied);
++            population.push_back(std::move(record));
++            ++created;
++        };
++        for (GameTime::Now = 1000; GameTime::Now <= 4600; ++GameTime::Now)
++        {
++            bool replacement = population.empty();
++            for (auto& record : population)
++            {
++                if (!record->replacementSpawned && record->creature.m_respawnTime <= GameTime::Now)
++                {
++                    record->replacementSpawned = true;
++                    replacement = true;
++                }
++                if (record->updating)
++                {
++                    record->creature.Tick(1000);
++                    record->updating = record->creature.IsUpdateNeeded();
++                }
++            }
++            if (replacement)
++                spawn();
++            maximum = std::max(maximum, int(population.size()));
++            auto end = std::remove_if(population.begin(), population.end(), [&](auto const& record)
++            {
++                if (!record->creature.removed)
++                    return false;
++                ++removed;
++                return true;
++            });
++            population.erase(end, population.end());
++        }
++        std::printf("created=%d removed=%d retained=%zu maximum=%d\n", created, removed, population.size(), maximum);
++        return 0;
++    }
+     world.timerFromDeath = get("config", 1) != 0;
+     world.lootedRate = float(get("rate_pct", 50)) / 100.0f;
+     map.divisor = uint32(get("divisor", 1));
+     map.dungeon = get("dungeon", 0) != 0;
+     Creature creature;
++    creature.inWorld = get("inworld", 1) != 0;
++    if (in.count("eligibility"))
++    {
++        creature.m_deathState = DeathState(get("eligibility", 0));
++        std::printf("needed=%d\n", creature.IsUpdateNeeded() ? 1 : 0);
++        return 0;
++    }
++    if (in.count("enqueue"))
++    {
++        creature.setDeathState(DeathState::Corpse);
++        std::printf("queued=%d\n", map.queued ? 1 : 0);
++        return 0;
++    }
+     creature._respawnCompatibilityMode = get("compat", 1) != 0;
+     creature.m_spawnId = uint32(get("spawn", 1));
+     creature.summon = get("summon", 0) != 0;
+@@ -204,6 +298,7 @@
+     long long corpseGone = creature.m_deathState == DeathState::Corpse ? -1 : death;
+     long long respawn = creature.respawnedAt;
+     bool duplicate = false;
++    bool updating = true;
+     for (long long ms = death * 1000LL; ms <= (death + 5000) * 1000LL && respawn < 0; ms += 100)
+     {
+         time_t const now = ms / 1000;
+@@ -229,8 +324,11 @@
+             if (get("despawn", -1) == now)
+                 creature.ForcedDespawn(0ms, Seconds(get("despawn_timer", 0)));
+         }
+-        if (!creature.removed)
++        if (!creature.removed && (!get("scheduled", 0) || updating))
++        {
+             creature.Tick(100);
++            updating = creature.IsUpdateNeeded();
++        }
+         if (corpseGone < 0 && (creature.removed || creature.m_deathState != DeathState::Corpse))
+             corpseGone = now;
+         if (!creature._respawnCompatibilityMode && creature.m_deathState == DeathState::Corpse && !creature.removed
+--- a/apps/coa-tests/respawn_clock/run.py
++++ b/apps/coa-tests/respawn_clock/run.py
+@@ -40,14 +40,16 @@
+     clock = method(header, 'namespace CreatureRespawnClock') if 'namespace CreatureRespawnClock' in header else ''
+     update = method(creature, 'void Creature::Update(uint32 diff)')
+     cases = update[update.index('        case DeathState::Dead:'):update.index('        case DeathState::Alive:')]
+-    died = block(method(creature, 'void Creature::setDeathState('), 'if (state == DeathState::JustDied)')
+-    signatures = ['void Creature::RemoveCorpse(', 'void Creature::AllLootRemovedFromCorpse()',
++    transition = method(creature, 'void Creature::setDeathState(')
++    prefix = transition[transition.index('{') + 1:transition.index('    if (state == DeathState::JustDied)')]
++    died = block(transition, 'if (state == DeathState::JustDied)')
++    signatures = ['bool Creature::IsUpdateNeeded()', 'void Creature::RemoveCorpse(', 'void Creature::AllLootRemovedFromCorpse()',
+                   'void Creature::ForcedDespawn(', 'void Creature::SaveRespawnTime()']
+     if 'bool Creature::IsRespawnTimerFromDeath() const' in creature:
+         signatures.append('bool Creature::IsRespawnTimerFromDeath() const')
+     methods = '\n'.join(method(creature, signature) for signature in signatures)
+     code = (HERE / 'harness.cpp').read_text(encoding='utf-8')
+-    for marker, text in (('// NATIVE_CLOCK', clock), ('// NATIVE_JUST_DIED', died),
++    for marker, text in (('// NATIVE_CLOCK', clock), ('// NATIVE_DEATH_PREFIX', prefix), ('// NATIVE_JUST_DIED', died),
+                          ('// NATIVE_DEAD_AND_CORPSE', cases), ('// METHODS', methods)):
+         assert code.count(marker) == 1
+         code = code.replace(marker, text)
+@@ -154,6 +156,25 @@
+ 
+     with tempfile.TemporaryDirectory(prefix='coa-respawn-clock-') as directory:
+         executable = compile_harness(harness(source), Path(directory))
++        check('one hour of 30-second dynamic respawns leaves no accumulated corpses', run(executable, longrun=1),
++              {'created': 121, 'removed': 120, 'retained': 1, 'maximum': 2})
++        for state in (1, 2, 3, 4):
++            check(f'nonliving state {state} retains updates', run(executable, eligibility=state), {'needed': 1})
++        check('idle living creature still sleeps', run(executable, eligibility=0), {'needed': 0})
++        check('dormant corpse transition queues update', run(executable, enqueue=1), {'queued': 1})
++        check('out-of-world transition does not queue', run(executable, enqueue=1, inworld=0), {'queued': 0})
++        for config in (0, 1):
++            for compat in (0, 1):
++                for delay in (30, 180, 300):
++                    case = dict(delay=delay, compat=compat)
++                    expected = vanilla(**case) if config else azerothcore(**case)
++                    check(f'no-player respawn, config={config}, compat={compat}, delay={delay}',
++                          run(executable, scheduled=1, config=config, **case), expected)
++                check(f'group loot remains scheduled, config={config}, compat={compat}',
++                      run(executable, scheduled=1, config=config, compat=compat, rank=1, decay=300,
++                          delay=180, roll=1010, roll_ms=60000),
++                      run(executable, config=config, compat=compat, rank=1, decay=300,
++                          delay=180, roll=1010, roll_ms=60000))
+         for label, case in CASES:
+             decay = {'decay': DECAY[case.get('rank', 0)]}
+             check('vanilla clock, ' + label, run(executable, config=1, **decay, **case), vanilla(**case))
+@@ -184,6 +205,7 @@
+                             f'and a respawn at {roll_end}-{roll_end + 1}')
+ 
+     assert not failures, '\n'.join(failures)
++    print('PASS: scheduling eligibility, dormant enqueue, no-player lifecycle, and 120 sustained respawns')
+     print(f'PASS: {len(CASES)} death/loot/skin/despawn/dynamic-mode cases on the vanilla clock and on the '
+           'AzerothCore clock, exemptions, group roll and saved respawn times')
+ 
+--- a/src/server/game/Entities/Creature/Creature.cpp
++++ b/src/server/game/Entities/Creature/Creature.cpp
+@@ -2030,6 +2030,9 @@
+ {
+     Unit::setDeathState(state, despawn);
+ 
++    if (IsInWorld() && !IsAlive())
++        GetMap()->AddObjectToPendingUpdateList(this);
++
+     if (state == DeathState::JustDied)
+     {
+         m_corpseRemoveTime = GameTime::GetGameTime().count() + m_corpseDelay;
+@@ -4044,6 +4047,9 @@
+ // Note: This is called in a tight (heavy) loop, is it critical that all checks are FAST and are hopefully only simple conditionals.
+ bool Creature::IsUpdateNeeded()
+ {
++    if (!IsAlive())
++        return true;
++
+     if (WorldObject::IsUpdateNeeded())
+         return true;
+ 
