@@ -1,0 +1,185 @@
+--- a/Interface/AddOns/Ascension_CharacterAdvancementSeason9/CharacterAdvancement.lua
++++ b/Interface/AddOns/Ascension_CharacterAdvancementSeason9/CharacterAdvancement.lua
+@@ -283,6 +283,16 @@
+     end
+ end
+ 
++local function GetRealmPrimaryStatDisplayOrder()
++    if not IsArea52PrimaryStatRealm() then return {1, 2, 6, 3, 4} end
++    return {
++    Enum.PrimaryStat.Strength,
++    Enum.PrimaryStat.Agility,
++    Enum.PrimaryStat.Intellect,
++    Enum.PrimaryStat.Spirit,
++    }
++end
++
+ function CharacterAdvancementMixin:ShowPrimaryStatPicker()
+     local header = self.SideBar.SpellList.Header
+     header.IsCompact = false
+@@ -292,8 +302,16 @@
+     header.HintText:Show()
+     for i = 1, 5 do
+         local button = header["PrimaryStat"..i]
+-        button:Show()
+-        button:SetFrameLevel(header:GetFrameLevel()+5)
++        if i <= #GetRealmPrimaryStatDisplayOrder() then
++            local span = header:GetWidth() - 28 - button:GetWidth()
++            button:ClearAllPoints()
++            button:SetPoint("BOTTOMLEFT", header, "BOTTOMLEFT",
++                14 + (i - 1) * span / (#GetRealmPrimaryStatDisplayOrder() - 1), 42)
++            button:Show()
++            button:SetFrameLevel(header:GetFrameLevel()+5)
++        else
++            button:Hide()
++        end
+     end
+     self:UpdateSpellListHeight()
+ end
+@@ -721,15 +739,11 @@
+         return
+     end
+ 
+-    if header.IsCompact then
+-        self:ShowPrimaryStatPicker()
+-    end
+-
+-    for i = 1, 5 do
++    self:ShowPrimaryStatPicker()
++
++    for i, statID in ipairs(GetRealmPrimaryStatDisplayOrder()) do
+         local button = header["PrimaryStat"..i]
+-        if canChoosePrimaryStat then
+-            button:SetEntry(C_CharacterAdvancement.GetEntryByInternalID(C_PrimaryStat:GetInternalID(({1, 2, 6, 3, 4})[i])))
+-        end
++        button:SetEntry(C_CharacterAdvancement.GetEntryByInternalID(C_PrimaryStat:GetInternalID(statID)))
+     end
+ end
+ 
+--- a/Interface/AddOns/Ascension_ForcedPrimaryStat/PrimaryStat.lua
++++ b/Interface/AddOns/Ascension_ForcedPrimaryStat/PrimaryStat.lua
+@@ -77,6 +77,7 @@
+ local FORCED_PRIMARY_STAT_DISPLAY_ORDER = {
+     Enum.PrimaryStat.Strength,
+     Enum.PrimaryStat.Agility,
++    Enum.PrimaryStat.Duality,
+     Enum.PrimaryStat.Intellect,
+     Enum.PrimaryStat.Spirit,
+ }
+@@ -85,7 +86,7 @@
+     local orderedStats = {}
+ 
+     for _, statID in ipairs(FORCED_PRIMARY_STAT_DISPLAY_ORDER) do
+-        if not availableStats or availableStats[statID] then
++        if (not IsArea52PrimaryStatRealm() or statID ~= Enum.PrimaryStat.Duality) and (not availableStats or availableStats[statID]) then
+             table.insert(orderedStats, statID)
+         end
+     end
+@@ -124,6 +125,7 @@
+ 
+     local lastButton
+     local orderedStats = GetForcedPrimaryStatDisplayOrder(topStatsEntries)
++    if #orderedStats == 0 then orderedStats = GetForcedPrimaryStatDisplayOrder() end
+ 
+     for index, statID in ipairs(orderedStats) do
+         local button = self.statPool:Acquire()
+--- a/Interface/FrameXML/UIParent.lua
++++ b/Interface/FrameXML/UIParent.lua
+@@ -605,7 +605,97 @@
+ 	end
+ end
+ 
++-- Area 52 uses the legacy advancement sidebar. Free Pick alone is not a
++-- realm discriminator: Season 10 Free Pick must retain Path of Duality.
++function IsArea52PrimaryStatRealm()
++    return GetRealmName() == "Area 52 - Free-Pick"
++end
++
++local primaryStatLastReminder
++local primaryStatDeferredClose = false
++local primaryStatWorldReady = false
++local primaryStatDungeon
++
++function HidePrimaryStatReminder()
++    if not IsArea52PrimaryStatRealm() then return end
++    if ForcedPrimaryStatFrame then
++        -- Cancel a pending fade as well as hiding the frame.
++        UIFrameFadeRemoveFrame(ForcedPrimaryStatFrame)
++        ForcedPrimaryStatFrame:Hide()
++    end
++end
++
++function RequestPrimaryStatReminder(menuClosed)
++    if not IsArea52PrimaryStatRealm() or not primaryStatWorldReady then return false end
++    if not C_Player:IsHero() or C_PrimaryStat:GetActivePrimaryStat() then
++        primaryStatDeferredClose = false
++        return false
++    end
++    if CharacterAdvancement and CharacterAdvancement:IsShown() then return false end
++    if InCombatLockdown() then
++        primaryStatDeferredClose = primaryStatDeferredClose or menuClosed
++        return false
++    end
++    if ForcedPrimaryStatFrame and ForcedPrimaryStatFrame:IsShown() then return false end
++    local now = GetTime()
++    if not menuClosed and primaryStatLastReminder and now - primaryStatLastReminder < 60 then return false end
++    if ShowForcedPrimaryStat(false) then
++        primaryStatLastReminder = now
++        primaryStatDeferredClose = false
++        return true
++    end
++    return false
++end
++
++local function HookPrimaryStatAdvancement()
++    if not CharacterAdvancement or CharacterAdvancement.primaryStatReminderHooked then return end
++    CharacterAdvancement.primaryStatReminderHooked = true
++    CharacterAdvancement:HookScript("OnShow", HidePrimaryStatReminder)
++    CharacterAdvancement:HookScript("OnHide", function() RequestPrimaryStatReminder(true) end)
++    if CharacterAdvancement:IsShown() then HidePrimaryStatReminder() end
++end
++
++local primaryStatReminderEvents = CreateFrame("Frame")
++for _, event in ipairs({"ADDON_LOADED", "PLAYER_ENTERING_WORLD", "PLAYER_LEAVING_WORLD",
++    "ZONE_CHANGED_NEW_AREA", "QUEST_ACCEPTED", "PLAYER_REGEN_ENABLED", "PLAYER_REGEN_DISABLED"}) do
++    primaryStatReminderEvents:RegisterEvent(event)
++end
++primaryStatReminderEvents:SetScript("OnEvent", function(self, event)
++    if event == "ADDON_LOADED" then
++        HookPrimaryStatAdvancement()
++        return
++    end
++    if event == "PLAYER_LEAVING_WORLD" then
++        primaryStatWorldReady = false
++        primaryStatDungeon = nil
++        HidePrimaryStatReminder()
++        return
++    end
++    if event == "PLAYER_ENTERING_WORLD" then
++        primaryStatWorldReady = true
++        HookPrimaryStatAdvancement()
++    end
++    if not IsArea52PrimaryStatRealm() then return end
++    if event == "PLAYER_REGEN_DISABLED" then
++        HidePrimaryStatReminder()
++    elseif event == "PLAYER_REGEN_ENABLED" then
++        RequestPrimaryStatReminder(primaryStatDeferredClose)
++    elseif event == "QUEST_ACCEPTED" then
++        RequestPrimaryStatReminder(false)
++    elseif event == "PLAYER_ENTERING_WORLD" or event == "ZONE_CHANGED_NEW_AREA" then
++        local inside, kind = IsInInstance()
++        local name = GetInstanceInfo()
++        local dungeon = inside and (kind == "party" or kind == "raid") and name or nil
++        if dungeon and dungeon ~= primaryStatDungeon then RequestPrimaryStatReminder(false) end
++        primaryStatDungeon = dungeon
++    end
++end)
++
+ function ShowForcedPrimaryStat(skipCheck, crossLayout)
++    if IsArea52PrimaryStatRealm() and ((CharacterAdvancement and CharacterAdvancement:IsShown()) or InCombatLockdown()) then
++        return false
++    end
++    if IsArea52PrimaryStatRealm() and ForcedPrimaryStatFrame and ForcedPrimaryStatFrame:IsShown() then return false end
+ 	local canChoosePrimaryStat = C_Player:IsHero()
+ 
+ 	if not(canChoosePrimaryStat) then

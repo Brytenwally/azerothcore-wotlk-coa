@@ -1,0 +1,29 @@
+{
+  "package_id": "duality-realm-reminders-20261018",
+  "client": {
+    "changed_members": {
+      "Interface\\AddOns\\Ascension_CharacterAdvancementSeason9\\CharacterAdvancement.lua": "1325672db632fd2962a8934ac71c07c6ec0f553fca03d9726cf588e186a8a8c4",
+      "Interface\\AddOns\\Ascension_ForcedPrimaryStat\\PrimaryStat.lua": "ea9c9554bfbd93826272146db18fddffdd0fa7e723563a92bfe0091c6f06b4f5",
+      "Interface\\FrameXML\\UIParent.lua": "af3a3250021d5b5407af646301a3cd331b008e709602f0442651ac48e5eb236f"
+    },
+    "preserved_members": {
+      "Interface\\FrameXML\\GameTooltip.lua": "c6480a93eefac9a5fc75a209a616723cd5c4851f0c08f7afdda145aab0696c46",
+      "Interface\\FrameXML\\XPHotspots.lua": "3327cb33167d76310a0bb2c5d10ca03b18167ec443935a422cd9996bf6e21a05"
+    },
+    "readback": "passed"
+  },
+  "ui": {
+    "status": "passed",
+    "runtime": "Lua 5.1 via lupa 2.6",
+    "cases": {
+      "area52": "sidebar, spacing, refresh/reopen, eligibility, popup normal/suggested/cross and backend Duality pass",
+      "season10": "sidebar, spacing, refresh/reopen, eligibility, popup normal/suggested/cross and backend Duality pass",
+      "unknown": "sidebar, spacing, refresh/reopen, eligibility, popup normal/suggested/cross and backend Duality pass",
+      "events": "all requested triggers, cooldown, duplicate suppression, menu hide/close, deferred combat, selected stat/non-Hero/loading gates, dungeon transitions, existing explicit calls, Season10 unchanged event behavior pass"
+    },
+    "limits": "Actual candidate Lua functions and event dispatcher with mocked client APIs; no gameplay. Realm identity uses installed exact Area 52 realm-name convention; unknown realms retain Duality."
+  },
+  "server_changed": false,
+  "distribution": "local owner client only; no launcher feed/assets",
+  "status_changed": false
+}
