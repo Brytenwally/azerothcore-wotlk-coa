@@ -1,0 +1,62 @@
+{
+  "status": "engineering_verified_candidate_not_activated",
+  "judgements": [
+    1324,
+    2955,
+    3019,
+    3020
+  ],
+  "preserved_recent_promotions": [
+    3167,
+    983240
+  ],
+  "already_verified": [
+    3166
+  ],
+  "server_sha256": "262afc5632599a3b0b8fc5ddfd1e7e1ab848a1c3894e931976481840abc023d0",
+  "client_sha256": "bf20aea3601462c985b6c85921b14bc7fb25293df9c3d01b037f2f7f3a56eb41",
+  "reports": {
+    "build-final": "32a97d82c51d6566d552775040004d3bd02259eaca18478eef19d0174a299b96",
+    "source-checks": "c71f8f5057f702bbe250833af74817c0dede6ee0a73e914b8170e53a7ab2f419",
+    "sql-hooks2": "02f8a908329f5728549b12653f75fff979358ecfc3b2bea70895fb5df6b6f32f"
+  },
+  "client_coverage": {
+    "status": "passed",
+    "changed": [
+      14278,
+      20271,
+      53407,
+      53408,
+      92169,
+      983240,
+      983241,
+      983242
+    ],
+    "already_verified": [
+      14251
+    ],
+    "certified_preserved": 0,
+    "non_spell_members_unchanged": 24,
+    "numerical_data": "unchanged"
+  },
+  "limits": "Offline native fragments use explicit mock combat/stat providers; no gameplay certification. Full unrelated seal/talent kits not promoted.",
+  "ghostly_strike_repair": {
+    "confirmed": "Enveloping Shadows rank3 turned the remapped AoE slot into -20 parry",
+    "solution": "use existing865819 parry or965819 dodge; preserve original AoE229 slot",
+    "reports": {
+      "build": "1e528c9c057dd2c86206dac9c75b4c2c98eb0540dd7bb05141aee6d4015c66cf",
+      "source-checks": "c47c0e006fb03bbf221c589248120e5ea95b114dda34ff73284b5ad9edc7602c",
+      "baseline3": "d0573ef066736343ee6e8a7dcfdf423e76a376ee99c152ffd5589d840a9543c2"
+    },
+    "cases": 32,
+    "client_changes_for_this_repair": false,
+    "limits": "native player amount/stat methods with mocked combat delivery, modifier storage and aura containers; no gameplay"
+  },
+  "sql_recovery": {
+    "failed_package": "judgements-ghostly-buff-correction-20261017",
+    "rollback": "confirmed restored binary, five replacement targets and client archive",
+    "cause": "MySQL1267 collation mismatch in comments safety guard",
+    "repair": "HEX exact UTF-8 bytes comparison and identical read-only predicate preflight",
+    "fixture_report_sha256": "e64606957b33ac5e4dd6a3b9c6aa0b28d27e661e0a5d258aa8f2bbe7179bb397"
+  }
+}

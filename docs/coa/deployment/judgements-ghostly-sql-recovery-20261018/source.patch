@@ -1,0 +1,93 @@
+--- a/src/server/game/Spells/SpellInfoCorrections.cpp
++++ b/src/server/game/Spells/SpellInfoCorrections.cpp
+@@ -586,6 +586,16 @@
+         spellInfo->SpellLevel = 0;
+         spellInfo->BaseLevel = 0;
+         spellInfo->DmgClass = SPELL_DAMAGE_CLASS_MAGIC;
++    });
++
++    ApplySpellFix({ 20467 }, [](SpellInfo* spellInfo)
++    {
++        spellInfo->Effects[EFFECT_1].BasePoints = 18;
++    });
++
++    ApplySpellFix({ 31804, 53733 }, [](SpellInfo* spellInfo)
++    {
++        spellInfo->Effects[EFFECT_0].BasePoints = 0;
+     });
+ 
+     ApplySpellFix({ 20184, 20185, 20186 }, [](SpellInfo* spellInfo)
+--- a/src/server/game/Entities/Unit/Unit.cpp
++++ b/src/server/game/Entities/Unit/Unit.cpp
+@@ -9684,7 +9684,8 @@
+                 uint32 stacks = 0;
+                 Unit::AuraEffectList const& auras = victim->GetAuraEffectsByType(SPELL_AURA_PERIODIC_DAMAGE);
+                 for (Unit::AuraEffectList::const_iterator itr = auras.begin(); itr != auras.end(); ++itr)
+-                    if (((*itr)->GetId() == 31803 || (*itr)->GetId() == 53742) && (*itr)->GetCasterGUID() == GetGUID())
++                    if (((spellProto->Id == 31804 && (*itr)->GetId() == 31803) ||
++                        (spellProto->Id == 53733 && (*itr)->GetId() == 53742)) && (*itr)->GetCasterGUID() == GetGUID())
+                     {
+                         stacks = (*itr)->GetBase()->GetStackAmount();
+                         break;
+@@ -9936,6 +9937,8 @@
+         // damage school unchanged for native resistance and damage modifiers.
+         DoneAdvertisedBenefit += std::max(SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_FIRE),
+             SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_NATURE));
++    else if (spellProto->Id == 54158 && HasAura(20165))
++        DoneAdvertisedBenefit += SpellBaseHealingBonusDone(spellPowerSchool);
+     else
+         DoneAdvertisedBenefit += SpellBaseDamageBonusDone(spellPowerSchool);
+ 
+--- a/src/server/coa/AscensionFreePick.cpp
++++ b/src/server/coa/AscensionFreePick.cpp
+@@ -807,19 +807,6 @@
+ 
+ namespace
+ {
+-class ghostly_strike_contracts : public GlobalScript
+-{
+-public:
+-    ghostly_strike_contracts() : GlobalScript("ghostly_strike_contracts",
+-        {GLOBALHOOK_ON_LOAD_SPELL_CUSTOM_ATTR}) { }
+-
+-    void OnLoadSpellCustomAttr(SpellInfo* info) override
+-    {
+-        if (info->Id == 965819 && info->Effects[EFFECT_2].ApplyAuraName == 229)
+-            info->Effects[EFFECT_2].ApplyAuraName = SPELL_AURA_MOD_PARRY_PERCENT;
+-    }
+-};
+-
+ class spell_ascension_ghostly_strike : public SpellScript
+ {
+     PrepareSpellScript(spell_ascension_ghostly_strike);
+@@ -828,7 +815,7 @@
+ 
+     bool Validate(SpellInfo const*) override
+     {
+-        return ValidateSpellInfo({965819});
++        return ValidateSpellInfo({965819, 865819});
+     }
+ 
+     void Defend(SpellEffIndex)
+@@ -839,11 +826,8 @@
+         Item const* weapon = player->GetItemByPos(INVENTORY_SLOT_BAG_0, EQUIPMENT_SLOT_MAINHAND);
+         bool const twoHanded = weapon && weapon->GetTemplate()->InventoryType == INVTYPE_2HWEAPON &&
+             !player->GetItemByPos(INVENTORY_SLOT_BAG_0, EQUIPMENT_SLOT_OFFHAND);
+-        int32 const amount = sSpellMgr->AssertSpellInfo(965819)->Effects[EFFECT_1].CalcValue(player);
+-        CustomSpellValues values;
+-        values.AddSpellMod(SPELLVALUE_BASE_POINT1, twoHanded ? 0 : amount);
+-        values.AddSpellMod(SPELLVALUE_BASE_POINT2, twoHanded ? amount : 0);
+-        player->CastCustomSpell(965819, values, player, TRIGGERED_FULL_MASK);
++        player->RemoveAurasDueToSpell(twoHanded ? 965819 : 865819, player->GetGUID());
++        player->CastSpell(player, twoHanded ? 865819 : 965819, TRIGGERED_FULL_MASK);
+     }
+ 
+     void Register() override
+@@ -887,7 +871,6 @@
+     RegisterSpellScriptWithArgs(SpecializationSwap, "spell_area52_specialization_swap");
+     new SpecializationPlayer();
+     RegisterSpellScript(spell_area52_improved_riposte);
+-    new ghostly_strike_contracts();
+     RegisterSpellScript(spell_ascension_ghostly_strike);
+ }
+ }
