@@ -1335,6 +1335,8 @@ namespace CoAChallenges
             "CHALLENGE_RULES_TYPE_NO_PORTALS",
             "CHALLENGE_RULES_TYPE_NO_LEAVE_CONTINENT",
             "CHALLENGE_RULES_TYPE_HIGH_RISK_ONLY",
+            "CHALLENGE_RULES_TYPE_NO_CREATURE_LEVEL_SCALING",
+            "CHALLENGE_RULES_TYPE_NO_QUEST_LEVEL_SCALING",
             // NOTE: FLOOR_IS_LAVA (165 "The Floor is Lava!") is NOT modelled here:
             // its About is "Don't. Stop. Jumping." (damage while grounded), not
             // lava/fire environmental damage, and 165 is challenge-only (custom
@@ -1496,9 +1498,14 @@ namespace CoAChallenges
 
         // ---- 5. XP / profession XP ----
         RUN("CHALLENGE_RULES_TYPE_NO_PROFESSION_EXPERIENCE", [](Player* p) {
-            uint32 gain = 100;
-            sScriptMgr->OnPlayerUpdateCraftingSkill(p, nullptr, 0, gain);
-            return gain == 0; });
+            uint32 craftGain = 1;
+            sScriptMgr->OnPlayerUpdateCraftingSkill(p, nullptr, 0, craftGain);
+            uint32 gatherGain = 1;
+            sScriptMgr->OnPlayerUpdateGatheringSkill(p, SKILL_MINING, 1, 25, 50, 75, gatherGain);
+            uint32 amtProfession = 1000; sScriptMgr->OnPlayerGiveXP(p, amtProfession, nullptr, XPSOURCE_PROFESSION);
+            uint32 amtSkill = 1000; sScriptMgr->OnPlayerGiveXP(p, amtSkill, nullptr, XPSOURCE_PROFESSION_SKILL);
+            uint32 amtKill = 1000; sScriptMgr->OnPlayerGiveXP(p, amtKill, nullptr, XPSOURCE_KILL);
+            return craftGain == 1 && gatherGain == 1 && amtProfession == 0 && amtSkill == 0 && amtKill == 1000; });
         RUN("CHALLENGE_RULES_TYPE_NO_EXPERIENCE_EXCEPT_QUESTS", [](Player* p) {
             uint32 amt = 1000; sScriptMgr->OnPlayerGiveXP(p, amt, nullptr, XPSOURCE_KILL); return amt == 0; });
         RUN("CHALLENGE_RULES_TYPE_NO_EXPERIENCE_EXCEPT_CREATURES", [](Player* p) {
@@ -1843,6 +1850,8 @@ namespace CoAChallenges
                 "CHALLENGE_RULES_TYPE_PVE_ONLY",                          // `.coa ruletestparty`
                 "CHALLENGE_RULES_TYPE_COSMETIC_ELITE_ENEMIES",            // challenges-adventure-mode scenario
                 "CHALLENGE_RULES_TYPE_STRICT_CHALLENGE_RESTRICTED_TAPPING", // challenges-adventure-mode scenario
+                "CHALLENGE_RULES_TYPE_NO_CREATURE_LEVEL_SCALING", // challenges-level-scaling-rules scenario
+                "CHALLENGE_RULES_TYPE_NO_QUEST_LEVEL_SCALING",    // challenges-level-scaling-rules scenario
             };
             std::set<std::string> const& impl = ImplementedRules();
             uint32 missing = 0;
@@ -2219,6 +2228,56 @@ namespace CoAChallenges
         return ok;
     }
 
+    // GM-only (`.coa pettest <player>`): regression test for Issue #4343.
+    // Verifies that when a player activates a trial with a trial aura (e.g. Nightmare 61, aura 93132),
+    // any creature/pet summoned by the player receives the trial aura dynamically, and when the trial
+    // is reset, the aura is cleanly removed from both player and summon.
+    bool Test_PetTrialAuras(Player* player)
+    {
+        if (!player || !player->IsInWorld())
+            return false;
+
+        ResetCharacterForTest(player);
+        uint32 const cid = 61; // Nightmare
+        uint32 const expectedAura = 93132;
+        ActivateChallengeForTest(player, cid);
+
+        if (!player->HasAura(expectedAura))
+        {
+            SendTestLine(player, "  pet_trial_auras: player failed to receive trial aura {}", expectedAura);
+            ResetCharacterForTest(player);
+            return false;
+        }
+
+        // Spawn a temporary summon owned by the player
+        Position pos = player->GetPosition();
+        TempSummon* summon = player->GetMap()->SummonCreature(
+            50075, // Generic summonable creature
+            pos, nullptr, 15000, player);
+
+        if (!summon)
+        {
+            SendTestLine(player, "  pet_trial_auras: could not summon test creature");
+            ResetCharacterForTest(player);
+            return false;
+        }
+
+        bool const hasAura = summon->HasAura(expectedAura);
+        SendTestLine(player, "  pet_trial_auras: summon '{}' (GUID {}) aura {} -> {}",
+            summon->GetName(), summon->GetGUID().ToString(), expectedAura, hasAura ? "PASS" : "FAIL");
+
+        // Now test trial reset - aura must be stripped from both player and summon
+        ResetChallengeState(player);
+        bool const playerLost = !player->HasAura(expectedAura);
+        bool const summonLost = !summon->HasAura(expectedAura);
+        SendTestLine(player, "  pet_trial_auras: aura stripped on reset -> player: {}, summon: {}",
+            playerLost ? "PASS" : "FAIL", summonLost ? "PASS" : "FAIL");
+
+        summon->UnSummon();
+        ResetCharacterForTest(player);
+        return hasAura && playerLost && summonLost;
+    }
+
     // GM-only (`.coa auditdefs <player>`): data-integrity sweep over EVERY
     // definition (all ids): rule/condition/objective tokens are known and
     // enforced, aura spells resolve to a SpellInfo, reward items/achievements
@@ -2232,15 +2291,10 @@ namespace CoAChallenges
         std::set<std::string> const& conds = KnownConditions();
 
         // Rules intentionally not enforced server-side, each with the reason.
-        // IMPORTANT: the *_LEVEL_SCALING ones are NOT confirmed covered by the
-        // client - Extensions.dll was not fully reversed beyond the 35 C_Challenge
-        // functions, and the client Lua only reads 4 UI rules. Treat as
-        // "needs further DLL RE" before assuming the client handles them.
         static std::map<std::string, char const*> const kNotApplicable = {
             {"CHALLENGE_RULES_TYPE_NONE", "client export sentinel (empty slot)"},
             {"CHALLENGE_RULES_TYPE_NO_REALM_BANK", "no realm bank feature on this fork"},
-            {"CHALLENGE_RULES_TYPE_NO_QUEST_LEVEL_SCALING", "no server scaling; needs DLL RE"},
-            {"CHALLENGE_RULES_TYPE_NO_PLAYER_LEVEL_SCALING", "no server scaling; needs DLL RE"},
+            {"CHALLENGE_RULES_TYPE_NO_PLAYER_LEVEL_SCALING", "no player level sync on this fork"},
         };
         std::set<std::string> naSeen;
         uint32 ruleCount = 0, unenforced = 0;

@@ -27,6 +27,7 @@
 #include "Guild.h"
 #include "InstanceScript.h"
 #include "Language.h"
+#include "LocalLevelScaling.h"
 #include "OutdoorPvPMgr.h"
 #include "Pet.h"
 #include "Player.h"
@@ -834,14 +835,19 @@ void Player::RewardProfessionXP(uint32 skillId, uint32 current, uint32 gray, uin
     ServerConfigs const difficulty = current >= gray ? RATE_XP_PROFESSION_GRAY
         : current >= green ? RATE_XP_PROFESSION_GREEN
         : current >= yellow ? RATE_XP_PROFESSION_YELLOW : RATE_XP_PROFESSION_ORANGE;
-    double const reward = double(sObjectMgr->GetXPForLevel(GetLevel()))
+    double const rates = double(sObjectMgr->GetXPForLevel(GetLevel()))
         * sWorld->getRate(RATE_XP_PROFESSION_BASE_FRACTION) * sWorld->getRate(RATE_XP_PROFESSION)
-        * sWorld->getRate(profession) * sWorld->getRate(difficulty)
-        * GetTotalAuraMultiplier(SPELL_AURA_MOD_XP_PCT, [](AuraEffect const* effect)
-        {
-            // CoA's MOD_XP_PCT MiscValue is a mask of XP sources: 1 kills, 2 quests, 4 professions.
-            return (effect->GetMiscValue() & XP_SOURCE_MASK_PROFESSION) != 0;
-        });
+        * sWorld->getRate(profession) * sWorld->getRate(difficulty);
+    bool const noBonusExperience = sScriptMgr->OnPlayerHasNoBonusExperience(this);
+    double const auraMultiplier = GetTotalAuraMultiplier(SPELL_AURA_MOD_XP_PCT, [noBonusExperience](AuraEffect const* effect)
+    {
+        // CoA's MOD_XP_PCT MiscValue is a mask of XP sources: 1 kills, 2 quests, 4 professions.
+        if ((effect->GetMiscValue() & XP_SOURCE_MASK_PROFESSION) == 0)
+            return false;
+        // A NO_BONUS_EXPERIENCE challenge keeps penalties but drops the bonuses.
+        return !noBonusExperience || effect->GetAmount() <= 0;
+    });
+    double const reward = rates * auraMultiplier;
     uint32 xp = static_cast<uint32>(std::min(reward, double(std::numeric_limits<uint32>::max())));
     sScriptMgr->OnPlayerGiveXP(this, xp, nullptr, XPSOURCE_PROFESSION);
     GiveXP(xp, nullptr);
@@ -868,6 +874,7 @@ bool Player::UpdateGatherSkill(uint32 SkillId, uint32 SkillValue,
     case SKILL_LOCKPICKING:
     case SKILL_JEWELCRAFTING:
     case SKILL_INSCRIPTION:
+    case SKILL_WOODCUTTING:
         return UpdateSkillPro(SkillId,
                               SkillGainChance(SkillValue, RedLevel + 100,
                                               RedLevel + 50, RedLevel + 25) *
@@ -1139,6 +1146,10 @@ void Player::UpdateCombatSkills(Unit* victim, WeaponAttackType attType, bool def
 
     uint8 greylevel = Acore::XP::GetGrayLevel(playerLevel);
     uint8 moblevel = defence ? victim->getLevelForTarget(this) : victim->GetLevel(); // if defense than victim == attacker
+    if (!defence)
+        if (Creature const* creature = victim->ToCreature())
+            if (uint8 const view = LocalLevelScaling::ViewLevelFor(this, creature))
+                moblevel = view;
     /*if (moblevel < greylevel)
         return;*/
     // Patch 3.0.8 (2009-01-20): You can no longer skill up weapons on mobs that are immune to damage.
@@ -1941,6 +1952,19 @@ void Player::UpdateForQuestWorldObjects()
 
 void Player::UpdateTitansGrip()
 {
+    constexpr uint32 TitansGrip = 46917;
+    constexpr uint32 TitansGripStaffPenalty = 818047;
+    Item const* main = GetWeaponForAttack(BASE_ATTACK);
+    bool const staff = getClass() == CLASS_HERO && HasActiveSpell(TitansGrip) && CanTitanGrip() && main &&
+        main->GetTemplate()->SubClass == ITEM_SUBCLASS_WEAPON_STAFF;
+    if (staff)
+    {
+        if (!HasAura(TitansGripStaffPenalty))
+            CastSpell(this, TitansGripStaffPenalty, TRIGGERED_FULL_MASK);
+    }
+    else
+        RemoveAurasDueToSpell(TitansGripStaffPenalty);
+
     // 10% damage reduce if 2x2h weapons are used
     if (HasBurningCommander() || !CanTitanGrip())
         RemoveAurasDueToSpell(49152);

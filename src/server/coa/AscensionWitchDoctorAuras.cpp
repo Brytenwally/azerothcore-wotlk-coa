@@ -28,7 +28,8 @@ void SyncReplacements(Player* player)
         if (Family(info, 1, 4) && id != Volley)
         {
             selected = true;
-            if (player->HasAura(VolleyReady) || (player->HasAura(Gift) && HasSummon(player, NpcMimic)))
+            if ((player->HasAura(VolleyReady) || (player->HasAura(Gift) && HasSummon(player, NpcMimic))) &&
+                id == KnownRank(player, id))
                 child = Volley;
         }
         else if (IsHex(info))
@@ -60,7 +61,7 @@ void SyncReplacements(Player* player)
             if (player->HasAura(TikiTalent) && (player->HasAura(Crystal) || player->HasAura(Beast)))
                 child = Tiki;
         }
-        else if (id == CallSseratus)
+        else if (id == CallSseratusChannel)
         {
             selected = true;
             if (player->HasAura(ViperTalent))
@@ -76,7 +77,7 @@ void SyncReplacements(Player* player)
             continue;
         if (child && !player->HasSpell(child))
             player->learnSpell(child, true);
-        player->SetTemporarySpellReplacement(id, child);
+        player->SetTemporarySpellReplacement(id, child, child != Volley && child != Umbral);
     }
 }
 }

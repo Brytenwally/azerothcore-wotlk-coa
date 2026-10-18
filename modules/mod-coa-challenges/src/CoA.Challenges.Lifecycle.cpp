@@ -55,6 +55,15 @@ namespace CoAChallenges
         return false;
     }
 
+    bool HasAccountCompletionLevel(uint32 account, uint32 challengeID, uint32 level)
+    {
+        auto* statement = CharacterDatabase.GetPreparedStatement(CHAR_SEL_COA_ACCOUNT_CHALLENGE_COMPLETION);
+        statement->SetData(0, account);
+        statement->SetData(1, challengeID);
+        statement->SetData(2, level);
+        return CharacterDatabase.Query(statement) != nullptr;
+    }
+
     // Death update (SMSG 0x5A6): same 26-byte active-entry layout as 0x596,
     // with the deaths-used counter incremented. Handler 0x1369D0 overwrites
     // the active record, then derives (remaining, total) from the record +
@@ -125,7 +134,7 @@ namespace CoAChallenges
             "CoAChallenges.RequiredGameMode." + std::to_string(challengeID), 0);
     }
 
-    // Game modes are NOT player-toggleable (SendConfigBatch locks the UI): the
+    // Game modes are NOT player-toggleable (AppendClientConfig locks the UI): the
     // bitmask is derived from the active challenges' RequiredGameMode. So a
     // trial that "is" a game mode (e.g. 61 -> Nightmare 0x100) turns the mode
     // on while active and off when it stops/fails/completes.
@@ -142,7 +151,7 @@ namespace CoAChallenges
             return;
         uint32 guid = player->GetGUID().GetCounter();
 
-        uint32 mask = 0;
+        uint32 mask = RealmGameModeMask();
         for (ActiveChallengeRow const& row : rows)
             mask |= RequiredGameMode(row.challengeId);
 
@@ -243,6 +252,7 @@ namespace CoAChallenges
         // DB rows.
         CharacterDatabase.DirectExecute("DELETE FROM coa_character_challenge WHERE guid = {}", guid);
         ClearCharChallengeCache(guid);
+        RefreshLevelScalingTracking(player);
         CharacterDatabase.DirectExecute("DELETE FROM coa_character_objective WHERE guid = {}", guid);
         CharacterDatabase.DirectExecute("DELETE FROM coa_challenge_completion WHERE guid = {}", guid);
         CharacterDatabase.DirectExecute("DELETE FROM coa_challenge_failure WHERE guid = {}", guid);
@@ -534,6 +544,7 @@ namespace CoAChallenges
         TrackInvertedBreath(player, challengeID);
         RefreshRegenTracking(player);
         RefreshHighRiskTracking(player);
+        RefreshLevelScalingTracking(player);
         RefreshLootedTracking(player);
         RecomputeRequiredGameModes(player);
         EnforceGroupOnActivation(player);
@@ -588,6 +599,7 @@ namespace CoAChallenges
         UntrackInvertedBreath(player);
         RefreshRegenTracking(player);
         RefreshHighRiskTracking(player);
+        RefreshLevelScalingTracking(player);
         RefreshLootedTracking(player);
         RecomputeRequiredGameModes(player);
 
@@ -1443,19 +1455,30 @@ namespace CoAChallenges
         // Rewards marked IsFirstCompletion are only given the first time this
         // level is completed (relevant only when re-completion is allowed).
         bool const firstCompletion = !HasCompletionLevel(guid, challengeID, level);
+        uint32 const account = player->GetSession()->GetAccountId();
+        bool const firstItemReward = firstCompletion && (!IsTrialChallenge(challengeID)
+            || !HasAccountCompletionLevel(account, challengeID, level));
 
         // Rewards are handed out while the challenge is still recorded as active, and the
         // completion row that marks it done is written straight after. Granting last meant a
         // failed grant (or a realm drop in between) consumed the challenge and paid nothing,
         // with no way to retry; granting first at worst leaves the challenge complete with the
         // reward already paid, which the row written below then records.
-        GrantChallengeRewards(player, challengeID, level, firstCompletion);
+        GrantChallengeRewards(player, challengeID, level, firstItemReward, firstCompletion);
 
-        CharacterDatabase.DirectExecute(
+        CharacterDatabaseTransaction completion = CharacterDatabase.BeginTransaction();
+        completion->Append(
             "INSERT IGNORE INTO coa_challenge_completion (guid, challengeId, level, completeTime, startTime) "
             "VALUES ({}, {}, {}, UNIX_TIMESTAMP(), {})", guid, challengeID, level, startTime);
-        CharacterDatabase.DirectExecute(
+        auto* accountCompletion = CharacterDatabase.GetPreparedStatement(CHAR_INS_COA_ACCOUNT_CHALLENGE_COMPLETION);
+        accountCompletion->SetData(0, account);
+        accountCompletion->SetData(1, challengeID);
+        accountCompletion->SetData(2, level);
+        accountCompletion->SetData(3, startTime);
+        completion->Append(accountCompletion);
+        completion->Append(
             "DELETE FROM coa_character_challenge WHERE guid = {} AND challengeId = {}", guid, challengeID);
+        CharacterDatabase.DirectCommitTransaction(completion);
         ClearCharChallengeCache(guid);
         RemoveChallengeSpell(player, challengeID);
         RemoveMeterAuras(player);
@@ -1468,6 +1491,7 @@ namespace CoAChallenges
         UntrackInvertedBreath(player);
         RefreshRegenTracking(player);
         RefreshHighRiskTracking(player);
+        RefreshLevelScalingTracking(player);
         RefreshLootedTracking(player);
         RecomputeRequiredGameModes(player);
 
@@ -1638,10 +1662,12 @@ namespace CoAChallenges
             return;
         }
 
+        std::string eTrialId = trialID;
+        CharacterDatabase.EscapeString(eTrialId);
         std::vector<uint32> bundled;
         if (QueryResult r = CharacterDatabase.Query(
                 "SELECT challengeId FROM coa_custom_trial_entry WHERE guid = {} AND trialId = '{}'",
-                ownerGuid, trialID))
+                ownerGuid, eTrialId))
             do { bundled.push_back(r->Fetch()[0].Get<uint32>()); } while (r->NextRow());
 
         if (std::find(bundled.begin(), bundled.end(), challengeID) == bundled.end())
@@ -1693,6 +1719,7 @@ namespace CoAChallenges
         UntrackInvertedBreath(player);
         RefreshRegenTracking(player);
         RefreshHighRiskTracking(player);
+        RefreshLevelScalingTracking(player);
         RefreshLootedTracking(player);
         RecomputeRequiredGameModes(player);
 

@@ -72,6 +72,11 @@ void ScriptMgr::ModifySpellEffectBaseValue(Unit const* caster, SpellInfo const* 
         script->ModifySpellEffectBaseValue(caster, spellInfo, effectIndex, value));
 }
 
+void ScriptMgr::ResolveSpellCast(Unit* caster, SpellInfo const*& spellInfo)
+{
+    CALL_ENABLED_HOOKS(UnitScript, UNITHOOK_RESOLVE_SPELL_CAST, script->ResolveSpellCast(caster, spellInfo));
+}
+
 void ScriptMgr::ModifyHealReceived(Unit* target, Unit* healer, uint32& heal, SpellInfo const* spellInfo)
 {
     CALL_ENABLED_HOOKS(UnitScript, UNITHOOK_MODIFY_HEAL_RECEIVED, script->ModifyHealReceived(target, healer, heal, spellInfo));
@@ -186,6 +191,11 @@ void ScriptMgr::OnUnitDeath(Unit* unit, Unit* killer)
 void ScriptMgr::OnUnitSetShapeshiftForm(Unit* unit, uint8 form)
 {
     CALL_ENABLED_HOOKS(UnitScript, UNITHOOK_ON_UNIT_SET_SHAPESHIFT_FORM, script->OnUnitSetShapeshiftForm(unit, form));
+}
+
+void ScriptMgr::OnHealthChanged(Unit* unit)
+{
+    CALL_ENABLED_HOOKS(UnitScript, UNITHOOK_ON_HEALTH_CHANGED, script->OnHealthChanged(unit));
 }
 
 UnitScript::UnitScript(char const* name, bool addToScripts, std::vector<uint16> enabledHooks)

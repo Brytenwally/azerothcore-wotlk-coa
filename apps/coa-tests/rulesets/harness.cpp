@@ -1,3 +1,4 @@
+#include <atomic>
 #include <cassert>
 #include <cstdint>
 #include <initializer_list>
@@ -5,20 +6,15 @@
 #include <set>
 using uint32 = std::uint32_t;
 using uint8 = std::uint8_t;
-using int32 = std::int32_t;
 // ENUMS
 using SpellEffIndex = uint32;
 constexpr uint32 EFFECT_0 = 0, SPELL_EFFECT_DUMMY = 3;
 constexpr int GLOBALHOOK_ON_LOAD_SPELL_CUSTOM_ATTR = 1, AURA_REMOVE_BY_DEATH = 1;
-constexpr int PLAYERHOOK_ON_LOGIN = 1;
-constexpr int UNITHOOK_ON_AURA_APPLY = 1, UNITHOOK_ON_AURA_REMOVE = 2, UNITHOOK_ON_AFTER_AURA_EFFECT_CALCULATE_AMOUNT = 3;
-constexpr uint32 SPELL_AURA_DUMMY = 4, SPELL_AURA_MOD_XP_PCT = 200, UNIT_AURA_TYPE = 1;
-constexpr uint8 MAX_SPELL_EFFECTS = 3;
+constexpr int PLAYERHOOK_ON_LOGIN = 1, PLAYERHOOK_ON_MAP_CHANGED = 2, WORLDHOOK_ON_AFTER_CONFIG_LOAD = 1;
 using AuraRemoveMode = int;
 struct Player;
 struct Aura;
 struct AuraApplication;
-struct AuraEffect;
 struct SpellInfo
 {
     uint32 Id = 0, Attributes = 0, AttributesEx3 = 0, Stances = 0;
@@ -42,18 +38,21 @@ struct Unit
     void RemoveOwnedAura(AuraMap::iterator& it, int) { it = m_ownedAuras.erase(it); }
     void RemoveAllAurasOnDeath();
     virtual bool HasAura(uint32) const { return false; }
-    std::map<uint32, AuraEffect*> effects;
-    AuraEffect* GetAuraEffect(uint32 id, uint8 index) const
-    {
-        auto found = effects.find(id * MAX_SPELL_EFFECTS + index);
-        return found == effects.end() ? nullptr : found->second;
-    }
+};
+struct Map
+{
+    bool instanceable = false;
+    bool Instanceable() const { return instanceable; }
 };
 struct Player : Unit
 {
     bool resting = false;
     bool inWorld = true;
+    Map* map = nullptr;
+    uint32 questLogRefreshes = 0;
     bool IsInWorld() const { return inWorld; }
+    Map const* FindMap() const { return map; }
+    void RefreshQuestLogQueries() { ++questLogRefreshes; }
     std::set<uint32> auras;
     std::set<uint32> known;
     uint32 learns = 0;
@@ -69,6 +68,18 @@ struct Player : Unit
         auras.insert(id);
     }
 };
+namespace LocalLevelScaling
+{
+using RulesetBlocksResolver = bool (*)(Player const*);
+std::atomic<RulesetBlocksResolver> RulesetBlocksOwner{nullptr};
+bool notifyHandled = false;
+uint32 notifications = 0;
+bool NotifyScalingChanged(Player*)
+{
+    ++notifications;
+    return notifyHandled;
+}
+}
 struct Aura
 {
     SpellInfo* info;
@@ -76,9 +87,6 @@ struct Aura
     SpellInfo const* GetSpellInfo() const { return info; }
     uint32 GetCasterGUID() const { return owner->GetGUID(); }
     Unit* GetOwner() const { return owner; }
-    Unit* GetUnitOwner() const { return owner; }
-    uint32 GetId() const { return info->Id; }
-    uint32 GetType() const { return UNIT_AURA_TYPE; }
     bool IsPassive() const { return info->HasAttribute(SPELL_ATTR0_PASSIVE); }
     bool IsDeathPersistent() const { return info->IsDeathPersistent(); }
     bool IsSingleTarget() const { return false; }
@@ -87,32 +95,6 @@ struct Aura
     bool CanBeSaved() const;
 };
 struct AuraApplication { Aura* aura; Aura const* GetBase() const { return aura; } };
-struct UnitScript
-{
-    UnitScript(char const*, bool, std::initializer_list<int>) { }
-    virtual ~UnitScript() = default;
-    virtual void OnAfterAuraEffectCalculateAmount(AuraEffect const*, Unit*, int32&) { }
-    virtual void OnAuraApply(Unit*, Aura*) { }
-    virtual void OnAuraRemove(Unit*, AuraApplication*, AuraRemoveMode) { }
-};
-UnitScript* unitScript = nullptr;
-struct AuraEffect
-{
-    Aura* base;
-    uint32 auraType;
-    int32 baseAmount;
-    int32 amount = 0;
-    uint32 GetId() const { return base->GetId(); }
-    uint32 GetAuraType() const { return auraType; }
-    Aura* GetBase() const { return base; }
-    void RecalculateAmount()
-    {
-        int32 value = baseAmount;
-        if (unitScript)
-            unitScript->OnAfterAuraEffectCalculateAmount(this, nullptr, value);
-        amount = value;
-    }
-};
 struct Hook { template<class T> void operator+=(T) { } };
 struct SpellScript
 {
@@ -139,6 +121,12 @@ struct PlayerScript
 {
     PlayerScript(char const*, std::initializer_list<int>) { }
     virtual void OnPlayerLogin(Player*) { }
+    virtual void OnPlayerMapChanged(Player*) { }
+};
+struct WorldScript
+{
+    WorldScript(char const*, std::initializer_list<int>) { }
+    virtual void OnAfterConfigLoad(bool) { }
 };
 struct ConfigMgrStub
 {
@@ -180,23 +168,25 @@ int main()
     player.auras.insert(123);
     login.OnPlayerLogin(&player);
     assert((player.known == std::set<uint32>{123, 84420, 84421, 84422}) && player.learns == 2);
-    assert((player.auras == std::set<uint32>{123, 1004119, 9931032}));
+    assert((player.auras == std::set<uint32>{123, 9931032}));
     login.OnPlayerLogin(&player);
-    assert(player.learns == 2 && (player.auras == std::set<uint32>{123, 1004119, 9931032}));
-    for (auto const& kept : {std::set<uint32>{1004019}, std::set<uint32>{1004119},
-                             std::set<uint32>{1004119, 9931032}})
+    assert(player.learns == 2 && (player.auras == std::set<uint32>{123, 9931032}));
+    for (auto const& kept : {std::set<uint32>{1004019}, std::set<uint32>{1004119}, std::set<uint32>{9931032}})
     {
         player.auras = kept;
         login.OnPlayerLogin(&player);
         assert(player.auras == kept);
     }
-    player.auras = {9931032};
+    player.auras = {1004119, 9931032};
     login.OnPlayerLogin(&player);
-    assert((player.auras == std::set<uint32>{1004119, 9931032}));
+    assert((player.auras == std::set<uint32>{9931032}));
     configMgrStub.rulesetLoginDefault = false;
     Player gated;
     login.OnPlayerLogin(&gated);
     assert((gated.known == std::set<uint32>{84420, 84421, 84422}) && gated.learns == 3 && gated.auras.empty());
+    gated.auras = {1004119, 9931032};
+    login.OnPlayerLogin(&gated);
+    assert((gated.auras == std::set<uint32>{9931032}));
     configMgrStub.rulesetLoginDefault = true;
     Player evicted;
     evicted.inWorld = false;
@@ -213,7 +203,7 @@ int main()
     player.resting = true;
     assert(script.CheckCast() == SPELL_CAST_OK);
     const std::map<uint32, std::set<uint32>> modes = {
-        {84420, {1004119}}, {84421, {1004019}}, {84422, {1004119, 9931032}}
+        {84420, {1004119}}, {84421, {1004019}}, {84422, {9931032}}
     };
     for (auto const& [previous, auras] : modes)
         for (auto const& [selected, expected] : modes)
@@ -236,31 +226,41 @@ int main()
     ruleset_aura_metadata metadata;
     metadata.OnLoadSpellCustomAttr(&info);
     assert(info.AttributesEx3 == 0);
-    ruleset_war_mode_experience experience;
-    unitScript = &experience;
-    Player pve;
-    SpellInfo warModeInfo;
-    warModeInfo.Id = 1004119;
-    SpellInfo pveInfo;
-    pveInfo.Id = 9931032;
-    Aura warMode{&warModeInfo, &pve};
-    Aura pveMode{&pveInfo, &pve};
-    AuraApplication pveApplication{&pveMode};
-    AuraEffect marker{&warMode, SPELL_AURA_DUMMY, 7};
-    AuraEffect experienceBonus{&warMode, SPELL_AURA_MOD_XP_PCT, 15};
-    pve.effects[1004119 * MAX_SPELL_EFFECTS] = &marker;
-    pve.effects[1004119 * MAX_SPELL_EFFECTS + 1] = &experienceBonus;
-    pve.auras = {1004119};
-    experienceBonus.RecalculateAmount();
-    assert(experienceBonus.amount == 15);
-    pve.auras.insert(9931032);
-    experience.OnAuraApply(&pve, &warMode);
-    assert(experienceBonus.amount == 15);
-    experience.OnAuraApply(&pve, &pveMode);
-    assert(experienceBonus.amount == 0 && marker.amount == 0);
-    pve.auras.erase(9931032);
-    experience.OnAuraRemove(&pve, &pveApplication, 0);
-    assert(experienceBonus.amount == 15 && marker.amount == 0);
-    unitScript = nullptr;
+    AddSC_AscensionRulesets();
+    assert(LocalLevelScaling::RulesetBlocksOwner.load() == &RulesetBlocksLevelScaling);
+    Map world;
+    Map dungeon{true};
+    Player roamer;
+    roamer.map = &world;
+    for (auto const& [auras, blocked] : std::map<std::set<uint32>, bool>{
+             {{1004019}, true}, {{1004119}, true}, {{1004119, 9931032}, false}, {{9931032}, false}})
+    {
+        roamer.auras = auras;
+        assert(RulesetBlocksLevelScaling(&roamer) == blocked);
+    }
+    roamer.auras = {1004019};
+    roamer.map = &dungeon;
+    assert(!RulesetBlocksLevelScaling(&roamer));
+    roamer.map = &world;
+    ruleset_level_scaling_configuration configuration;
+    configMgrStub.rulesetLoginDefault = false;
+    configuration.OnAfterConfigLoad(false);
+    assert(!RulesetBlocksLevelScaling(&roamer));
+    configMgrStub.rulesetLoginDefault = true;
+    configuration.OnAfterConfigLoad(false);
+    assert(RulesetBlocksLevelScaling(&roamer));
+    roamer.auras = {9931032};
+    ApplyRuleset(&roamer, 84421);
+    assert(LocalLevelScaling::notifications == 1 && roamer.questLogRefreshes == 1);
+    ApplyRuleset(&roamer, 84420);
+    assert(LocalLevelScaling::notifications == 1 && roamer.questLogRefreshes == 1);
+    LocalLevelScaling::notifyHandled = true;
+    ApplyRuleset(&roamer, 84422);
+    assert(LocalLevelScaling::notifications == 2 && roamer.questLogRefreshes == 1);
+    login.OnPlayerMapChanged(&roamer);
+    assert(roamer.questLogRefreshes == 1);
+    roamer.auras = {1004019};
+    login.OnPlayerMapChanged(&roamer);
+    assert(roamer.questLogRefreshes == 2);
     // DBC_CASES
 }

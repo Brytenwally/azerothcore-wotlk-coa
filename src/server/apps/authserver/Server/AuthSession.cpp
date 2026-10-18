@@ -25,12 +25,14 @@
 #include "DatabaseEnv.h"
 #include "IPLocation.h"
 #include "Log.h"
+#include "RealmCard.h"
 #include "RealmList.h"
 #include "SecretMgr.h"
 #include "StringConvert.h"
 #include "TOTP.h"
 #include "Util.h"
 #include <boost/lexical_cast.hpp>
+#include <utility>
 
 using boost::asio::ip::tcp;
 
@@ -811,6 +813,7 @@ void AuthSession::RealmListCallback(PreparedQueryResult result)
     ByteBuffer pkt;
 
     std::size_t RealmListSize = 0;
+    std::vector<std::pair<uint32, std::string>> listedRealms;
     for (auto const& [realmHandle, realm] : sRealmList->GetRealms())
     {
         // don't work with realms which not compatible with the client
@@ -864,7 +867,32 @@ void AuthSession::RealmListCallback(PreparedQueryResult result)
             pkt << uint16(buildInfo->Build);
         }
 
+        listedRealms.emplace_back(realm.Id.Realm, realm.Name);
         ++RealmListSize;
+    }
+
+    if (_expversion & POST_BC_EXP_FLAG && sConfigMgr->GetOption<bool>("RealmCards.Enable", true))
+    {
+        RealmCardStyle const style{ sConfigMgr->GetOption<uint32>("RealmCards.Expansion", 2),
+            sConfigMgr->GetOption<uint32>("RealmCards.GameMode", 11),
+            sConfigMgr->GetOption<std::string>("RealmCards.Image", "Default") };
+        uint8 const category = uint8(sConfigMgr->GetOption<uint32>("RealmCards.Category", 41));
+        for (std::size_t order = 0; order < listedRealms.size(); ++order)
+        {
+            RealmCardStyle realmStyle = style;
+            realmStyle.GameMode = sConfigMgr->GetOption<uint32>(
+                "RealmCards.Realm." + std::to_string(listedRealms[order].first) + ".GameMode", style.GameMode, false);
+            pkt << uint8(REALM_TYPE_NORMAL);
+            pkt << uint8(0);
+            pkt << uint8(REALM_FLAG_OFFLINE);
+            pkt << BuildRealmCardName(listedRealms[order].second, realmStyle, GetRealmCardSlot(order));
+            pkt << "0.0.0.0:0";
+            pkt << float(0);
+            pkt << uint8(0);
+            pkt << category;
+            pkt << uint8(0);
+            ++RealmListSize;
+        }
     }
 
     if (_expversion & POST_BC_EXP_FLAG)                     // 2.x and 3.x clients

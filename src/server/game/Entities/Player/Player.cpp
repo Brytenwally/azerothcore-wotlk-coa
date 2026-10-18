@@ -58,6 +58,7 @@
 #include "InstanceScript.h"
 #include "LFGMgr.h"
 #include "LiveClassResourcePolicy.h"
+#include "LocalLevelScaling.h"
 #include "Log.h"
 #include "LootItemStorage.h"
 #include "MapMgr.h"
@@ -109,8 +110,36 @@
 
 enum CustomEquipmentSpells : uint32
 {
-    SPELL_BURNING_COMMANDER = 92089
+    SPELL_BURNING_COMMANDER = 92089,
+    SPELL_VALKYR_GRIP = 707072,
+    SPELL_TITANS_GRIP = 46917,
+    SPELL_DUAL_WIELD = 674
 };
+
+enum ClientKnownSupersededSpells : uint32
+{
+    SPELL_RANGER_SKULLPIERCER_RANK_1 = 802036
+};
+
+// The Ascension client shows the Ranger Advantage bar only while it knows Skullpiercer rank 1.
+static bool IsKeptInClientSpellbookWhenSuperseded(uint32 spellId)
+{
+    return spellId == SPELL_RANGER_SKULLPIERCER_RANK_1;
+}
+
+static void ReplaceSpellOnActionButtons(Player* player, uint32 from, uint32 to)
+{
+    bool changed = false;
+    for (uint8 slot = 0; slot < MAX_ACTION_BUTTONS; ++slot)
+    {
+        ActionButton const* button = player->GetActionButton(slot);
+        if (button && button->GetType() == ACTION_BUTTON_SPELL && button->GetAction() == from)
+            changed = player->addActionButton(slot, to, ACTION_BUTTON_SPELL) != nullptr || changed;
+    }
+
+    if (changed)
+        player->SendActionButtons(1);
+}
 
 enum CharacterFlags
 {
@@ -2154,7 +2183,8 @@ void Player::RegenerateHealth()
 
 void Player::ResetAllPowers()
 {
-    SetHealth(GetMaxHealth());
+    if (IsAlive())
+        SetHealth(GetMaxHealth());
     if (HasActivePowerType(POWER_MANA))
     {
         SetPower(POWER_MANA, GetMaxPower(POWER_MANA));
@@ -2497,10 +2527,14 @@ void Player::GiveXP(uint32 xp, Unit* victim, float group_rate, bool isLFGReward)
     uint8 level = GetLevel();
     sScriptMgr->OnPlayerBeforeGetLevelForXPGain(this, level);
 
+    // A NO_BONUS_EXPERIENCE challenge earns base experience only: no favored, rested
+    // or recruit-a-friend bonus.
+    bool const noBonusExperience = sScriptMgr->OnPlayerHasNoBonusExperience(this);
+
     // Favored experience increase START
     uint32 zone = GetZoneId();
     float favored_exp_mult = 0;
-    if ((zone == AREA_HELLFIRE_PENINSULA || zone == AREA_HELLFIRE_RAMPARTS || zone == AREA_MAGTHERIDONS_LAIR || zone == AREA_THE_BLOOD_FURNACE || zone == AREA_THE_SHATTERED_HALLS) && HasAnyAuras(32096 /*Thrallmar's Favor*/, 32098 /*Honor Hold's Favor*/))
+    if (!noBonusExperience && (zone == AREA_HELLFIRE_PENINSULA || zone == AREA_HELLFIRE_RAMPARTS || zone == AREA_MAGTHERIDONS_LAIR || zone == AREA_THE_BLOOD_FURNACE || zone == AREA_THE_SHATTERED_HALLS) && HasAnyAuras(32096 /*Thrallmar's Favor*/, 32098 /*Honor Hold's Favor*/))
         favored_exp_mult = 0.05f; // Thrallmar's Favor and Honor Hold's Favor
 
     xp = uint32(xp * (1 + favored_exp_mult));
@@ -2531,7 +2565,7 @@ void Player::GiveXP(uint32 xp, Unit* victim, float group_rate, bool isLFGReward)
     uint32 curXP = GetUInt32Value(PLAYER_XP);
     uint32 nextLvlXP = GetUInt32Value(PLAYER_NEXT_LEVEL_XP);
     uint32 bonusLimit = xp;
-    bool recruitAFriend = GetsRecruitAFriendBonus(true);
+    bool recruitAFriend = !noBonusExperience && GetsRecruitAFriendBonus(true);
     if (recruitAFriend)
         bonusLimit = 2 * xp;
 
@@ -2548,7 +2582,8 @@ void Player::GiveXP(uint32 xp, Unit* victim, float group_rate, bool isLFGReward)
     }
 
     // RaF does NOT stack with rested experience. Only spend the rested bonus that fits.
-    uint32 bonus_xp = recruitAFriend ? bonusLimit : (victim ? GetXPRestBonus(bonusLimit) : 0);
+    uint32 bonus_xp = noBonusExperience ? 0
+        : (recruitAFriend ? bonusLimit : (victim ? GetXPRestBonus(bonusLimit) : 0));
 
     // hooks and multipliers can modify the xp with a zero or negative value
     // check again before sending invalid xp to the client
@@ -2911,7 +2946,8 @@ void Player::SendInitialSpells()
         if (itr->second->State == PLAYERSPELL_REMOVED)
             continue;
 
-        if (!itr->second->Active || !itr->second->IsInSpec(GetActiveSpec()))
+        if ((!itr->second->Active && !IsKeptInClientSpellbookWhenSuperseded(itr->first)) ||
+            !itr->second->IsInSpec(GetActiveSpec()))
             continue;
 
         data << uint32(itr->first);
@@ -2999,7 +3035,8 @@ void Player::SendUnlearnSpells()
 
     for (auto const& itr : m_spells)
     {
-        if (itr.second->State == PLAYERSPELL_REMOVED || itr.second->Active)
+        if (itr.second->State == PLAYERSPELL_REMOVED || itr.second->Active ||
+            IsKeptInClientSpellbookWhenSuperseded(itr.first))
             continue;
 
         auto skillLineAbilities = sSpellMgr->GetSkillLineAbilityMapBounds(itr.first);
@@ -3234,7 +3271,7 @@ void Player::_addTalentAurasAndSpells(uint32 spellId)
     }
 }
 
-void Player::SendLearnPacket(uint32 spellId, bool learn)
+void Player::SendLearnPacket(uint32 spellId, bool learn, bool keepActionButtons /*= false*/)
 {
     if (learn)
     {
@@ -3245,8 +3282,12 @@ void Player::SendLearnPacket(uint32 spellId, bool learn)
     }
     else
     {
-        WorldPacket data(SMSG_REMOVED_SPELL, 4);
+        WorldPacket data(SMSG_REMOVED_SPELL, 5);
         data << uint32(spellId);
+        // The CoA client's Extensions.dll leaves the spell's action buttons in place for a removal that ends in a
+        // zero byte; the stock client reads only the spell id.
+        if (keepActionButtons)
+            data << uint8(0);
         SendDirectMessage(&data);
     }
 }
@@ -3278,7 +3319,12 @@ bool Player::addSpell(uint32 spellId, uint8 addSpecMask, bool updateActive, bool
                     if (!isBeingLoaded() && IsUnlearnNeededForSpell(spellId))
                         SendUnlearnSpells();
 
-                    if (IsInWorld())
+                    if (IsInWorld() && IsKeptInClientSpellbookWhenSuperseded(nextSpellInfo->Id))
+                    {
+                        SendLearnPacket(spellInfo->Id, true);
+                        ReplaceSpellOnActionButtons(this, nextSpellInfo->Id, spellInfo->Id);
+                    }
+                    else if (IsInWorld())
                     {
                         WorldPacket data(SMSG_SUPERCEDED_SPELL, 4 + 4);
                         data << uint32(nextSpellInfo->Id);
@@ -3329,7 +3375,11 @@ bool Player::_addSpell(uint32 spellId, uint8 addSpecMask, bool temporary, bool l
     // condition mirrors the one Player::removeSpell uses for onlyTemporary. Player::learnSpell must not
     // announce the same grant again, or the client ends up with more copies than the server ever removes.
     if (IsInWorld() && !isBeingLoaded() && temporary && !learnFromSkill && (!spellInfo->HasAttribute(SpellAttr0(SPELL_ATTR0_PASSIVE | SPELL_ATTR0_DO_NOT_DISPLAY)) || !spellInfo->HasAnyAura()) && !spellInfo->HasEffect(SPELL_EFFECT_LEARN_SPELL))
+    {
+        sScriptMgr->OnPlayerTemporarySpellLearnNotice(this, spellInfo->Id, false);
         SendLearnPacket(spellInfo->Id, true);
+        sScriptMgr->OnPlayerTemporarySpellLearnNotice(this, spellInfo->Id, true);
+    }
 
     // xinef: DO NOT allow to learn spell with effect learn spell!
     // xinef: if spell possess spell learn effects only, learn those spells as temporary (eg. Metamorphosis, Tree of Life)
@@ -3494,11 +3544,21 @@ bool Player::IsNeedCastPassiveSpellAtLearn(SpellInfo const* spellInfo) const
     // note: form passives activated with shapeshift spells be implemented by HandleShapeshiftBoosts instead of spell_learn_spell
     // talent dependent passives activated at form apply have proper stance data
     ShapeshiftForm form = GetShapeshiftForm();
-    return (!spellInfo->Stances || (form && (spellInfo->Stances & (1 << (form - 1)))) ||
+    return (!spellInfo->Stances || (form && (spellInfo->Stances & (uint64(1) << (form - 1)))) ||
             (!form && spellInfo->HasAttribute(SPELL_ATTR2_ALLOW_WHILE_NOT_SHAPESHIFTED)));
 }
 
 void Player::learnSpell(uint32 spellId, bool temporary /*= false*/, bool learnFromSkill /*= false*/)
+{
+    _learnSpell(spellId, temporary, learnFromSkill, true);
+}
+
+void Player::learnSpellWithoutAnnouncement(uint32 spellId, bool temporary /*= true*/)
+{
+    _learnSpell(spellId, temporary, false, false);
+}
+
+void Player::_learnSpell(uint32 spellId, bool temporary, bool learnFromSkill, bool announce)
 {
     if (IsAscensionClass(getClass()))
         if (SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(spellId))
@@ -3514,7 +3574,11 @@ void Player::learnSpell(uint32 spellId, bool temporary /*= false*/, bool learnFr
 
     uint8 const specMask = GetLearnSpellSpecMask(spellId);
 
-    bool const added = addSpell(spellId, specMask, true, temporary, learnFromSkill);
+    // A caller that delivers the spell to the client itself (learnSpellWithoutAnnouncement) asks for
+    // neither announcement site to send it, or the client holds the spell twice: its spellbook is a
+    // list of slots that every announcement appends to, and the highest-rank view it draws over that
+    // list only collapses a spell that has ranks.
+    bool const added = addSpell(spellId, specMask, true, temporary, learnFromSkill || !announce);
     if (added)
     {
         sScriptMgr->OnPlayerLearnSpell(this, spellId);
@@ -3524,8 +3588,14 @@ void Player::learnSpell(uint32 spellId, bool temporary /*= false*/, bool learnFr
         // and Player::removeSpell answers such a grant with a single SMSG_REMOVED_SPELL. Announcing it twice
         // leaves the client one extra copy of the spell per grant/revoke cycle, which both hides the real
         // spellbook entry behind duplicates and keeps the client believing a revoked spell is still known.
-        if (IsInWorld() && (!temporary || learnFromSkill))
-            SendLearnPacket(spellId, true);
+        if (announce && IsInWorld() && (!temporary || learnFromSkill))
+        {
+            uint32 const replacement = GetTemporarySpellReplacement(spellId);
+            bool const artificersWandReplacement = replacement != spellId &&
+                (replacement == 561284 || (replacement >= 561354 && replacement <= 561357));
+            if (!artificersWandReplacement)
+                SendLearnPacket(spellId, true);
+        }
     }
 
     // pussywizard: rank stuff at the end!
@@ -3748,14 +3818,26 @@ void Player::removeSpell(uint32 spell_id, uint8 removeSpecMask, bool onlyTempora
         }
     }
 
-    if (spell_id == SPELL_BURNING_COMMANDER)
+    if (getClass() == CLASS_SUN_CLERIC && spell_id == SPELL_VALKYR_GRIP && !HasValkyrGrip())
+    {
+        SetCanTitanGrip(false);
+        if (!HasActiveSpell(SPELL_DUAL_WIELD))
+            SetCanDualWield(false);
+    }
+
+    if (spell_id == SPELL_BURNING_COMMANDER || spell_id == SPELL_VALKYR_GRIP ||
+        (getClass() == CLASS_HERO && spell_id == SPELL_TITANS_GRIP))
         AutoUnequipOffhandIfNeed();
 
     // pussywizard: remove from spell book (can't be replaced by previous rank, because such spells can't be unlearnt)
     if (!onlyTemporary || ((!spellInfo->HasAttribute(SpellAttr0(SPELL_ATTR0_PASSIVE | SPELL_ATTR0_DO_NOT_DISPLAY)) || !spellInfo->HasAnyAura()) && !spellInfo->HasEffect(SPELL_EFFECT_LEARN_SPELL)))
     {
         sScriptMgr->OnPlayerForgotSpell(this, spell_id);
-        SendLearnPacket(spell_id, false);
+        if (onlyTemporary)
+            sScriptMgr->OnPlayerTemporarySpellRemoveNotice(this, spell_id, false);
+        SendLearnPacket(spell_id, false, onlyTemporary && IsTemporarySpellReplacementStandIn(spell_id));
+        if (onlyTemporary)
+            sScriptMgr->OnPlayerTemporarySpellRemoveNotice(this, spell_id, true);
     }
 }
 
@@ -3856,6 +3938,17 @@ void Player::RemoveArenaSpellCooldowns(bool removeActivePetCooldowns)
             // actually clear cooldowns
             pet->m_CreatureSpellCooldowns.clear();
         }
+}
+
+void Player::RemoveActivePetSpellCooldowns()
+{
+    if (Pet* pet = GetPet())
+    {
+        for (auto const& cooldown : pet->m_CreatureSpellCooldowns)
+            SendClearCooldown(cooldown.first, pet);
+
+        pet->m_CreatureSpellCooldowns.clear();
+    }
 }
 
 void Player::RemoveAllSpellCooldown()
@@ -4075,7 +4168,7 @@ bool Player::resetTalents(bool noResetCost)
     if (m_canTitanGrip)
         SetCanTitanGrip(false);
     // xinef: remove dual wield if player does not have dual wield spell (shamans)
-    if (!HasSpell(674) && CanDualWield())
+    if (!HasSpell(SPELL_DUAL_WIELD) && CanDualWield())
         SetCanDualWield(false);
 
     AutoUnequipOffhandIfNeed();
@@ -4721,6 +4814,14 @@ void Player::ResurrectPlayer(float restore_percent, bool applySickness)
     uint32 newzone, newarea;
     GetZoneAndAreaId(newzone, newarea);
     UpdateZone(newzone, newarea, true);
+    if (sWorld->getBoolConfig(CONFIG_VMAP_INDOOR_CHECK))
+    {
+        SpellAttr0 const disallowedAttribute = IsOutdoors() ? SPELL_ATTR0_ONLY_INDOORS : SPELL_ATTR0_ONLY_OUTDOORS;
+        RemoveOwnedAuras([disallowedAttribute](Aura const* aura)
+        {
+            return !aura->IsPassive() && aura->GetSpellInfo()->HasAttribute(disallowedAttribute);
+        });
+    }
     sOutdoorPvPMgr->HandlePlayerResurrects(this, newzone);
 
     if (Battleground* bg = GetBattleground())
@@ -6869,7 +6970,7 @@ void Player::_ApplyItemMods(Item* item, uint8 slot, bool apply)
     if (slot >= INVENTORY_SLOT_BAG_END || !item)
         return;
 
-    ItemTemplate const* proto = item->GetTemplate();
+    ItemTemplate const* proto = LocalLevelScaling::InstanceTemplateFor(item, item->GetTemplate());
 
     if (!proto)
         return;
@@ -6897,6 +6998,8 @@ void Player::_ApplyItemMods(Item* item, uint8 slot, bool apply)
         UpdateWeaponDependentAuras(attackType);
 
     ApplyEnchantment(item, apply);
+
+    sScriptMgr->OnPlayerAfterApplyItemMods(this, item, slot, apply);
 
     LOG_DEBUG("entities.player.items", "_ApplyItemMods complete.");
 }
@@ -7891,7 +7994,7 @@ void Player::_RemoveAllItemMods()
         {
             if (m_items[i]->IsBroken() || !CanUseAttackType(GetAttackBySlot(i)))
                 continue;
-            ItemTemplate const* proto = m_items[i]->GetTemplate();
+            ItemTemplate const* proto = LocalLevelScaling::InstanceTemplateFor(m_items[i], m_items[i]->GetTemplate());
             if (!proto)
                 continue;
 
@@ -7917,7 +8020,7 @@ void Player::_ApplyAllItemMods()
             if (m_items[i]->IsBroken() || !CanUseAttackType(GetAttackBySlot(i)))
                 continue;
 
-            ItemTemplate const* proto = m_items[i]->GetTemplate();
+            ItemTemplate const* proto = LocalLevelScaling::InstanceTemplateFor(m_items[i], m_items[i]->GetTemplate());
             if (!proto)
                 continue;
 
@@ -7976,7 +8079,7 @@ void Player::_ApplyAllLevelScaleItemMods(bool apply)
 
 void Player::_ApplyAmmoBonuses()
 {
-    if (IsAscensionClass(getClass()))
+    if (!UsesProjectileAmmo(getClass()))
     {
         // CoA ranged damage comes from the equipped weapon, not a projectile
         // stack. Clear stale ammo DPS as well as refusing new ammo bonuses.
@@ -8347,7 +8450,8 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
             switch (loot_type)
             {
                 case LOOT_DISENCHANTING:
-                    loot->FillLoot(item->GetTemplate()->DisenchantID, LootTemplates_Disenchant, this, true);
+                    loot->FillLoot(LocalLevelScaling::InstanceTemplateFor(item, item->GetTemplate())->DisenchantID,
+                        LootTemplates_Disenchant, this, true);
                     break;
                 case LOOT_PROSPECTING:
                     loot->FillLoot(item->GetEntry(), LootTemplates_Prospecting, this, true);
@@ -8531,6 +8635,9 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
                 else
                     permission = NONE_PERMISSION;
             }
+            if (permission == NONE_PERMISSION && loot_type == LOOT_CORPSE
+                && loot->loot_type != LOOT_SKINNING && creature->IsSharedQuestParticipant(this))
+                permission = QUEST_PERMISSION;
         }
     }
 
@@ -10243,6 +10350,31 @@ bool Player::IsAffectedBySpellmod(SpellInfo const* spellInfo, SpellModifier* mod
     return spellInfo->IsAffectedBySpellMod(mod);
 }
 
+// xinef's Backdraft coupling only makes sense when the same aura also reduces cast
+// time: its gcd half must not fire when its cast-time half was not applied. An aura
+// whose only spell modifier is the gcd reduction (Dark Frenzy's 804845 helper, kept
+// up by AscensionBloodmageTalents.cpp while a Cursed Form is active) has no cast-time
+// half to wait for, so it must reach the gcd calculation itself.
+static bool AuraAlsoModifiesCastingTime(Aura const* aura)
+{
+    if (!aura)
+        return false;
+
+    SpellInfo const* info = aura->GetSpellInfo();
+    if (!info)
+        return false;
+
+    for (uint8 i = 0; i < MAX_SPELL_EFFECTS; ++i)
+    {
+        SpellEffectInfo const& effect = info->Effects[i];
+        if ((effect.ApplyAuraName == SPELL_AURA_ADD_FLAT_MODIFIER || effect.ApplyAuraName == SPELL_AURA_ADD_PCT_MODIFIER) &&
+            effect.MiscValue == SPELLMOD_CASTING_TIME)
+            return true;
+    }
+
+    return false;
+}
+
 template <class T>
 void Player::ApplySpellMod(uint32 spellId, SpellModOp op, T& basevalue, Spell* spell, bool temporaryPet)
 {
@@ -10293,7 +10425,8 @@ void Player::ApplySpellMod(uint32 spellId, SpellModOp op, T& basevalue, Spell* s
             else if (mod->op == SPELLMOD_CRITICAL_CHANCE && !HasSpellModApplied(mod, spell))
                 return;
             // xinef: special case for backdraft gcd reduce with backlast time reduction, dont affect gcd if cast time was not applied
-            else if (mod->op == SPELLMOD_GLOBAL_COOLDOWN && !HasSpellModApplied(mod, spell))
+            else if (mod->op == SPELLMOD_GLOBAL_COOLDOWN && !HasSpellModApplied(mod, spell) &&
+                AuraAlsoModifiesCastingTime(mod->ownerAura))
                 return;
 
             // xinef: those two mods should be multiplicative (Glyph of Renew)
@@ -10358,6 +10491,41 @@ template AC_GAME_API void Player::ApplySpellMod(uint32 spellId, SpellModOp op, i
 template AC_GAME_API void Player::ApplySpellMod(uint32 spellId, SpellModOp op, uint32& basevalue, Spell* spell, bool temporaryPet);
 template AC_GAME_API void Player::ApplySpellMod(uint32 spellId, SpellModOp op, float& basevalue, Spell* spell, bool temporaryPet);
 
+bool Player::UsesAscensionSpellModifierLayout() const
+{
+    return GetSession() && GetSession()->IsAscensionCompatEnabled();
+}
+
+uint32 Player::GetClientSpellModCount() const
+{
+    return UsesAscensionSpellModifierLayout() ? MAX_SPELLMOD : MAX_CLIENT_SPELLMOD;
+}
+
+void Player::SendSpellModifier(uint16 opcode, uint8 eff, uint8 op, int32 value, uint32 spellFamily) const
+{
+    bool const useAscensionSpellModifierLayout = UsesAscensionSpellModifierLayout();
+    WorldPacket data(opcode, useAscensionSpellModifierLayout ? 11 : 6);
+    if (useAscensionSpellModifierLayout)
+    {
+        // In Ascension's multi-class modifier engine, mode 0 (11 bytes) specifies
+        // an individual modifier where the trailing uint32 is the SpellFamilyName
+        // (e.g. 32 for Starcaller, 9 for Hunter), indexing client table slice:
+        // SpellFamilyName * 0x11A0 + eff * 31 + opType.
+        data << uint8(0);
+        data << uint8(eff);
+        data << uint8(op);
+        data << int32(value);
+        data << uint32(spellFamily);
+    }
+    else
+    {
+        data << uint8(eff);
+        data << uint8(op);
+        data << int32(value);
+    }
+    SendDirectMessage(&data);
+}
+
 void Player::AddSpellMod(SpellModifier* mod, bool apply)
 {
     if (!mod)
@@ -10377,13 +10545,14 @@ void Player::AddSpellMod(SpellModifier* mod, bool apply)
     LOG_DEBUG("spells.aura", "Player::AddSpellMod {}", mod->spellId);
     uint16 Opcode = (mod->type == SPELLMOD_FLAT) ? SMSG_SET_FLAT_SPELL_MODIFIER : SMSG_SET_PCT_SPELL_MODIFIER;
 
-    bool const useAscensionSpellModifierLayout = GetSession() && GetSession()->IsAscensionCompatEnabled();
+    bool const useAscensionSpellModifierLayout = UsesAscensionSpellModifierLayout();
     SpellInfo const* modSpell = sSpellMgr->GetSpellInfo(mod->spellId);
     uint32 const spellFamily = modSpell ? modSpell->SpellFamilyName : 0;
 
     int i = 0;
     flag96 _mask = 0;
-    for (int eff = 0; eff < 96 && mod->op < MAX_CLIENT_SPELLMOD; ++eff)
+    uint32 const clientSpellModCount = GetClientSpellModCount();
+    for (int eff = 0; eff < 96 && uint32(mod->op) < clientSpellModCount; ++eff)
     {
         if (eff != 0 && eff % 32 == 0)
             _mask[i++] = 0;
@@ -10406,26 +10575,7 @@ void Player::AddSpellMod(SpellModifier* mod, bool apply)
                 }
             }
             val += apply ? mod->value : -(mod->value);
-            WorldPacket data(Opcode, useAscensionSpellModifierLayout ? 11 : 6);
-            if (useAscensionSpellModifierLayout)
-            {
-                // In Ascension's multi-class modifier engine, mode 0 (11 bytes) specifies
-                // an individual modifier where the trailing uint32 is the SpellFamilyName
-                // (e.g. 32 for Starcaller, 9 for Hunter), indexing client table slice:
-                // SpellFamilyName * 0x11A0 + eff * 31 + opType.
-                data << uint8(0);
-                data << uint8(eff);
-                data << uint8(mod->op);
-                data << int32(val);
-                data << uint32(spellFamily);
-            }
-            else
-            {
-                data << uint8(eff);
-                data << uint8(mod->op);
-                data << int32(val);
-            }
-            SendDirectMessage(&data);
+            SendSpellModifier(Opcode, eff, mod->op, val, spellFamily);
         }
     }
 
@@ -11416,6 +11566,10 @@ uint32 Player::GetMaxPersonalArenaRatingRequirement(uint32 minarenaslot) const
     return max_personal_rating;
 }
 
+// Item spell category shared by potions and potion-like consumables (ranger waterskins declare the
+// same category and cooldown as classic potions). The client enforces this pool across spell families.
+static constexpr uint32 SPELL_CATEGORY_SHARED_POTION_COOLDOWN = 5004;
+
 void Player::AddSpellAndCategoryCooldowns(SpellInfo const* spellInfo, uint32 itemId, Spell* spell, bool infinityCooldown)
 {
     if (spell && !itemId && !infinityCooldown && spellInfo->MaxCharges)
@@ -11453,6 +11607,10 @@ void Player::AddSpellAndCategoryCooldowns(SpellInfo const* spellInfo, uint32 ite
         cat = spellInfo->GetCategory();
         rec = spellInfo->RecoveryTime;
         catrec = spellInfo->CategoryRecoveryTime;
+
+        // A charged spell recovers through its charges, not through its DBC category cooldown
+        if (spellInfo->MaxCharges)
+            catrec = 0;
     }
 
     time_t catrecTime;
@@ -11538,9 +11696,12 @@ void Player::AddSpellAndCategoryCooldowns(SpellInfo const* spellInfo, uint32 ite
                     continue;
                 }
 
-                // Only within the same spellfamily
+                // Only within the same spellfamily, except for item-driven cooldowns in the shared
+                // potion pool, which spans spell families by design (classic potions vs. custom
+                // consumables such as the ranger waterskins, see #6911).
+                bool const sharedPotionPool = itemId > 0 && cat == SPELL_CATEGORY_SHARED_POTION_COOLDOWN;
                 SpellInfo const* categorySpellInfo = sSpellMgr->GetSpellInfo(i_scset->second);
-                if (!categorySpellInfo || categorySpellInfo->SpellFamilyName != spellInfo->SpellFamilyName)
+                if (!categorySpellInfo || (!sharedPotionPool && categorySpellInfo->SpellFamilyName != spellInfo->SpellFamilyName))
                 {
                     continue;
                 }
@@ -12794,7 +12955,8 @@ bool Player::InBattlegroundQueue(bool ignoreArena) const
         if (_BgBattlegroundQueueID[i].bgQueueTypeId != BATTLEGROUND_QUEUE_NONE &&
             (!ignoreArena || (_BgBattlegroundQueueID[i].bgQueueTypeId != BATTLEGROUND_QUEUE_2v2 &&
                 _BgBattlegroundQueueID[i].bgQueueTypeId != BATTLEGROUND_QUEUE_3v3 &&
-                _BgBattlegroundQueueID[i].bgQueueTypeId != BATTLEGROUND_QUEUE_5v5)))
+                _BgBattlegroundQueueID[i].bgQueueTypeId != BATTLEGROUND_QUEUE_5v5 &&
+                _BgBattlegroundQueueID[i].bgQueueTypeId != BATTLEGROUND_QUEUE_1v1)))
             return true;
     return false;
 }
@@ -13295,7 +13457,9 @@ uint32 Player::GetResurrectionSpellId()
     }
 
     // Reincarnation (passive spell)  // prio: 1                  // Glyph of Renewed Life
-    if (prio < 1 && HasSpell(20608) && !HasSpellCooldown(21169) && (HasAura(58059) || HasItemCount(17030)))
+    std::vector<uint32> const reincarnation = sSpellMgr->GetSpellAndRelatives(20608);
+    bool const knowsReincarnation = std::any_of(reincarnation.begin(), reincarnation.end(), [this](uint32 spellId) { return HasSpell(spellId); });
+    if (prio < 1 && knowsReincarnation && !HasSpellCooldown(21169) && (HasAura(58059) || HasItemCount(17030)))
         spell_id = 21169;
 
     return spell_id;
@@ -13805,9 +13969,14 @@ bool Player::HasBurningCommander() const
     return getClass() == CLASS_DEMON_HUNTER && GetLevel() >= 10 && HasActiveSpell(SPELL_BURNING_COMMANDER);
 }
 
+bool Player::HasValkyrGrip() const
+{
+    return getClass() == CLASS_SUN_CLERIC && HasActiveSpell(SPELL_VALKYR_GRIP);
+}
+
 bool Player::CanTitanGrip(ItemTemplate const* weapon) const
 {
-    bool commander = HasBurningCommander();
+    bool commander = HasBurningCommander() || HasValkyrGrip();
     if (!m_canTitanGrip && !commander)
         return false;
     return !weapon || (weapon->Class == ITEM_CLASS_WEAPON &&
@@ -13816,13 +13985,19 @@ bool Player::CanTitanGrip(ItemTemplate const* weapon) const
         (weapon->SubClass != ITEM_SUBCLASS_WEAPON_POLEARM || commander));
 }
 
-void Player::SetTemporarySpellReplacement(uint32 original, uint32 replacement)
+void Player::SetTemporarySpellReplacement(uint32 original, uint32 replacement, bool redirect)
 {
     auto itr = m_temporarySpellReplacements.find(original);
     uint32 previous = itr == m_temporarySpellReplacements.end() ? original : itr->second;
+    bool const sharedReplacement = replacement && std::any_of(m_temporarySpellReplacements.begin(),
+        m_temporarySpellReplacements.end(), [this, original, replacement](auto const& entry)
+        {
+            return entry.first != original && entry.second == replacement && HasActiveSpell(entry.first);
+        });
     if (!replacement)
     {
         m_temporarySpellReplacements.erase(original);
+        m_temporarySpellReplacementKeepsCast.erase(original);
         replacement = original;
     }
     else
@@ -13830,12 +14005,25 @@ void Player::SetTemporarySpellReplacement(uint32 original, uint32 replacement)
         if (!HasActiveSpell(original) || !HasActiveSpell(replacement))
             return;
         m_temporarySpellReplacements[original] = replacement;
+        m_temporarySpellReplacementOrigins[replacement] = original;
+        if (redirect)
+            m_temporarySpellReplacementKeepsCast.erase(original);
+        else
+            m_temporarySpellReplacementKeepsCast[original] = 1;
     }
-    if (previous != replacement && IsInWorld())
+    if (previous != replacement && IsInWorld() && HasActiveSpell(original))
     {
+        if (sharedReplacement)
+        {
+            sScriptMgr->OnPlayerTemporarySpellRemoveNotice(this, replacement, false);
+            SendLearnPacket(replacement, false, true);
+            sScriptMgr->OnPlayerTemporarySpellRemoveNotice(this, replacement, true);
+        }
+        sScriptMgr->OnPlayerTemporarySpellReplacementNotice(this, previous, replacement, false);
         WorldPacket packet(SMSG_SUPERCEDED_SPELL, 8);
         packet << previous << replacement;
         GetSession()->SendPacket(&packet);
+        sScriptMgr->OnPlayerTemporarySpellReplacementNotice(this, previous, replacement, true);
     }
 }
 
@@ -13846,10 +14034,49 @@ uint32 Player::GetTemporarySpellReplacement(uint32 original) const
         itr->second : original;
 }
 
+uint32 Player::GetCastReplacement(uint32 original) const
+{
+    if (m_temporarySpellReplacementKeepsCast.count(original))
+        return original;
+    return GetTemporarySpellReplacement(original);
+}
+
+bool Player::IsTemporarySpellReplacementStandIn(uint32 spellId) const
+{
+    auto const origin = m_temporarySpellReplacementOrigins.find(spellId);
+    return origin != m_temporarySpellReplacementOrigins.end() && origin->second != spellId;
+}
+
+uint32 Player::GetSavedActionButtonSpell(uint32 action)
+{
+    // A temporary replacement is never saved, so the next login would drop a button holding it: save the spell it
+    // replaces, which the replacement takes over again once its owner re-applies it. A timed replacement may already
+    // be unlearned while a button still holds it, which the next login would drop just the same.
+    for (uint8 depth = 0; depth < 4; ++depth)
+    {
+        auto spell = m_spells.find(action);
+        auto origin = m_temporarySpellReplacementOrigins.find(action);
+        bool const unsaved = spell == m_spells.end() || spell->second->State == PLAYERSPELL_TEMPORARY ||
+            spell->second->State == PLAYERSPELL_REMOVED;
+        if (!unsaved || origin == m_temporarySpellReplacementOrigins.end() || !HasSpell(origin->second))
+            break;
+        action = origin->second;
+    }
+    sScriptMgr->OnPlayerNormalizeActionButtonSpell(this, action, false);
+    return action;
+}
+
 bool Player::CanUseTwoHandWithShield(ItemTemplate const* main, ItemTemplate const* off) const
 {
-    if (getClass() != CLASS_GUARDIAN || !main || !off || main->InventoryType != INVTYPE_2HWEAPON ||
-        main->Class != ITEM_CLASS_WEAPON || off->InventoryType != INVTYPE_SHIELD)
+    if (!main || !off || main->InventoryType != INVTYPE_2HWEAPON || main->Class != ITEM_CLASS_WEAPON)
+        return false;
+    if (getClass() == CLASS_HERO && HasActiveSpell(SPELL_TITANS_GRIP) && CanTitanGrip() &&
+        main->SubClass == ITEM_SUBCLASS_WEAPON_STAFF)
+        return off->InventoryType == INVTYPE_SHIELD ||
+            (off->Class == ITEM_CLASS_WEAPON && CanDualWield() &&
+                (off->InventoryType == INVTYPE_WEAPON || off->InventoryType == INVTYPE_WEAPONOFFHAND) &&
+                off->SubClass != ITEM_SUBCLASS_WEAPON_POLEARM && off->SubClass != ITEM_SUBCLASS_WEAPON_FISHING_POLE);
+    if (getClass() != CLASS_GUARDIAN || off->InventoryType != INVTYPE_SHIELD)
         return false;
     return (main->SubClass == ITEM_SUBCLASS_WEAPON_POLEARM &&
         (HasSpell(802299) || HasSpell(803832) || HasSpell(807892))) ||
@@ -14185,10 +14412,11 @@ static RuneType runeSlotTypes[MAX_RUNES] =
 
 void Player::InitRunes()
 {
-    if (!IsClass(CLASS_DEATH_KNIGHT, CLASS_CONTEXT_ABILITY))
+    if (!IsClass(CLASS_DEATH_KNIGHT, CLASS_CONTEXT_ABILITY) && getClass() != CLASS_HERO)
         return;
 
-    m_runes = new Runes;
+    if (!m_runes)
+        m_runes = new Runes;
 
     m_runes->runeState = 0;
     m_runes->lastUsedRune = RUNE_BLOOD;
@@ -14945,6 +15173,8 @@ void Player::LearnPetTalent(ObjectGuid petGuid, uint32 talentId, uint32 talentRa
 
     // update free talent points
     pet->SetFreeTalentPoints(CurTalentPoints - (talentRank - curtalent_maxrank + 1));
+    if (pet->HasSpell(spellid))
+        sScriptMgr->OnPlayerLearnPetTalent(this, pet, spellid);
 }
 
 void Player::AddKnownCurrency(uint32 itemId)
@@ -15655,13 +15885,13 @@ void Player::_SaveCharacter(bool create, CharacterDatabaseTransaction trans)
         stmt->SetData(index++, GetByteValue(PLAYER_BYTES_2, 3));
         stmt->SetData(index++, GetPlayerFlags());
 
-        if (_scriptedPrivateMapId && (GetMapId() == _scriptedPrivateMapId
-            || (IsBeingTeleported() && GetTeleportDest().GetMapId() == _scriptedPrivateMapId)))
+        if (_scriptedPrivateMapId != MAPID_INVALID)
         {
             // Private-instance IDs are process-local. Crash recovery always starts outside.
             stmt->SetData(index++, uint16(_scriptedPrivateReturn.GetMapId()));
             stmt->SetData(index++, uint32(0));
-            stmt->SetData(index++, uint8(GetDungeonDifficulty()) | uint8(GetRaidDifficulty()) << 4);
+            stmt->SetData(index++, uint8(_scriptedPrivateReturnDungeonDifficulty)
+                | uint8(_scriptedPrivateReturnRaidDifficulty) << 4);
             stmt->SetData(index++, finiteAlways(_scriptedPrivateReturn.GetPositionX()));
             stmt->SetData(index++, finiteAlways(_scriptedPrivateReturn.GetPositionY()));
             stmt->SetData(index++, finiteAlways(_scriptedPrivateReturn.GetPositionZ()));
@@ -16082,10 +16312,10 @@ void Player::ActivateSpec(uint8 spec)
     SetPower(pw, 0);
 
     // xinef: remove titan grip if player had it set and does not have appropriate talent
-    if (!HasTalent(46917, GetActiveSpec()) && m_canTitanGrip)
+    if (!HasTalent(SPELL_TITANS_GRIP, GetActiveSpec()) && m_canTitanGrip)
         SetCanTitanGrip(false);
     // xinef: remove dual wield if player does not have dual wield spell (shamans)
-    if (!HasSpell(674) && CanDualWield())
+    if (!HasSpell(SPELL_DUAL_WIELD) && CanDualWield())
         SetCanDualWield(false);
 
     AutoUnequipOffhandIfNeed();
@@ -16939,6 +17169,7 @@ void Player::SetRestFlag(RestFlag restFlag, uint32 triggerId /*= 0*/)
     {
         _restTime = GameTime::GetGameTime().count();
         SetPlayerFlag(PLAYER_FLAGS_RESTING);
+        UpdateManaRegen();
     }
 
     if (triggerId)
@@ -16954,6 +17185,7 @@ void Player::RemoveRestFlag(RestFlag restFlag)
     {
         _restTime = 0;
         RemovePlayerFlag(PLAYER_FLAGS_RESTING);
+        UpdateManaRegen();
     }
 }
 
@@ -17336,7 +17568,10 @@ void Player::SendAllSpellChargeStates() const
     GetSession()->SendPacket(&clear);
 
     if (partialPools.empty())
+    {
+        sScriptMgr->OnPlayerSendSpellChargeStates(this);
         return;
+    }
 
     WorldPacket packet(SMSG_SEND_SPELL_CHARGES, 4 + partialPools.size() * 9);
     packet << uint32(partialPools.size());
@@ -17347,6 +17582,7 @@ void Player::SendAllSpellChargeStates() const
         packet << uint8(pool.second);
     }
     GetSession()->SendPacket(&packet);
+    sScriptMgr->OnPlayerSendSpellChargeStates(this);
 }
 
 std::string Player::GetDebugInfo() const

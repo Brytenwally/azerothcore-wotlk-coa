@@ -1,4 +1,5 @@
 /* Copyright (C) 2016+ AzerothCore, GNU AGPL v3. */
+#include "AscensionClientSpellPatches.h"
 #include "AscensionXoroth.h"
 #include "AscensionXorothData.h"
 #include "DBCStores.h"
@@ -60,6 +61,8 @@ void ApplyContracts(SpellInfo* info)
             info->Effects[0].TargetA =
                 SpellImplicitTargetInfo(id == 681206 ? TARGET_UNIT_CASTER : TARGET_UNIT_TARGET_ENEMY);
             info->Effects[0].TargetB = SpellImplicitTargetInfo();
+            if (id == 681206)
+                info->DurationEntry = sSpellDurationStore.LookupEntry(27);
             if (id == 680204)
                 info->Effects[0].ValueMultiplier = 1;
         }
@@ -168,8 +171,11 @@ void ApplyContracts(SpellInfo* info)
         dummy(1);
         dummy(2);
     }
-    if (id == 805677)
+    if (id == SPELL_SACRIFICIAL_CIRCLE)
+    {
         info->CasterAuraSpell = 0;
+        Ascension::ClientSpellPatches::Instance().Register(id);
+    }
     if (id == 805965)
     {
         auto& e = info->Effects[0];
@@ -235,7 +241,8 @@ void ApplyContracts(SpellInfo* info)
     {
         info->AttributesEx2 |= SPELL_ATTR2_ALLOW_DEAD_TARGET;
         info->Effects[0].Effect = SPELL_EFFECT_DUMMY;
-        info->Effects[0].TargetA = SpellImplicitTargetInfo(TARGET_UNIT_TARGET_ENEMY);
+        info->Effects[0].TargetA = SpellImplicitTargetInfo(TARGET_UNIT_CASTER);
+        info->Effects[0].TargetB = SpellImplicitTargetInfo();
         for (uint8 i = 1; i < MAX_SPELL_EFFECTS; ++i)
             if (info->Effects[i].Effect)
                 info->Effects[i].TargetA = SpellImplicitTargetInfo(TARGET_UNIT_CASTER);
@@ -523,8 +530,6 @@ class xoroth_scaling : public UnitScript
             value = player->GetUInt32Value(PLAYER_FIELD_COMBAT_RATING_1 + CR_BLOCK) * .5f;
         if (info->Id == 573066 && index == 0)
             value += State(player).imps.size() * Amount(805916, 2);
-        if (info->Id == 804788 && index == 0)
-            value *= 1 + .2f * Count(player, 804787);
         if (info->Id == 800999 && index == 1)
             value = player->HasAura(302581) ? float(Amount(302581)) : 0;
         if (info->Id == 803334 && index == 1)

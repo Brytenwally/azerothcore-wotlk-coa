@@ -3,8 +3,10 @@
 #include "CellImpl.h"
 #include "GridNotifiersImpl.h"
 #include "ObjectAccessor.h"
+#include "ObjectMgr.h"
 #include "Random.h"
 #include "Player.h"
+#include "ScriptedCreature.h"
 #include "ScriptMgr.h"
 #include "SpellAuraEffects.h"
 #include "SpellAuras.h"
@@ -54,8 +56,20 @@ enum ReaperTalentSpells : uint32
     SPELL_ESSENCE_INVIGORATION = 805186,
     SPELL_ESSENCE_INVIGORATION_HEAL = 805187,
     SPELL_WEAKENED_SOULS = 92146,
-    SPELL_WEAKENED_SOUL = 803433
+    SPELL_WEAKENED_SOUL = 803433,
+    SPELL_LIFE_TAP = 706788,
+    SPELL_DOMINION = 803999,
+    SPELL_DOMINION_ARMOR = 804000,
+    SPELL_DARK_SOUL_STAMINA = 707091
 };
+
+enum ReaperGuardians : uint32
+{
+    NPC_SPECTRAL_WARDEN = 100481,
+    NPC_SPECTRAL_SCYTHE = 250305
+};
+
+constexpr float SpectralGuardianDamageScale = 1.3f;
 
 Unit* HostileTargetInRange(Player* player, uint32 spellId)
 {
@@ -157,6 +171,56 @@ void CastTalentTrigger(Player* player, uint32 talentId, uint32 triggerId)
     if (RollTalent(player, talentId))
         player->CastSpell(player, triggerId, true);
 }
+
+class aura_ascension_reaper_dark_soul : public AuraScript
+{
+    PrepareAuraScript(aura_ascension_reaper_dark_soul);
+
+    bool Validate(SpellInfo const*) override { return ValidateSpellInfo({SPELL_DARK_SOUL_STAMINA}); }
+
+    bool Load() override
+    {
+        Player* player = GetUnitOwner() ? GetUnitOwner()->ToPlayer() : nullptr;
+        return player && player->getClass() == CLASS_REAPER && GetCasterGUID() == player->GetGUID();
+    }
+
+    void UpdateStamina()
+    {
+        Player* player = GetTarget()->ToPlayer();
+        uint32 const rating = player->GetUInt32Value(uint32(PLAYER_FIELD_COMBAT_RATING_1) + CR_ARMOR_PENETRATION);
+        if (!rating)
+            player->RemoveAurasDueToSpell(SPELL_DARK_SOUL_STAMINA, player->GetGUID());
+        else if (player->IsAlive() && player->IsInWorld())
+            player->CastCustomSpell(SPELL_DARK_SOUL_STAMINA, SPELLVALUE_BASE_POINT0,
+                int32(std::min<uint32>(rating, std::numeric_limits<int32>::max())), player, TRIGGERED_FULL_MASK);
+    }
+
+    void Apply(AuraEffect const*, AuraEffectHandleModes)
+    {
+        UpdateStamina();
+    }
+
+    void Tick(AuraEffect const*)
+    {
+        PreventDefaultAction();
+        UpdateStamina();
+    }
+
+    void Remove(AuraEffect const*, AuraEffectHandleModes)
+    {
+        GetTarget()->RemoveAurasDueToSpell(SPELL_DARK_SOUL_STAMINA, GetCasterGUID());
+    }
+
+    void Register() override
+    {
+        AfterEffectApply += AuraEffectApplyFn(aura_ascension_reaper_dark_soul::Apply,
+            EFFECT_1, SPELL_AURA_PERIODIC_TRIGGER_SPELL, AURA_EFFECT_HANDLE_REAL);
+        OnEffectPeriodic += AuraEffectPeriodicFn(aura_ascension_reaper_dark_soul::Tick,
+            EFFECT_1, SPELL_AURA_PERIODIC_TRIGGER_SPELL);
+        AfterEffectRemove += AuraEffectRemoveFn(aura_ascension_reaper_dark_soul::Remove,
+            EFFECT_1, SPELL_AURA_PERIODIC_TRIGGER_SPELL, AURA_EFFECT_HANDLE_REAL);
+    }
+};
 
 class spell_ascension_reaper_essence_invigoration_heal : public SpellScript
 {
@@ -392,6 +456,57 @@ class spell_ascension_reaper_weakened_souls : public SpellScript
     }
 };
 
+struct npc_ascension_reaper_spectral_warden : public ScriptedAI
+{
+    explicit npc_ascension_reaper_spectral_warden(Creature* creature) : ScriptedAI(creature) { }
+
+    void DamageDealt(Unit*, uint32& damage, DamageEffectType, SpellSchoolMask) override
+    {
+        if (!damage)
+            return;
+
+        Player* owner = ObjectAccessor::GetPlayer(*me, me->GetOwnerGUID());
+        if (!owner || !owner->IsAlive() || owner->getClass() != CLASS_REAPER || !owner->HasAura(SPELL_LIFE_TAP))
+            return;
+
+        SpellInfo const* lifeTap = sSpellMgr->GetSpellInfo(SPELL_LIFE_TAP);
+        if (!lifeTap)
+            return;
+
+        float const healPct = lifeTap->Effects[EFFECT_0].CalcValue() / 100.0f;
+        if (healPct <= 0.0f)
+            return;
+
+        Unit::DealHeal(owner, owner, uint32(float(damage) * healPct));
+    }
+};
+
+class reaper_spectral_guardian_stats : public PlayerScript
+{
+public:
+    reaper_spectral_guardian_stats() : PlayerScript("reaper_spectral_guardian_stats",
+        {PLAYERHOOK_ON_AFTER_GUARDIAN_INIT_STATS_FOR_LEVEL}) { }
+
+    void OnPlayerAfterGuardianInitStatsForLevel(Player* player, Guardian* guardian) override
+    {
+        if (!player || player->getClass() != CLASS_REAPER || !guardian ||
+            (guardian->GetEntry() != NPC_SPECTRAL_WARDEN && guardian->GetEntry() != NPC_SPECTRAL_SCYTHE))
+            return;
+
+        CreatureTemplate const* info = guardian->GetCreatureTemplate();
+        CreatureBaseStats const* stats = sObjectMgr->GetCreatureBaseStats(guardian->GetLevel(), info->unit_class);
+        float const damage = stats->GenerateBaseDamage(info) * SpectralGuardianDamageScale;
+        for (WeaponAttackType attack : {BASE_ATTACK, OFF_ATTACK, RANGED_ATTACK})
+        {
+            guardian->SetBaseWeaponDamage(attack, MINDAMAGE, damage);
+            guardian->SetBaseWeaponDamage(attack, MAXDAMAGE, damage * 1.5f);
+        }
+        guardian->SetStatFlatModifier(UNIT_MOD_ATTACK_POWER, BASE_VALUE, float(stats->AttackPower));
+        guardian->SetStatFlatModifier(UNIT_MOD_ATTACK_POWER_RANGED, BASE_VALUE, float(stats->RangedAttackPower));
+        guardian->UpdateAllStats();
+    }
+};
+
 class reaper_talent_events : public UnitScript
 {
 public:
@@ -473,6 +588,7 @@ void ApplyAscensionReaperSoulInfusionGained(Player* player)
 
     CastTalentTrigger(player, SPELL_DAMNED, SPELL_DAMNED_HASTE);
     CastTalentTrigger(player, SPELL_PURGATORY, SPELL_PURGATORY_DAMAGE);
+    CastTalentTrigger(player, SPELL_DOMINION, SPELL_DOMINION_ARMOR);
 }
 
 void ApplyAscensionReaperSoulInfusionSpent(Player* player)
@@ -487,11 +603,14 @@ void AddSC_AscensionReaperTalents()
 {
     new reaper_essence_invigoration_metadata();
     RegisterSpellScript(spell_ascension_reaper_essence_invigoration_heal);
+    RegisterSpellScript(aura_ascension_reaper_dark_soul);
     RegisterSpellScript(spell_ascension_soul_capture);
     RegisterSpellScript(aura_ascension_harvester);
     RegisterSpellScript(aura_ascension_jailers_call);
     RegisterSpellScript(aura_ascension_reaper_blood_frenzy);
     RegisterSpellScript(aura_ascension_reaper_ghastly_form);
     RegisterSpellScript(spell_ascension_reaper_weakened_souls);
+    RegisterCreatureAI(npc_ascension_reaper_spectral_warden);
+    new reaper_spectral_guardian_stats();
     new reaper_talent_events();
 }

@@ -231,10 +231,14 @@ namespace CoAChallenges
     {
         std::vector<ActiveChallengeRow> const active = TakeLoginChallengeRows(player->GetGUID().GetCounter());
 
-        SendConfigBatch(player);
         SendActiveList(player, active);
         SendCriteriaState(player);
+        uint32 const guid = player->GetGUID().GetCounter();
+        uint32 const maskBefore = CachedGameModeMask(guid);
         RecomputeRequiredGameModes(player, active);
+        // The client forgets the mask on the character screen; the recompute only sends it when it changed.
+        if (uint32 const mask = CachedGameModeMask(guid); mask && mask == maskBefore)
+            SendGameModeState(player, mask);
         ReapplyGameModeBehavior(player);
         if (sConfigMgr->GetOption<bool>("CoAChallenges.SendFailureList", true))
             SendFailureList(player);
@@ -250,6 +254,7 @@ namespace CoAChallenges
         RefreshInvertedBreathTracking(player);
         RefreshRegenTracking(player);
         RefreshHighRiskTracking(player);
+        RefreshLevelScalingTracking(player);
         RefreshLootedTracking(player);
         SyncMeterAuras(player);
         ReapplyActiveSpells(player, active);
@@ -452,9 +457,6 @@ namespace CoAChallenges
             challengeID, level, player->GetName());
     }
 
-    // SMSG 0x597 CHALLENGE_COMPLETED_LIST_CHANGED: the player's own completed
-    // challenges (feeds GetCompletedChallenges / the green "already completed"
-    // checkmark). Handler 0x1382F0 layout:
     //   u32 count, count x 28-byte entry:
     //     u32 0 (baggage), u32 Id, u32 Level, u32 StartTimeLo, u32 StartTimeHi,
     //     u32 0 (unused), u32 EndTime.   (Id = map key = challengeID.)
@@ -464,30 +466,43 @@ namespace CoAChallenges
         if (!session)
             return;
 
-        uint32 guid = player->GetGUID().GetCounter();
-        QueryResult r = CharacterDatabase.Query(
-            "SELECT challengeId, level, startTime, completeTime FROM coa_challenge_completion WHERE guid = {}",
-            guid);
-
-        WorldPacket data(SMSG_COA_CHALLENGE_COMPLETED_LIST, 128);
-        if (!r)
+        struct Completion
         {
-            data << uint32(0);
-        }
-        else
+            uint32 startTime;
+            uint32 completeTime;
+        };
+        std::map<std::pair<uint32, uint32>, Completion> completions;
+        auto collect = [&](auto rows, bool shared)
         {
-            data << uint32(r->GetRowCount());
+            if (!rows)
+                return;
             do
             {
-                Field* f = r->Fetch();
-                data << uint32(0);               // baggage
-                data << f[0].Get<uint32>();      // Id (challengeID)
-                data << f[1].Get<uint32>();      // Level
-                data << f[2].Get<uint32>();      // StartTime lo
-                data << uint32(0);               // StartTime hi
-                data << uint32(0);               // unused
-                data << f[3].Get<uint32>();      // EndTime (completeTime)
-            } while (r->NextRow());
+                Field* f = rows->Fetch();
+                uint32 const challengeID = f[0].Get<uint32>();
+                if (shared && !IsTrialChallenge(challengeID))
+                    continue;
+                completions[{ challengeID, f[1].Get<uint32>() }] = { f[2].Get<uint32>(), f[3].Get<uint32>() };
+            } while (rows->NextRow());
+        };
+        collect(CharacterDatabase.Query(
+            "SELECT challengeId, level, startTime, completeTime FROM coa_challenge_completion WHERE guid = {}",
+            player->GetGUID().GetCounter()), false);
+        auto* accountCompletions = CharacterDatabase.GetPreparedStatement(CHAR_SEL_COA_ACCOUNT_CHALLENGE_COMPLETIONS);
+        accountCompletions->SetData(0, session->GetAccountId());
+        collect(CharacterDatabase.Query(accountCompletions), true);
+
+        WorldPacket data(SMSG_COA_CHALLENGE_COMPLETED_LIST, 4 + 28 * completions.size());
+        data << uint32(completions.size());
+        for (auto const& [key, completion] : completions)
+        {
+            data << uint32(0);
+            data << key.first;
+            data << key.second;
+            data << completion.startTime;
+            data << uint32(0);
+            data << uint32(0);
+            data << completion.completeTime;
         }
 
         session->SendPacket(&data);

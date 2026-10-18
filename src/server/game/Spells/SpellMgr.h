@@ -33,6 +33,7 @@ class Player;
 class Unit;
 class ProcEventInfo;
 struct SkillLineAbilityEntry;
+struct SpellEntry;
 
 #define SPELL_RELIC_COOLDOWN      1
 
@@ -775,6 +776,9 @@ public:
     }
     [[nodiscard]] uint32 GetSpellInfoStoreSize() const { return mSpellInfoMap.size(); }
 
+    // Startup-only registration; the store owns the result and refuses to replace existing spells.
+    SpellInfo* RegisterRuntimeSpell(SpellEntry const& entry);
+
     // Talent Additional Set
     [[nodiscard]] bool IsAdditionalTalentSpell(uint32 spellId) const;
 
@@ -790,6 +794,25 @@ public:
     void UnloadSpellInfoChains();
     void LoadSpellTalentRanks();
     void LoadSpellRanks();
+    /// rank chains a module adds after `spell_ranks`; a chain touching an already ranked spell is skipped
+    using AddedSpellRanks = std::vector<std::vector<uint32>> (*)();
+    void SetAddedSpellRanks(AddedSpellRanks ranks) { _addedSpellRanks = ranks; }
+    void LoadAddedSpellRanks();
+    /// (source, twin) spell pairs a module adds; a twin without its own database row takes its source's
+    /// called before spell corrections (ranked = false) and again once rank chains are known (ranked = true)
+    using SpellTwins = std::vector<std::pair<uint32, uint32>> (*)(bool ranked);
+    void SetSpellTwins(SpellTwins twins) { _spellTwinSource = twins; }
+    /// (stock, spell) pairs that share a name but not a layout: matched by id lookups, never given stock data
+    using SpellNamesakes = std::vector<std::pair<uint32, uint32>> (*)();
+    void SetSpellNamesakes(SpellNamesakes namesakes) { _spellNamesakeSource = namesakes; }
+    /// a stock spell with its twins and namesakes
+    [[nodiscard]] std::vector<uint32> GetSpellAndRelatives(uint32 spellId) const;
+    void LoadSpellTwins(bool ranked);
+    [[nodiscard]] std::unordered_multimap<uint32, uint32> const& GetSpellTwins() const { return _spellTwins; }
+    /// the spell a twin takes its data from, or the spell itself
+    [[nodiscard]] uint32 GetSpellTwinSource(uint32 spellId) const;
+    /// the twin or namesake of a stock spell that belongs with a related spell's own twin, or the stock spell
+    [[nodiscard]] uint32 GetSpellTwinFor(uint32 stockSpellId, uint32 relatedSpellId) const;
     void LoadSpellRequired();
     void LoadSpellLearnSkills();
     void LoadSpellTargetPositions();
@@ -820,6 +843,16 @@ public:
     void LoadSpellJumpDistances();
 
 private:
+    template <class Store>
+    void CopyToSpellTwins(Store& store);
+
+    AddedSpellRanks            _addedSpellRanks = nullptr;
+    SpellTwins                 _spellTwinSource = nullptr;
+    std::unordered_multimap<uint32, uint32> _spellTwins;
+    std::unordered_map<uint32, uint32> _spellTwinSources;
+    SpellNamesakes             _spellNamesakeSource = nullptr;
+    std::unordered_multimap<uint32, uint32> _spellNamesakes;
+    std::unordered_map<uint32, uint32> _spellNamesakeSources;
     SpellDifficultySearcherMap mSpellDifficultySearcherMap;
     SpellChainMap              mSpellChains;
     SpellsRequiringSpellMap    mSpellsReqSpell;

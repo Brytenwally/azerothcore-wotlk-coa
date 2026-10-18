@@ -1,10 +1,13 @@
 /* Copyright (C) 2016+ AzerothCore, GNU AGPL v3. */
 
+#include "AscensionRulesets.h"
 #include "Config.h"
+#include "LocalLevelScaling.h"
+#include "Map.h"
 #include "Player.h"
 #include "ScriptMgr.h"
-#include "SpellAuraEffects.h"
 #include "SpellScript.h"
+#include <atomic>
 
 namespace
 {
@@ -19,19 +22,64 @@ enum RulesetSpells : uint32
     SPELL_MERCENARY = 9930874
 };
 
+std::atomic<bool> pvpRulesetsDisableLevelScaling{true};
+
+bool InPvPRuleset(Player const* player)
+{
+    return player->HasAura(SPELL_HIGH_RISK) || (player->HasAura(SPELL_WAR_MODE) && !player->HasAura(SPELL_PVE));
+}
+
+bool RulesetBlocksLevelScaling(Player const* player)
+{
+    if (!pvpRulesetsDisableLevelScaling.load(std::memory_order_relaxed))
+        return false;
+
+    Map const* map = player->FindMap();
+    return map && !map->Instanceable() && InPvPRuleset(player);
+}
+
 void ApplyRuleset(Player* player, uint32 selectionId)
 {
+    bool const blockedBefore = RulesetBlocksLevelScaling(player);
     player->RemoveAurasDueToSpell(SPELL_HIGH_RISK);
     player->RemoveAurasDueToSpell(SPELL_WAR_MODE);
     player->RemoveAurasDueToSpell(SPELL_PVE);
     player->RemoveAurasDueToSpell(SPELL_MERCENARY);
     if (selectionId == SPELL_SELECT_HIGH_RISK)
         player->CastSpell(player, SPELL_HIGH_RISK, true);
+    else if (selectionId == SPELL_SELECT_PVE)
+        player->CastSpell(player, SPELL_PVE, true);
     else
-    {
         player->CastSpell(player, SPELL_WAR_MODE, true);
-        if (selectionId == SPELL_SELECT_PVE)
-            player->CastSpell(player, SPELL_PVE, true);
+
+    if (player->IsInWorld() && RulesetBlocksLevelScaling(player) != blockedBefore &&
+        !LocalLevelScaling::NotifyScalingChanged(player))
+        player->RefreshQuestLogQueries();
+}
+
+uint32 SelectionSpell(AscensionRulesets::Ruleset ruleset)
+{
+    switch (ruleset)
+    {
+        case AscensionRulesets::Ruleset::HighRisk:
+            return SPELL_SELECT_HIGH_RISK;
+        case AscensionRulesets::Ruleset::PvE:
+            return SPELL_SELECT_PVE;
+        default:
+            return SPELL_SELECT_WAR_MODE;
+    }
+}
+
+uint32 RulesetAura(AscensionRulesets::Ruleset ruleset)
+{
+    switch (ruleset)
+    {
+        case AscensionRulesets::Ruleset::HighRisk:
+            return SPELL_HIGH_RISK;
+        case AscensionRulesets::Ruleset::PvE:
+            return SPELL_PVE;
+        default:
+            return SPELL_WAR_MODE;
     }
 }
 
@@ -81,51 +129,39 @@ public:
     }
 };
 
-class ruleset_war_mode_experience : public UnitScript
+class ruleset_level_scaling_configuration : public WorldScript
 {
 public:
-    ruleset_war_mode_experience() : UnitScript("ruleset_war_mode_experience", true,
-        {UNITHOOK_ON_AURA_APPLY, UNITHOOK_ON_AURA_REMOVE, UNITHOOK_ON_AFTER_AURA_EFFECT_CALCULATE_AMOUNT}) { }
+    ruleset_level_scaling_configuration()
+        : WorldScript("ruleset_level_scaling_configuration", {WORLDHOOK_ON_AFTER_CONFIG_LOAD}) { }
 
-    void OnAfterAuraEffectCalculateAmount(AuraEffect const* effect, Unit*, int32& amount) override
+    void OnAfterConfigLoad(bool) override
     {
-        if (effect->GetId() == SPELL_WAR_MODE && effect->GetAuraType() == SPELL_AURA_MOD_XP_PCT &&
-            effect->GetBase()->GetType() == UNIT_AURA_TYPE && effect->GetBase()->GetUnitOwner()->HasAura(SPELL_PVE))
-            amount = 0;
-    }
-
-    void OnAuraApply(Unit* unit, Aura* aura) override
-    {
-        if (aura && aura->GetId() == SPELL_PVE)
-            RecalculateWarModeExperience(unit);
-    }
-
-    void OnAuraRemove(Unit* unit, AuraApplication* application, AuraRemoveMode) override
-    {
-        if (application && application->GetBase()->GetId() == SPELL_PVE)
-            RecalculateWarModeExperience(unit);
-    }
-
-private:
-    static void RecalculateWarModeExperience(Unit* unit)
-    {
-        for (uint8 index = EFFECT_0; index < MAX_SPELL_EFFECTS; ++index)
-            if (AuraEffect* effect = unit->GetAuraEffect(SPELL_WAR_MODE, index))
-                if (effect->GetAuraType() == SPELL_AURA_MOD_XP_PCT)
-                    effect->RecalculateAmount();
+        pvpRulesetsDisableLevelScaling.store(
+            sConfigMgr->GetOption<bool>("CoA.Ruleset.DisableLevelScaling", true), std::memory_order_relaxed);
     }
 };
 
 class ruleset_player_spells : public PlayerScript
 {
 public:
-    ruleset_player_spells() : PlayerScript("ruleset_player_spells", {PLAYERHOOK_ON_LOGIN}) { }
+    ruleset_player_spells()
+        : PlayerScript("ruleset_player_spells", {PLAYERHOOK_ON_LOGIN, PLAYERHOOK_ON_MAP_CHANGED}) { }
+
+    void OnPlayerMapChanged(Player* player) override
+    {
+        if (pvpRulesetsDisableLevelScaling.load(std::memory_order_relaxed) && InPvPRuleset(player))
+            player->RefreshQuestLogQueries();
+    }
 
     void OnPlayerLogin(Player* player) override
     {
         for (uint32 id : {SPELL_SELECT_WAR_MODE, SPELL_SELECT_HIGH_RISK, SPELL_SELECT_PVE})
             if (!player->HasSpell(id))
                 player->learnSpell(id, false);
+
+        if (player->HasAura(SPELL_PVE))
+            player->RemoveAurasDueToSpell(SPELL_WAR_MODE);
 
         if (!sConfigMgr->GetOption<bool>("CoA.RulesetLoginDefault", true))
             return;
@@ -135,17 +171,27 @@ public:
 
         bool const noRuleset = !player->HasAura(SPELL_HIGH_RISK) && !player->HasAura(SPELL_WAR_MODE) &&
             !player->HasAura(SPELL_PVE);
-        bool const pveWithoutWarMode = player->HasAura(SPELL_PVE) && !player->HasAura(SPELL_WAR_MODE);
-        if (noRuleset || pveWithoutWarMode)
+        if (noRuleset)
             ApplyRuleset(player, SPELL_SELECT_PVE);
     }
 };
 }
 
+void AscensionRulesets::Apply(Player* player, Ruleset ruleset)
+{
+    ApplyRuleset(player, SelectionSpell(ruleset));
+}
+
+bool AscensionRulesets::Has(Player* player, Ruleset ruleset)
+{
+    return player->HasAura(RulesetAura(ruleset));
+}
+
 void AddSC_AscensionRulesets()
 {
+    LocalLevelScaling::RulesetBlocksOwner.store(&RulesetBlocksLevelScaling, std::memory_order_relaxed);
     RegisterSpellScript(spell_ascension_ruleset_select);
     new ruleset_aura_metadata();
-    new ruleset_war_mode_experience();
+    new ruleset_level_scaling_configuration();
     new ruleset_player_spells();
 }

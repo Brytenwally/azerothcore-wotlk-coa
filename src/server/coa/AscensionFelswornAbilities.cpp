@@ -295,6 +295,8 @@ class felsworn_casts : public AllSpellScript
         }
         if (info->Id == 704371 && player->HasAura(560641))
             Cast(player, target, 704397);
+        if (Named(info, 801904) && Inner(player) && target != player && !player->IsFriendlyTo(target))
+            Cast(player, player, 803089);
         if (!damage || target == player || player->IsFriendlyTo(target))
             return;
         if (Named(info, 801312))
@@ -304,6 +306,8 @@ class felsworn_casts : public AllSpellScript
             if (player->HasAura(802058))
                 Cast(player, player, 524632);
         }
+        if (Named(info, 802060))
+            Cast(player, player, 521213);
         if (Named(info, 802060) && spell->GetScriptValue(804216))
             Copy(player, target, 803467, damage);
         if (Named(info, 801895) && spell->GetScriptValue(804216))
@@ -385,7 +389,16 @@ class spell_ascension_felsworn_ability : public SpellScript
             uint32 bonus = uint32(GetSpell()->GetScriptValue(560087));
             for (uint32 index = 0; index < 3; ++index)
             {
-                Position position = player->GetNearPosition(4.0f + 7.0f * index, 0);
+                float const distance = 4.0f + 7.0f * index;
+                Position position = player->GetPosition();
+                if (player->IsInWater())
+                {
+                    position.RelocateOffset(Position(distance, 0, 0, 0));
+                    Acore::NormalizeMapCoord(position.m_positionX);
+                    Acore::NormalizeMapCoord(position.m_positionY);
+                }
+                else
+                    position = player->GetNearPosition(distance, 0);
                 State(player).scheduler.Schedule(
                     Milliseconds(index * 300), [guid, position, map, phase, bonus](TaskContext) {
                         Player* player = ObjectAccessor::FindPlayer(guid);
@@ -421,6 +434,12 @@ class spell_ascension_felsworn_ability : public SpellScript
                    GetSpellInfo()->Id == 572183 && Inner(player));
         }
     }
+    void ExtendInnerDemon(SpellEffIndex effect)
+    {
+        PreventHitDefaultEffect(effect);
+        if (Player* player = Owner(GetCaster()))
+            Extend(player, GetEffectValue());
+    }
     void Register() override
     {
         SpellInfo const* info = sSpellMgr->GetSpellInfo(m_scriptSpellId);
@@ -428,6 +447,9 @@ class spell_ascension_felsworn_ability : public SpellScript
             OnEffectHit += SpellEffectFn(spell_ascension_felsworn_ability::SummonHit, EFFECT_0, SPELL_EFFECT_SUMMON);
         if (info->Id == 807942 || info->Id == 705121)
             OnEffectHitTarget += SpellEffectFn(spell_ascension_felsworn_ability::Hit, EFFECT_0, SPELL_EFFECT_DUMMY);
+        if (info->Id == 803089)
+            OnEffectHitTarget += SpellEffectFn(spell_ascension_felsworn_ability::ExtendInnerDemon, EFFECT_0,
+                                               SPELL_EFFECT_ASCENSION_MODIFY_AURA_DURATION);
     }
 };
 }

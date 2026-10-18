@@ -67,7 +67,8 @@ void Replacement(Player* player, uint32 word, uint32 mask, uint32 child)
     if (!player->HasSpell(child))
         player->learnSpell(child, true);
     for (auto const& [id, state] : player->GetSpellMap())
-        if (state->State != PLAYERSPELL_REMOVED && Family(sSpellMgr->GetSpellInfo(id), word, mask) && id != child)
+        if (state->State != PLAYERSPELL_REMOVED && Family(sSpellMgr->GetSpellInfo(id), word, mask) && id != child &&
+            !player->IsTemporarySpellReplacementStandIn(id))
             player->SetTemporarySpellReplacement(id, child);
 }
 
@@ -96,6 +97,26 @@ void ApplyContracts(SpellInfo* info)
     if (!info || info->SpellFamilyName != 21)
         return;
     uint32 id = info->Id;
+    if (id == 802272)
+    {
+        info->AttributesCu &= ~SPELL_ATTR0_CU_FORCE_AURA_SAVING;
+        info->AttributesCu |= SPELL_ATTR0_CU_AURA_CANNOT_BE_SAVED;
+    }
+    if (id == 680376 || id == 681562 || id == 681563 || id == 681564)
+    {
+        info->Effects[EFFECT_0].TargetA = SpellImplicitTargetInfo(TARGET_DEST_DEST);
+        info->CasterAuraSpell = 802272;
+        info->_InitializeExplicitTargetMask();
+    }
+    if (id == 562026 && info->Effects[EFFECT_1].TriggerSpell == 562027)
+        info->Effects[EFFECT_1].Effect = 0;
+    if (id == 681486 && info->Effects[EFFECT_2].ApplyAuraName == SPELL_AURA_ADD_PCT_MODIFIER &&
+        info->Effects[EFFECT_2].MiscValue == SPELLMOD_DOT &&
+        info->Effects[EFFECT_2].SpellClassMask == flag96(0, 268436480, 0))
+    {
+        info->Effects[EFFECT_2].MiscValue = SPELLMOD_DAMAGE;
+        info->Effects[EFFECT_2].SpellClassMask = flag96(1024, 0, 0);
+    }
     if (Family(info, 1, 4194304))
     {
         info->InterruptFlags |= SPELL_INTERRUPT_FLAG_MOVEMENT;
@@ -107,6 +128,8 @@ void ApplyContracts(SpellInfo* info)
         ConvertCreatureTypeDamage(info, EFFECT_1);
     if (id == 804026)
         ConvertCreatureTypeDamage(info, EFFECT_0);
+    if (id == 800697)
+        info->Effects[EFFECT_1].ChainTarget = info->Effects[EFFECT_0].ChainTarget;
     if (id == 804194 && info->Effects[EFFECT_1].ApplyAuraName == SPELL_AURA_MOD_ARMOR_PENETRATION_PCT)
         info->Effects[EFFECT_1].ApplyAuraName = SPELL_AURA_ASCENSION_MOD_IGNORE_ARMOR_PCT;
     if (id == 707535)
@@ -120,7 +143,7 @@ void ApplyContracts(SpellInfo* info)
         info->TargetAuraState = info->CasterAuraState = 0;
     if (id == 802006)
         info->Effects[EFFECT_2].TriggerSpell = 680386;
-    if (Dusk(info))
+    if (Dusk(info) || id == 680230)
         info->AttributesEx3 &= ~SPELL_ATTR3_REQUIRES_OFF_HAND_WEAPON;
     if (Heartseeking(info))
         info->Effects[EFFECT_2].TriggerSpell = 807316;
@@ -271,7 +294,11 @@ void ApplyContracts(SpellInfo* info)
         info->Effects[EFFECT_2].Effect = 0;
     }
     if (id == 805757)
+    {
         info->Effects[EFFECT_0].TargetA = SpellImplicitTargetInfo(TARGET_UNIT_DEST_AREA_ALLY);
+        info->Effects[EFFECT_0].TargetB = SpellImplicitTargetInfo(TARGET_DEST_DYNOBJ_ALLY);
+        info->AttributesCu &= ~SPELL_ATTR0_CU_NEGATIVE_EFF0;
+    }
     if (id == 500102)
         info->Effects[EFFECT_1].Effect = 0;
     if (id == 504713)
