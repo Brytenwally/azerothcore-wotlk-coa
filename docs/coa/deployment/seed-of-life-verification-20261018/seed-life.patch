@@ -1,0 +1,262 @@
+--- a/src/server/coa/AscensionMysticEnchant.cpp
++++ b/src/server/coa/AscensionMysticEnchant.cpp
+@@ -22,6 +22,7 @@
+ #include "Spell.h"
+ #include "SpellMgr.h"
+ #include "SpellScript.h"
++#include "TaskScheduler.h"
+ #include "ObjectMgr.h"
+ #include "WorldPacket.h"
+ #include "WorldSession.h"
+@@ -451,6 +452,28 @@
+     return expected.empty();
+ }
+ 
++bool HasSeedOfLifeHandlers()
++{
++    if (!sSpellMgr->GetSpellProcEntry(965937) || !sSpellMgr->GetSpellInfo(944827) ||
++        !sSpellMgr->GetSpellBonusData(966753))
++        return false;
++    for (uint32 spell : {965939u, 966753u})
++    {
++        std::list<SpellScript*> scripts;
++        sScriptMgr->CreateSpellScripts(spell, scripts);
++        bool found = false;
++        for (auto* script : scripts)
++        {
++            found |= *script->_GetScriptName() == (spell == 965939 ?
++                "spell_area52_bloom" : "spell_area52_bloom_heal");
++            delete script;
++        }
++        if (!found)
++            return false;
++    }
++    return true;
++}
++
+ void LoadConnections()
+ {
+     Active = false;
+@@ -517,6 +540,12 @@
+         if (entry.Quality < 2 || entry.Quality > 5 || !info || !info->IsPassive() ||
+             info->HasAttribute(SPELL_ATTR0_CU_FORCE_AURA_SAVING))
+             continue;
++        if (spell == 965937)
++        {
++            if (HasSeedOfLifeHandlers())
++                Connected.emplace(spell, 1);
++            continue;
++        }
+         if (HasSpiritualAttunementHandler(spell))
+         {
+             Connected.emplace(spell, std::max<std::uint32_t>(1, info->StackAmount));
+@@ -892,8 +921,193 @@
+ }
+ }
+ 
++namespace Area52SeedOfLife
++{
++constexpr char StateKey[] = "area52.seed-of-life.bloom";
++constexpr uint32 Seed = 944827;
++constexpr uint32 Enchant = 965937;
++constexpr uint32 Heal = 966753;
++constexpr float Radius = 40.0f;
++
++struct State : DataMap::Base
++{
++    TaskScheduler Scheduler;
++};
++
++struct Chain
++{
++    ObjectGuid Caster;
++    uint32 Map;
++    uint32 Instance;
++    uint32 Phase;
++    std::set<ObjectGuid> Visited;
++};
++
++bool Eligible(Player* caster, Unit* target, Chain const& chain)
++{
++    return target && target->IsInWorld() && target->IsAlive() && caster->InSamePhase(target) &&
++        caster->IsValidAssistTarget(target) && target->HasAura(Seed, caster->GetGUID()) &&
++        !chain.Visited.count(target->GetGUID());
++}
++
++std::list<Unit*> Targets(Player* caster, Unit* center, Chain const& chain)
++{
++    std::list<Unit*> targets;
++    Acore::AnyUnitInObjectRangeCheck check(center, Radius);
++    Acore::UnitListSearcher<Acore::AnyUnitInObjectRangeCheck> search(center, targets, check);
++    Cell::VisitObjects(center, search, Radius);
++    if (std::find(targets.begin(), targets.end(), center) == targets.end())
++        targets.push_back(center);
++    targets.remove_if([&](Unit* target)
++    {
++        return !Eligible(caster, target, chain) || !center->IsWithinDistInMap(target, Radius) ||
++            !center->IsWithinLOSInMap(target);
++    });
++    targets.sort([center](Unit* left, Unit* right)
++    {
++        float a = center->GetDistance(left);
++        float b = center->GetDistance(right);
++        return a == b ? left->GetGUID() < right->GetGUID() : a < b;
++    });
++    return targets;
++}
++
++void Bloom(Player* caster, Unit* target, std::shared_ptr<Chain> chain)
++{
++    if (!Eligible(caster, target, *chain))
++        return;
++    ObjectGuid center = target->GetGUID();
++    chain->Visited.insert(center);
++    target->RemoveAurasDueToSpell(Seed, caster->GetGUID());
++    caster->CastSpell(target, Heal, TRIGGERED_FULL_MASK);
++    caster->CustomData.GetDefault<State>(StateKey)->Scheduler.Schedule(Milliseconds(500),
++        [chain, center](TaskContext)
++    {
++        Player* owner = ObjectAccessor::FindPlayer(chain->Caster);
++        if (!owner || !owner->IsInWorld() || !owner->IsAlive() || !owner->FindMap() ||
++            !AscensionMysticEnchant::Applies(owner) || !owner->HasAura(Enchant) ||
++            owner->GetMapId() != chain->Map || owner->GetInstanceId() != chain->Instance ||
++            owner->GetPhaseMask() != chain->Phase)
++            return;
++        Unit* origin = ObjectAccessor::GetUnit(*owner, center);
++        if (!origin || !origin->IsInWorld() || !origin->IsAlive() || !owner->InSamePhase(origin))
++            return;
++        auto targets = Targets(owner, origin, *chain);
++        uint32 count = 0;
++        for (Unit* next : targets)
++        {
++            if (count++ == 3)
++                break;
++            Bloom(owner, next, chain);
++        }
++    });
++}
++}
++
++class spell_area52_bloom : public SpellScript
++{
++    PrepareSpellScript(spell_area52_bloom);
++
++    bool Load() override
++    {
++        Player* player = GetCaster()->ToPlayer();
++        return player && AscensionMysticEnchant::Applies(player);
++    }
++
++    bool Validate(SpellInfo const*) override
++    {
++        return ValidateSpellInfo({944827, 965937, 966753});
++    }
++
++    SpellCastResult Check()
++    {
++        Player* caster = GetCaster()->ToPlayer();
++        if (!caster || !caster->HasAura(965937))
++            return SPELL_FAILED_CASTER_AURASTATE;
++        Area52SeedOfLife::Chain chain{};
++        return Area52SeedOfLife::Targets(caster, caster, chain).empty() ?
++            SPELL_FAILED_BAD_TARGETS : SPELL_CAST_OK;
++    }
++
++    void Suppress(SpellEffIndex effect)
++    {
++        PreventHitDefaultEffect(effect);
++    }
++
++    void Start(SpellEffIndex effect)
++    {
++        PreventHitDefaultEffect(effect);
++        Player* caster = GetCaster()->ToPlayer();
++        if (!caster || !caster->IsInWorld() || !caster->FindMap() || !caster->HasAura(965937))
++            return;
++        auto chain = std::make_shared<Area52SeedOfLife::Chain>();
++        chain->Caster = caster->GetGUID();
++        chain->Map = caster->GetMapId();
++        chain->Instance = caster->GetInstanceId();
++        chain->Phase = caster->GetPhaseMask();
++        auto targets = Area52SeedOfLife::Targets(caster, caster, *chain);
++        if (!targets.empty())
++            Area52SeedOfLife::Bloom(caster, targets.front(), chain);
++    }
++
++    void Register() override
++    {
++        OnCheckCast += SpellCheckCastFn(spell_area52_bloom::Check);
++        OnEffectLaunch += SpellEffectFn(spell_area52_bloom::Suppress, EFFECT_1, SPELL_EFFECT_TRIGGER_SPELL);
++        OnEffectLaunchTarget += SpellEffectFn(spell_area52_bloom::Suppress, EFFECT_1, SPELL_EFFECT_TRIGGER_SPELL);
++        OnEffectHitTarget += SpellEffectFn(spell_area52_bloom::Start, EFFECT_0, SPELL_EFFECT_DUMMY);
++    }
++};
++
++class spell_area52_bloom_heal : public SpellScript
++{
++    PrepareSpellScript(spell_area52_bloom_heal);
++
++    bool Load() override
++    {
++        Player* player = GetCaster()->ToPlayer();
++        return player && AscensionMysticEnchant::Applies(player);
++    }
++
++    void Amount(SpellEffIndex)
++    {
++        SetEffectValue(6 * GetCaster()->GetLevel());
++    }
++
++    void Register() override
++    {
++        OnEffectLaunchTarget += SpellEffectFn(spell_area52_bloom_heal::Amount, EFFECT_1, SPELL_EFFECT_HEAL);
++    }
++};
++
++class area52_bloom_lifecycle : public PlayerScript
++{
++public:
++    area52_bloom_lifecycle() : PlayerScript("area52_bloom_lifecycle",
++        {PLAYERHOOK_ON_UPDATE, PLAYERHOOK_ON_LOGOUT}) { }
++
++    void OnPlayerUpdate(Player* player, uint32 diff) override
++    {
++        if (auto* state = player->CustomData.Get<Area52SeedOfLife::State>(Area52SeedOfLife::StateKey))
++        {
++            if (!player->IsInWorld() || !player->IsAlive() || !player->HasAura(965937))
++                state->Scheduler.CancelAll();
++            else
++                state->Scheduler.Update(diff);
++        }
++    }
++
++    void OnPlayerLogout(Player* player) override
++    {
++        player->CustomData.Erase(Area52SeedOfLife::StateKey);
++    }
++};
++
+ void AddSC_AscensionMysticEnchant()
+ {
++    RegisterSpellScript(spell_area52_bloom);
++    RegisterSpellScript(spell_area52_bloom_heal);
++    new area52_bloom_lifecycle();
+     RegisterSpellScript(spell_area52_hoplite_support_proc);
+     RegisterSpellScript(aura_area52_sweeping_swings);
+     RegisterSpellScript(spell_area52_sweeping_swings_damage);
+--- a/src/server/coa/AscensionMysticSpellGrants.h
++++ b/src/server/coa/AscensionMysticSpellGrants.h
+@@ -11,11 +11,12 @@
+     std::uint32_t Enchant;
+     std::uint32_t Spell;
+ };
+-inline constexpr std::array<SpellGrant, 5> SpellGrants = {{
++inline constexpr std::array<SpellGrant, 6> SpellGrants = {{
+     {84408, 84409},
+     {84466, 84467},
+     {92574, 92575},
+     {92582, 92584},
++    {965937, 965939},
+     {978724, 922565}
+ }};
+ }

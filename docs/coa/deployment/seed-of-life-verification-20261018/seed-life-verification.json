@@ -1,0 +1,15 @@
+{
+  "status": "engineering_verification_passed",
+  "entry": 965937,
+  "granted_spell": 965939,
+  "package_id": "seed-of-life-verification-20261018",
+  "binary_sha256": "df92230377481842e92488d663e0dd6eb6b6d414736318fe882e0912c413e46f",
+  "reports": {
+    "build-wiring-final": "720bf6c4513c7aa7a5dacd992907f9205ad4d10b6a4f4a0cb3d0917b94f6ccbe",
+    "source-final": "aae7b61b3b170e0ef432444502542053d4206a412a15b3ffad6a1ca9095b4d37",
+    "focused-release": "0a7c5ca1c1c944dd7622929b8ab4a31654b87639c3547715139977a779ad30ef",
+    "sql-hooks-final": "a1647f36cb28319fee92517f8643e4bc39bef958d9af09b4703c7cb7e9149469"
+  },
+  "limits": "Extracted production handlers with mocked adapters; no gameplay Certification.",
+  "preserved_pending_package": "tooltip-status-scrub-claw-20261018"
+}
