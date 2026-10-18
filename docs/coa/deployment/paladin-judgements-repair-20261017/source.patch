@@ -1,0 +1,95 @@
+--- a/src/server/scripts/Spells/spell_paladin.cpp
++++ b/src/server/scripts/Spells/spell_paladin.cpp
+@@ -1366,6 +1366,12 @@
+         return ValidateSpellInfo({ SPELL_PALADIN_JUDGEMENT_OF_LIGHT_HEAL });
+     }
+ 
++    bool CheckProc(ProcEventInfo& eventInfo)
++    {
++        return eventInfo.GetActor() && (eventInfo.GetTypeMask() &
++            (PROC_FLAG_TAKEN_MELEE_AUTO_ATTACK | PROC_FLAG_TAKEN_RANGED_AUTO_ATTACK));
++    }
++
+     void HandleProc(AuraEffect const* aurEff, ProcEventInfo& eventInfo)
+     {
+         PreventDefaultAction();
+@@ -1374,12 +1380,13 @@
+         if (!attacker)
+             return;
+ 
+-        int32 bp = int32(attacker->CountPctFromMaxHealth(aurEff->GetAmount()));
++        int32 bp = int32(CalculatePct(attacker->GetCreateHealth(), aurEff->GetAmount()));
+         attacker->CastCustomSpell(attacker, SPELL_PALADIN_JUDGEMENT_OF_LIGHT_HEAL, &bp, nullptr, nullptr, true, nullptr, aurEff, GetCasterGUID());
+     }
+ 
+     void Register() override
+     {
++        DoCheckProc += AuraCheckProcFn(spell_pal_judgement_of_light_heal::CheckProc);
+         OnEffectProc += AuraEffectProcFn(spell_pal_judgement_of_light_heal::HandleProc, EFFECT_0, SPELL_AURA_DUMMY);
+     }
+ };
+--- a/src/server/game/Spells/SpellInfoCorrections.cpp
++++ b/src/server/game/Spells/SpellInfoCorrections.cpp
+@@ -586,6 +586,11 @@
+         spellInfo->SpellLevel = 0;
+         spellInfo->BaseLevel = 0;
+         spellInfo->DmgClass = SPELL_DAMAGE_CLASS_MAGIC;
++    });
++
++    ApplySpellFix({ 20184, 20185, 20186 }, [](SpellInfo* spellInfo)
++    {
++        spellInfo->AttributesEx5 |= SPELL_ATTR5_LIMIT_N;
+     });
+ 
+     // Hand of Reckoning
+--- a/src/server/coa/AscensionFreePick.cpp
++++ b/src/server/coa/AscensionFreePick.cpp
+@@ -419,8 +419,9 @@
+     return Area52Build::Select(Data, plan, player->GetLevel(), wanted, KnownEntries(player), retainExisting, maximumLevel, learnSpells);
+ }
+ 
+-Result Apply(Player* player, std::vector<KnownEntry> const& wanted, bool, bool specializationChange)
+-{
++Result Apply(Player* player, std::vector<KnownEntry> const& requested, bool, bool specializationChange)
++{
++    auto const wanted = IncludeJudgementMastery(requested);
+     if (!Applies(player) || !player->IsInWorld())
+         return { "CA_UPDATE_ENTRIES_UNKNOWN" };
+     if (!player->IsAlive())
+--- a/src/server/coa/AscensionFreePickRules.cpp
++++ b/src/server/coa/AscensionFreePickRules.cpp
+@@ -131,9 +131,23 @@
+     return !catalog.Entries.empty() && !catalog.Budgets.empty();
+ }
+ 
+-Result Validate(Catalog const& catalog, std::uint32_t level, std::vector<KnownEntry> const& wanted,
++std::vector<KnownEntry> IncludeJudgementMastery(std::vector<KnownEntry> wanted)
++{
++    constexpr std::uint32_t mastery = 1324;
++    bool const judgement = std::any_of(wanted.begin(), wanted.end(), [](KnownEntry const& pick)
++    {
++        return pick.EntryId == 2955 || pick.EntryId == 3019 || pick.EntryId == 3020;
++    });
++    if (judgement && std::none_of(wanted.begin(), wanted.end(), [](KnownEntry const& pick)
++        { return pick.EntryId == mastery; }))
++        wanted.push_back({mastery, 1});
++    return wanted;
++}
++
++Result Validate(Catalog const& catalog, std::uint32_t level, std::vector<KnownEntry> const& requested,
+     std::vector<KnownEntry> const& previous)
+ {
++    auto const wanted = IncludeJudgementMastery(requested);
+     auto budget = catalog.Budgets.upper_bound(level);
+     if (budget == catalog.Budgets.begin() || wanted.size() > catalog.Entries.size())
+         return Refuse("CA_LEARN_BAD_ABILITY");
+--- a/src/server/coa/AscensionFreePick.h
++++ b/src/server/coa/AscensionFreePick.h
+@@ -62,6 +62,7 @@
+ inline constexpr std::uint32_t QualityMode = 0x400;
+ 
+ bool LoadCatalog(Catalog& catalog);
++std::vector<KnownEntry> IncludeJudgementMastery(std::vector<KnownEntry> wanted);
+ Result Validate(Catalog const& catalog, std::uint32_t level, std::vector<KnownEntry> const& wanted,
+     std::vector<KnownEntry> const& previous = {});
+ bool SameSelection(std::vector<KnownEntry> const& left, std::vector<KnownEntry> const& right);
