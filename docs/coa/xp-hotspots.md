@@ -26,8 +26,8 @@ expansion-2 client should explicitly set this option to 0. Blood elf and draenei
 physical map 530 count as Azeroth. Instances, battlegrounds and unsupported physical maps are
 excluded. Changing these options requires a restart; the GM announcement toggle is immediate.
 
-Main already includes `mod-coa-challenges`. This PR adds the narrow
-`OnPlayerHasNoBonusExperience` query hook and binds it to that module's existing
+Upstream main already includes `mod-coa-challenges` and its
+`OnPlayerHasNoBonusExperience` query hook. Hotspots consume that existing hook for the
 `CHALLENGE_RULES_TYPE_NO_BONUS_EXPERIENCE` rule. Hotspot buffs are suppressed while that
 rule is active. Other experience-reward calculations are unchanged.
 
