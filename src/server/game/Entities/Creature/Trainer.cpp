@@ -166,6 +166,10 @@ namespace Trainer
                 spellState == SpellState::Unavailable)
                 continue;
 
+            if (spellState == SpellState::Unavailable && trainerSpell.ReqSkillLine == SKILL_RIDING
+                && player->GetBaseSkillValue(SKILL_RIDING) < trainerSpell.ReqSkillRank)
+                continue;
+
             SpellInfo const* trainerSpellInfo = sSpellMgr->AssertSpellInfo(trainerSpell.SpellId);
 
             bool primaryProfessionFirstRank = false;
