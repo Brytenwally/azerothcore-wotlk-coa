@@ -1,0 +1,273 @@
+--- a/src/server/coa/AscensionFreePick.cpp
++++ b/src/server/coa/AscensionFreePick.cpp
+@@ -14,8 +14,11 @@
+ #include "QuestDef.h"
+ #include "Log.h"
+ #include "Player.h"
++#include "Item.h"
+ #include "ScriptMgr.h"
+ #include "SpellInfo.h"
++#include "Spell.h"
++#include "Random.h"
+ #include "SpellScript.h"
+ #include "Chat.h"
+ #include "Pet.h"
+@@ -801,9 +804,89 @@
+     return true;
+ }
+ 
++namespace
++{
++class ghostly_strike_contracts : public GlobalScript
++{
++public:
++    ghostly_strike_contracts() : GlobalScript("ghostly_strike_contracts",
++        {GLOBALHOOK_ON_LOAD_SPELL_CUSTOM_ATTR}) { }
++
++    void OnLoadSpellCustomAttr(SpellInfo* info) override
++    {
++        if (info->Id == 965819 && info->Effects[EFFECT_2].ApplyAuraName == 229)
++            info->Effects[EFFECT_2].ApplyAuraName = SPELL_AURA_MOD_PARRY_PERCENT;
++    }
++};
++
++class spell_ascension_ghostly_strike : public SpellScript
++{
++    PrepareSpellScript(spell_ascension_ghostly_strike);
++
++    bool Load() override { return AscensionFreePick::Enabled() && GetCaster()->IsPlayer(); }
++
++    bool Validate(SpellInfo const*) override
++    {
++        return ValidateSpellInfo({965819});
++    }
++
++    void Defend(SpellEffIndex)
++    {
++        Player* player = GetCaster()->ToPlayer();
++        if (!player)
++            return;
++        Item const* weapon = player->GetItemByPos(INVENTORY_SLOT_BAG_0, EQUIPMENT_SLOT_MAINHAND);
++        bool const twoHanded = weapon && weapon->GetTemplate()->InventoryType == INVTYPE_2HWEAPON &&
++            !player->GetItemByPos(INVENTORY_SLOT_BAG_0, EQUIPMENT_SLOT_OFFHAND);
++        int32 const amount = sSpellMgr->AssertSpellInfo(965819)->Effects[EFFECT_1].CalcValue(player);
++        CustomSpellValues values;
++        values.AddSpellMod(SPELLVALUE_BASE_POINT1, twoHanded ? 0 : amount);
++        values.AddSpellMod(SPELLVALUE_BASE_POINT2, twoHanded ? amount : 0);
++        player->CastCustomSpell(965819, values, player, TRIGGERED_FULL_MASK);
++    }
++
++    void Register() override
++    {
++        OnEffectHitTarget += SpellEffectFn(spell_ascension_ghostly_strike::Defend, EFFECT_1, SPELL_EFFECT_DUMMY);
++    }
++};
++
++class spell_area52_improved_riposte : public SpellScript
++{
++    PrepareSpellScript(spell_area52_improved_riposte);
++
++    bool Load() override { return AscensionFreePick::Enabled() && GetCaster()->IsPlayer(); }
++
++    bool Validate(SpellInfo const*) override
++    {
++        return ValidateSpellInfo({14278, 13713, 13853, 13854, 965835, 965836, 965837});
++    }
++
++    void ReduceCooldown()
++    {
++        Player* player = GetCaster()->ToPlayer();
++        if (!player || GetSpell()->IsTriggered())
++            return;
++        uint32 helper = player->HasAura(13854) ? 965837 :
++            player->HasAura(13853) ? 965836 : player->HasAura(13713) ? 965835 : 0;
++        if (helper && roll_chance_i(sSpellMgr->AssertSpellInfo(helper)->ProcChance))
++            player->ModifySpellCooldown(14278, -3000);
++    }
++
++    void Register() override
++    {
++        AfterCast += SpellCastFn(spell_area52_improved_riposte::ReduceCooldown);
++    }
++};
++
++}
++
+ void RegisterSpecializations()
+ {
+     RegisterSpellScriptWithArgs(SpecializationSwap, "spell_area52_specialization_swap");
+     new SpecializationPlayer();
+-}
+-}
++    RegisterSpellScript(spell_area52_improved_riposte);
++    new ghostly_strike_contracts();
++    RegisterSpellScript(spell_ascension_ghostly_strike);
++}
++}
+--- a/src/server/game/Spells/SpellEffects.cpp
++++ b/src/server/game/Spells/SpellEffects.cpp
+@@ -3830,11 +3830,17 @@
+                     {
+                         AddComboPointGain(unitTarget, 1);
+                     }
+-                    // 50% more damage with daggers
++                    // Ghostly Strike uses its authored dagger and two-handed weapon modifiers.
+                     if (m_caster->IsPlayer())
++                    {
+                         if (Item* item = m_caster->ToPlayer()->GetWeaponForAttack(m_attackType, true))
++                        {
+                             if (item->GetTemplate()->SubClass == ITEM_SUBCLASS_WEAPON_DAGGER)
+-                                AddPct(totalDamagePercentMod, 50.0f);
++                                AddPct(totalDamagePercentMod, m_spellInfo->Id == 14278 ? 44.0f : 50.0f);
++                            else if (m_spellInfo->Id == 14278 && item->GetTemplate()->InventoryType == INVTYPE_2HWEAPON)
++                                AddPct(totalDamagePercentMod, -20.0f);
++                        }
++                    }
+                 }
+                 // Mutilate (for each hand)
+                 else if (m_spellInfo->SpellFamilyFlags[1] & 0x6)
+--- /dev/null
++++ b/data/sql/updates/pending_db_world/rev_20261017000001_ghostly_strike.sql
+@@ -0,0 +1,4 @@
++DELETE FROM `spell_script_names` WHERE `spell_id` = 14278 AND `ScriptName` = 'spell_ascension_ghostly_strike';
++INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`) VALUES (14278, 'spell_ascension_ghostly_strike');
++DELETE FROM `spell_script_names` WHERE `spell_id` = 14251 AND `ScriptName` = 'spell_area52_improved_riposte';
++INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`) VALUES (14251, 'spell_area52_improved_riposte');
+--- /dev/null
++++ b/data/sql/updates/pending_db_world/rev_20261017000002_ghostly_blow.sql
+@@ -0,0 +1,4 @@
++DELETE FROM `spell_script_names` WHERE (`spell_id` = 983240 AND `ScriptName` = 'aura_area52_epic_equipment') OR (`spell_id` = 983242 AND `ScriptName` = 'aura_area52_ghostly_blow');
++INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`) VALUES
++(983240, 'aura_area52_epic_equipment'),
++(983242, 'aura_area52_ghostly_blow');
+--- a/src/server/coa/AscensionMysticEnchant.cpp
++++ b/src/server/coa/AscensionMysticEnchant.cpp
+@@ -981,7 +981,7 @@
+                 (grant.Enchant != 978724 || player->HasSpell(2565)))
+                 SetGrantedSpell(player, grant.Enchant, grant.Spell, true);
+         }
+-    constexpr std::array<std::uint32_t, 5> spellGrantingEnchants = {81116, 92580, 926573, 954081, 978217};
++    constexpr std::array<std::uint32_t, 6> spellGrantingEnchants = {81116, 92580, 926573, 954081, 978217, 983240};
+     for (auto enchant : spellGrantingEnchants)
+     {
+         if (std::find(slots.begin(), slots.end(), enchant) == slots.end())
+--- a/src/server/coa/AscensionMysticKnightEpics.cpp
++++ b/src/server/coa/AscensionMysticKnightEpics.cpp
+@@ -15,7 +15,7 @@
+ namespace
+ {
+ bool Enabled = false;
+-constexpr uint32 Light = 926573, Hook = 92580, Deconstruction = 954081;
++constexpr uint32 Light = 926573, Hook = 92580, Deconstruction = 954081, GhostlyBlow = 983240;
+ constexpr std::array<uint32, 8> Consecration = {26573, 20116, 20922, 20923, 20924, 27173, 48818, 48819};
+ constexpr std::array<uint32, 9> Devastate = {20243, 302035, 302036, 302037, 302038, 30016, 30022, 47497, 47498};
+ constexpr std::array<uint32, 9> Deconstruct = {954082, 954443, 954444, 954445, 954446, 954447, 954448, 954449, 954450};
+@@ -55,6 +55,8 @@
+     for (std::size_t i = 0; i < Devastate.size(); ++i)
+         Replacement(player, Devastate[i], Deconstruct[i], deconstruct, Deconstruction);
+     AscensionMysticEnchant::SetGrantedSpell(player, Hook, 92583, hook);
++    Replacement(player, 14251, 983241,
++        Applies(player) && AscensionMysticEnchant::GrantsActive(player, GhostlyBlow), GhostlyBlow);
+ }
+ class EpicWorld final : public WorldScript
+ {
+@@ -95,7 +97,7 @@
+     EpicPlayer() : PlayerScript("Area52EpicPlayer") { }
+     void Refresh(Player* player, uint32 spell)
+     {
+-        if (Applies(player) && (std::find(Consecration.begin(), Consecration.end(), spell) != Consecration.end() ||
++        if (Applies(player) && (spell == 14251 || std::find(Consecration.begin(), Consecration.end(), spell) != Consecration.end() ||
+             std::find(Devastate.begin(), Devastate.end(), spell) != Devastate.end()))
+             Synchronize(player);
+     }
+@@ -226,12 +228,62 @@
+             EFFECT_1, SPELL_AURA_ASCENSION_MOD_SPELL_POWER_FLAT);
+     }
+ };
++
++class aura_area52_ghostly_blow : public AuraScript
++{
++    PrepareAuraScript(aura_area52_ghostly_blow);
++    bool Load() override { return GetCaster() && Applies(GetCaster()->ToPlayer()); }
++    bool Validate(SpellInfo const*) override { return ValidateSpellInfo({983240, 983241, 983242, 14251}); }
++    void Tick(AuraEffect const*)
++    {
++        Unit* caster = GetCaster();
++        Unit* target = GetTarget();
++        Player* player = caster ? caster->ToPlayer() : nullptr;
++        if (!player || !player->IsAlive() || !target->IsAlive() ||
++            !AscensionMysticEnchant::GrantsActive(player, GhostlyBlow) || !player->HasSpell(14251))
++        {
++            PreventDefaultAction();
++            Remove();
++            return;
++        }
++        if (!player->IsWithinDistInMap(target, GetSpellInfo()->GetMaxRange(false)))
++        {
++            PreventDefaultAction();
++            return;
++        }
++        GetAura()->RefreshDuration();
++    }
++    void Refresh(AuraEffect const*) { PreventDefaultAction(); }
++    void Register() override
++    {
++        OnEffectPeriodic += AuraEffectPeriodicFn(aura_area52_ghostly_blow::Tick,
++            EFFECT_0, SPELL_AURA_PERIODIC_DAMAGE);
++        OnEffectPeriodic += AuraEffectPeriodicFn(aura_area52_ghostly_blow::Refresh,
++            EFFECT_1, SPELL_AURA_PERIODIC_TRIGGER_SPELL);
++    }
++};
++class ghostly_blow_damage : public UnitScript
++{
++public:
++    ghostly_blow_damage() : UnitScript("ghostly_blow_damage", true, {UNITHOOK_ON_PERIODIC_DAMAGE_RESULT}) { }
++    void OnPeriodicDamageResult(Unit*, Unit* caster, uint32 damage, SpellInfo const* info) override
++    {
++        Player* player = caster ? caster->ToPlayer() : nullptr;
++        if (!damage || !info || info->Id != 983242 || !Applies(player) || !player->IsAlive() ||
++            !AscensionMysticEnchant::GrantsActive(player, GhostlyBlow))
++            return;
++        if (player->HasAura(13713) || player->HasAura(13853) || player->HasAura(13854))
++            player->ModifySpellCooldown(14278, -1000);
++    }
++};
+ }
+ void AddAscensionMysticKnightEpicScripts()
+ {
+     new EpicWorld();
+     new EpicContracts();
+     new EpicPlayer();
++    new ghostly_blow_damage();
++    RegisterSpellScript(aura_area52_ghostly_blow);
+     RegisterSpellScript(aura_area52_epic_equipment);
+     RegisterSpellScript(spell_area52_emanate_damage);
+     RegisterSpellScript(spell_area52_flesh_hook);
+@@ -242,7 +294,7 @@
+ 
+ bool HasArea52EpicEquipmentHandlers(uint32 spell)
+ {
+-    if (!Enabled || (spell != Light && spell != Hook && spell != Deconstruction))
++    if (!Enabled || (spell != Light && spell != Hook && spell != Deconstruction && spell != GhostlyBlow))
+         return false;
+     std::list<AuraScript*> auras;
+     sScriptMgr->CreateAuraScripts(spell, auras);
+@@ -276,14 +328,15 @@
+         if (!found)
+             return false;
+     }
+-    if (spell == Deconstruction)
++    if (spell == Deconstruction || spell == GhostlyBlow)
+     {
+         std::list<AuraScript*> helpers;
+-        sScriptMgr->CreateAuraScripts(954083, helpers);
++        sScriptMgr->CreateAuraScripts(spell == GhostlyBlow ? 983242 : 954083, helpers);
+         found = false;
+         for (auto* script : helpers)
+         {
+-            found |= *script->_GetScriptName() == "aura_area52_deconstruction_power";
++            found |= *script->_GetScriptName() == (spell == GhostlyBlow ? "aura_area52_ghostly_blow" :
++                "aura_area52_deconstruction_power");
+             delete script;
+         }
+         if (!found)
