@@ -1,0 +1,30 @@
+{
+  "package_id": "callboard-restoration-20261018",
+  "server_sha256": "e37ae1af73e61f372fb65a36a7e0f09bcbffa99a5b1874916c0e022e802bdc6e",
+  "deployed_baseline_sha256": "262afc5632599a3b0b8fc5ddfd1e7e1ab848a1c3894e931976481840abc023d0",
+  "source": {
+    "src/server/coa/AscensionCallboardCache.cpp": {
+      "before": "bfe055d811f86f607e773a5121dc50fca2f7d9a4fd2a1a67038692d7f41d8cbf",
+      "after": "0dfde6ec174a5757a2b5083bd6be9cf9b4c764490af3d421a65c93f4465df6e9"
+    },
+    "modules/mod-hero-call-board/src/HeroCallBoard.cpp": {
+      "before": "500d9141b522a1b2b2f0d1a68d5787d4ccdaeea928723e6a7373c75c66baf2e0",
+      "after": "8ca14732ad6752c6ec77c6bc43d7911968f8193ac5aa4da52b378140aed444d6"
+    }
+  },
+  "release_stage": 7,
+  "release_stage_meaning": "Naxxramas",
+  "reports": {
+    "build": "dc84e98e71d75c3aac0ba6a06adefca53a80c757c42e42150a84deae7a041521",
+    "source-checks": "d29dcd0d034ed2b16c95689ecb2d2a0620278cdff24beebae832449296daa034",
+    "focused3": "142d4e2aa8b75ad2b620a5dbe874c4bb670698f24cb69489a69d7cfc1dcc7b2c",
+    "sql-hooks2": "5f1a1a0e1db65c9c3ba1a16edaab7eed792a25202a9ea937a5292e84dbaca943",
+    "focused4": "3eab4bcede8969737c785d4cde77efb572eb07c02bdf0bb67d4e44a8cfa1ed5e"
+  },
+  "tools": "7154dce1dacb3d210cec2b9e9593d9de0dc779912cc83bb02b1d16f2c8022e5a",
+  "client_changes": false,
+  "status_changes": false,
+  "limits": "Focused native functions with mocked player/settings/mail/session adapters; no gameplay or crash-recovery certification. Production SQL fixture qualifies exact hooks. Existing reward selection preserved.",
+  "pending_preserved": "wisdomball-vendor-correction-20261018",
+  "startup_metadata_policy": "Calculate.Gameoject.Zone.Area.Data=0, checked read-only before activation"
+}
