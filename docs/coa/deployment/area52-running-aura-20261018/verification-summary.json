@@ -1,0 +1,23 @@
+{
+  "package": "area52-running-aura-20261018",
+  "status": "offline-qualified",
+  "server_sha256": "e7cd49690d5aaef4395ea915cbd305ef337ce94d928c2f2c1930ec56cb52f386",
+  "baseline_server_sha256": "df92230377481842e92488d663e0dd6eb6b6d414736318fe882e0912c413e46f",
+  "upstream_base": "bba3dcf0217af379aa655f2e55609a48ea83317f",
+  "upstream_candidate": "26ef5cb30d308d51b393c53f12d1157c156d5f79",
+  "realm_overlay_manifest_sha256": "f1555fe3e6f6b20f1a5a5d6cd1bf1bb9a7ccd8d2ef05f08338d071e156d48447",
+  "aura": 86000,
+  "percent": 15,
+  "ordinary_non_stacking": true,
+  "client_changes": false,
+  "sql_changes": false,
+  "status_changes": false,
+  "gameplay_run": false,
+  "reports": {
+    "build-final": "946334b06ada94eaa17bcd7a327a90837c3b56dfdba3553612f674084a9cb36c",
+    "source-final": "b1185ed1712dc15858843c5c46d422674d86ece992321250cb0598ef829116b4",
+    "focused-final2": "63876e9832186fa5cbb929111723a76cdd908cceed3e238557245ed7455a5228",
+    "focused-hook-final": "0da14a381a7e7fa301f3e8f79b82269e18ce4f76d4342f7d9185fc276a01e964",
+    "upstream-formatted": "6e92fa07f1c18327e87040ddcd68f58de47c76ccaf75bd06ea5e57feaaad2e4c"
+  }
+}
