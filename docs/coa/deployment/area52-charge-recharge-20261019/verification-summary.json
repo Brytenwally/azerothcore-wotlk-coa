@@ -1,0 +1,19 @@
+{
+  "package": "area52-charge-recharge-20261019",
+  "status": "offline engineering passed; final package preflight pending",
+  "activated": false,
+  "package_ready": false,
+  "binary_sha256": "8ce96b51ed40de090b8e25de9db1401f9f96432cea5fcb3e3a02c951a390511f",
+  "baseline_binary_sha256": "0016442001aaaea88ee30042bfbb10ea3bcf4b1c5bab03798026788735d3f798",
+  "reports": {
+    "build-charge": "2e2dc06d2cc8a32849605d6cf8010958a24007b36395e7034a196878a220d1f8",
+    "source-charge": "eb52a87539f874751bda23f5222f08c33ae632732f8968425fc78f4d503898e7",
+    "focused-charge": "da132451701348493d801ab40b030da64bca72e11f5ac4e94a5f20b20decb09e"
+  },
+  "overlays_sha256": "7d53517da3706e85f1553feb513a6d356efc57d9437cfb7d14d86d3552c92f63",
+  "metadata_isolation_cases": 13244,
+  "scope": "Area 52 Charge 6178/11578 consume two-charge pool, sequential 16000ms recharge, shared key 100; rank1 normal cooldown unchanged.",
+  "limits": "Extracted native initializer/consumption and native charge state with mocked persistence/config/clock/packets; dispatch and exhaustion source-traced. No gameplay or status promotion.",
+  "publication_fixture_tests": 12,
+  "deployment_fixture_tests": 11
+}
