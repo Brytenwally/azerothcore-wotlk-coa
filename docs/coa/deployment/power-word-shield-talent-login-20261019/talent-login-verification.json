@@ -1,0 +1,31 @@
+{
+  "package": "power-word-shield-talent-login-20261019",
+  "status": "offline_engineering_passed; final combined package preflight pending",
+  "activated": false,
+  "package_ready": false,
+  "binary_sha256": "7ba0c1f93b45564f2c9561844a4378eaab5775c5cdf269f31525ee2996bad084",
+  "reports": {
+    "build-login": "9fdcf327ab8aefc7e670ca484a0e0f63840fce94d89b8b2d599df3e6035de4d3",
+    "source-login": "c05a35046f03c0fdd644000a77c31c258cb2d0cdf9947678b501d0b0642e3948",
+    "focused-login-final": "b0a75d999e1c243f37f5cc465fb86f5893f9b287f980a4c60da00d04511bf005"
+  },
+  "overlays_sha256": "4ad18b8d4015fb780e9e762b776ee55f9eb0f41f758acf469d08b514b37b8635",
+  "catalog_sequences": 3996,
+  "purchased_rank_cases": 7032,
+  "preserved_shield_artifacts": {
+    "client/patch-D.MPQ": "e959a2c220a8159fb8901f150fa08d920ef34148689d100cd8d37050edd72216",
+    "client-config.json": "f5f1f480406120cd11449e38cce841259c3b8cefcd29dfd23c23568cf3af8065",
+    "hooks/client_hook.py": "fc97d271b0e298d0bfdbd26e160f71c82ab47566005902369bf32c36409fc287",
+    "hooks/client_state.py": "bf6ce6a457d79679c3da8c06c1dd730860b5271a8b7f03b558fe2f0fcff126da",
+    "hooks/grace-row.json": "5b631199ac42fcdb7740866ed73e92d6ef2a0abaf2e8f468eef3af1117b0a450",
+    "hooks/grace_hook.py": "cac7793c96b37f25730e06fb354ef9642bbe58a42fde68d5df548432e3df68c7",
+    "status/certification-ledger.json": "ae1de2d133556de4b08d350df2620a43f3a88257bf2feae693adc42125b38486",
+    "status/test-access-status.json": "c3734d9bce9721e03472c69f58b3be1c4e20f406e0531ef32ae9e8f1f11cf8da"
+  },
+  "limits": "Extracted production functions with mocked Player/aura storage and native load-order assertions; no gameplay or live login/logout.",
+  "changes": [
+    "Load authoritative Free Pick settings before spell restoration, preserving later Mystic restore and other-mode ordering",
+    "Recover approved missing talent spells and eligible passive effects without unauthorized higher ranks or repeated recasts"
+  ],
+  "reused_shield_evidence": "power-word-shield-verification-20261019/qualification.json; unchanged Shield source, SQL, client and status payloads"
+}

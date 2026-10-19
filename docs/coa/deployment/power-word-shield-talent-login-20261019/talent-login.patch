@@ -1,0 +1,70 @@
+--- a/src/server/coa/AscensionFreePick.cpp
++++ b/src/server/coa/AscensionFreePick.cpp
+@@ -208,6 +208,8 @@
+ 
+ bool SynchronizeTalentRanks(Player* player)
+ {
++    if (!Applies(player) || !player->IsInWorld())
++        return false;
+     auto const approved = AuthorizedTalentSpells(player);
+     bool changed = false;
+     for (auto spell : TalentSpells)
+@@ -217,16 +219,24 @@
+             player->RemoveAurasDueToSpell(spell, player->GetGUID());
+             changed = true;
+         }
+-    if (changed)
+-        for (auto spell : TalentSpells)
+-            if (approved.contains(spell) && player->HasSpell(spell))
+-                if (auto const* info = sSpellMgr->GetSpellInfo(spell); info && info->IsPassive()
+-                    && player->IsNeedCastPassiveSpellAtLearn(info) && !player->HasAura(spell))
++    for (auto spell : TalentSpells)
++        if (approved.contains(spell) && !player->HasSpell(spell))
++        {
++            player->learnSpell(spell);
++            changed |= player->HasSpell(spell);
++        }
++    for (auto spell : TalentSpells)
++        if (approved.contains(spell) && player->HasSpell(spell))
++            if (auto const* info = sSpellMgr->GetSpellInfo(spell); info && info->IsPassive() && info->HasAnyAura()
++                && player->IsNeedCastPassiveSpellAtLearn(info) && !player->HasAura(spell))
++            {
++                auto next = sSpellMgr->GetNextSpellInChain(spell);
++                if (!next || !approved.contains(next))
+                 {
+-                    auto next = sSpellMgr->GetNextSpellInChain(spell);
+-                    if (!next || !approved.contains(next))
+-                        player->CastSpell(player, spell, true);
++                    player->CastSpell(player, spell, true);
++                    changed |= player->HasAura(spell);
+                 }
++            }
+     return changed;
+ }
+ 
+--- a/src/server/game/Entities/Player/PlayerStorage.cpp
++++ b/src/server/game/Entities/Player/PlayerStorage.cpp
+@@ -5552,6 +5552,10 @@
+     m_specsCount = fields[64].Get<uint8>();
+     m_activeSpec = fields[65].Get<uint8>();
+ 
++    bool const earlyFreePickSettings = AscensionFreePick::Enabled() && getClass() == CLASS_HERO;
++    if (earlyFreePickSettings)
++        _LoadCharacterSettings(holder.GetPreparedResult(PLAYER_LOGIN_QUERY_LOAD_CHARACTER_SETTINGS));
++
+     LearnDefaultSkills();
+     LearnCustomSpells();
+ 
+@@ -5592,12 +5596,8 @@
+     // xinef: load mails before inventory, so problematic items can be added to already loaded mails
+     _LoadMail(holder.GetPreparedResult(PLAYER_LOGIN_QUERY_LOAD_MAILS), holder.GetPreparedResult(PLAYER_LOGIN_QUERY_LOAD_MAIL_ITEMS));
+ 
+-    bool const earlyFreePickSettings = AscensionFreePick::Enabled() && getClass() == CLASS_HERO;
+     if (earlyFreePickSettings)
+-    {
+-        _LoadCharacterSettings(holder.GetPreparedResult(PLAYER_LOGIN_QUERY_LOAD_CHARACTER_SETTINGS));
+         RestoreArea52MysticSpellsForLogin(this, holder.GetPreparedResult(PLAYER_LOGIN_QUERY_LOAD_FREEPICK_MYSTIC_COLLECTION));
+-    }
+ 
+     _LoadInventory(holder.GetPreparedResult(PLAYER_LOGIN_QUERY_LOAD_INVENTORY), time_diff);
+ 

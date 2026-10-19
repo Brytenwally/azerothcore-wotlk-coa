@@ -1,0 +1,30 @@
+{
+  "package": "power-word-shield-verification-20261019",
+  "status": "engineering_verified_candidate_pending_package_preflight",
+  "entry": {
+    "kind": "advancement",
+    "id": 2656
+  },
+  "server_sha256": "eead4a5ed89b4b77d0b951aab3c00cd3f962caf433ac1f2dd0a5729d6edbbc37",
+  "baseline_server_sha256": "85f7f3a81d0527bef7b0e3911e692f32d4f2213776308ca2767cb2e76d79a302",
+  "reports": {
+    "build-contract-final": "ab116cdc0ebf89fd1421f2527b401191055873af39f241a2232e584c76a7b611",
+    "source-contract-final": "e549fc931b3e8e956a78236cb4cdfad239dfdddd1304bfd5de7b38a614b5e8e0",
+    "focused-package-final": "8609ea6ac3586e34777f06dd7afde06c1b652ac7087a809c6151952a613f5604",
+    "sql-checks": "7c8f2efe43ee37ee9dabe8359ed4bb6e0bb9213921759deafa0b2722d7fe9216"
+  },
+  "source_sha256": "fa947b1688775841f1e5f296251a3a631bdd7f304ed798ff7634b0af50dcf4a8",
+  "source_overlays_sha256": "b38b224cdfee9973e2e0d79d0cd376790b09b241534bae180e578916b293cd6c",
+  "client_verification_sha256": "0aafd34bf0b8e2141842c6fa90fb7b3a13a483a1bc61cf691a5c9c2e46d7babf",
+  "scope": "14 ranks of Power Word: Shield, Weakened Soul and existing native interaction connections; separate selectable enchants tracked independently",
+  "owner_contract": "Restore untouched-client base values,30sec duration,23% base mana;21%SP formula",
+  "limits": "Extracted native handlers with mocked adapters and source/data tracing; no gameplay or tester Certification",
+  "status_changes": [
+    "advancement2656 only: VERIFIED on activation"
+  ],
+  "activated": false,
+  "package_ready": false,
+  "component_evidence_only": true,
+  "superseded_by_package": "power-word-shield-talent-login-20261019",
+  "effective_combined_binary_sha256": "7ba0c1f93b45564f2c9561844a4378eaab5775c5cdf269f31525ee2996bad084"
+}
