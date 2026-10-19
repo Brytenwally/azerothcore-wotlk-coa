@@ -1,0 +1,22 @@
+--- a/src/server/game/Spells/SpellEffects.cpp
++++ b/src/server/game/Spells/SpellEffects.cpp
+@@ -712,7 +712,18 @@
+                     }
+                     // Victory Rush
+                     else if (m_spellInfo->SpellFamilyFlags[1] & 0x100)
+-                        ApplyPct(damage, m_caster->GetTotalAttackPowerValue(BASE_ATTACK));
++                    {
++                        bool const area52VictoryRush = m_spellInfo->Id == 34428 && m_caster->ToPlayer() &&
++                            sConfigMgr->GetOption<bool>("CoA.Enable", true) &&
++                            sConfigMgr->GetOption<std::string>("CoA.ClassModel", "coa") == "hero" &&
++                            sConfigMgr->GetOption<std::string>("CoA.RealmType", "live") == "live" &&
++                            (sConfigMgr->GetOption<uint32>("CoA.GameModeMask", 0) & ~0x400u) == 0;
++                        // The Area 52 client specifies 45% AP + 45% SP, supplied once by spell_bonus_data.
++                        if (area52VictoryRush)
++                            damage = 0;
++                        else
++                            ApplyPct(damage, m_caster->GetTotalAttackPowerValue(BASE_ATTACK));
++                    }
+                     // Shockwave
+                     else if (m_spellInfo->Id == 46968)
+                     {

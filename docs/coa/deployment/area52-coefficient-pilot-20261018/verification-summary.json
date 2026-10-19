@@ -1,0 +1,29 @@
+{
+  "package": "area52-coefficient-pilot-20261018",
+  "status": "offline-qualified",
+  "baseline_server_sha256": "e7cd49690d5aaef4395ea915cbd305ef337ce94d928c2f2c1930ec56cb52f386",
+  "server_sha256": "85f7f3a81d0527bef7b0e3911e692f32d4f2213776308ca2767cb2e76d79a302",
+  "reports": {
+    "build": "abaf5c240f122153f094bf7d6d8b23b23d533f548ad05584c71e8ce84f5a2732",
+    "source-checks": "67c49ec3c3fcfade2d2cae39f08ccac8720e33d0c8da8127f8bebd7402c3570b",
+    "focused-release2": "469e57f40344959f165b90d95915afd718e465777c8dced8a90d5526b0a51850",
+    "sql-repair-release": "2f96c9e21a750c9bb2d7b92c7bdb5ad37f0b2368166dc67a6acece5d58ca6488"
+  },
+  "source_overlays": "b1952055f0986eae3bc7f9b6462ed2d2f37670a929fbdba94c12facc57fba005",
+  "client_source": {
+    "archive_sha256": "6490771543e5c42d028f767d6f6934ee58e0c18e88a63c6f8f551bfeded48de9",
+    "sha256": "5fe1b0052e53fa3652e6cf3c524c654035078652f2eefda7d5b377800a32ed54",
+    "records": 208739,
+    "fields": 234,
+    "bytes": 208654989,
+    "role": "owner-designated untouched Ascension reference; supersedes installed lower-priority patch-T",
+    "captured_utc": "2026-10-19T03:40:46.713257+00:00",
+    "reference_integrity": "matches first audit extraction and archive unchanged during this read; no historical pristine hash available"
+  },
+  "changed_sql_rows": 37,
+  "cone_of_cold": "Owner approved 0.107SP + 0.0696AP on all eight ranks when client has no explicit formula",
+  "status_changes": false,
+  "client_changes": false,
+  "gameplay_run": false,
+  "activated": false
+}
