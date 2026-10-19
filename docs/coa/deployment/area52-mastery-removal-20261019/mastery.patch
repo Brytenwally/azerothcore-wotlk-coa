@@ -1,0 +1,156 @@
+--- a/src/server/coa/AscensionFreePick.cpp
++++ b/src/server/coa/AscensionFreePick.cpp
+@@ -489,6 +489,17 @@
+     return {};
+ }
+ 
++Result RemoveMasteryEntry(Player* player, std::uint32_t entryId)
++{
++    if (!Applies(player) || !player->IsInWorld())
++        return { "CA_UPDATE_ENTRIES_UNKNOWN" };
++    std::vector<KnownEntry> wanted;
++    auto const planned = PlanMasteryRemoval(Data, KnownEntries(player), entryId, wanted);
++    if (!planned)
++        return planned;
++    return Apply(player, wanted);
++}
++
+ Result Purge(Player* player, bool talents)
+ {
+     if (!Applies(player) || !player->IsInWorld())
+--- a/src/server/coa/AscensionFreePickRules.cpp
++++ b/src/server/coa/AscensionFreePickRules.cpp
+@@ -129,6 +129,43 @@
+             catalog.Budgets[row.GetUInt32(1)] = { row.GetUInt32(7), row.GetUInt32(8) };
+     }
+     return !catalog.Entries.empty() && !catalog.Budgets.empty();
++}
++
++Result PlanMasteryRemoval(Catalog const& catalog, std::vector<KnownEntry> const& current,
++    std::uint32_t entryId, std::vector<KnownEntry>& wanted)
++{
++    auto const entry = catalog.Entries.find(entryId);
++    if (entry == catalog.Entries.end() ||
++        std::none_of(current.begin(), current.end(),
++            [&](KnownEntry const& pick) { return pick.EntryId == entryId; }))
++        return Refuse("CA_LEARN_BAD_ABILITY", entryId);
++    bool const mastery = (entry->second.Flags & 0x1000) != 0;
++    if (!mastery && std::none_of(entry->second.Masteries.begin(), entry->second.Masteries.end(),
++        [](std::uint32_t id) { return id != 0; }))
++        return Refuse("CA_LEARN_BAD_ABILITY", entryId);
++    std::set<std::uint32_t> removed = {entryId};
++    if (mastery)
++    {
++        bool changed;
++        do
++        {
++            changed = false;
++            for (auto const& pick : current)
++            {
++                auto const found = catalog.Entries.find(pick.EntryId);
++                if (found == catalog.Entries.end())
++                    return Refuse("CA_LEARN_BAD_ABILITY", pick.EntryId);
++                if (std::any_of(found->second.Masteries.begin(), found->second.Masteries.end(),
++                    [&](std::uint32_t id) { return id && removed.contains(id); }))
++                    changed = removed.insert(pick.EntryId).second || changed;
++            }
++        } while (changed);
++    }
++    wanted.clear();
++    for (auto const& pick : current)
++        if (!removed.contains(pick.EntryId))
++            wanted.push_back(pick);
++    return {};
+ }
+ 
+ std::vector<KnownEntry> IncludeJudgementMastery(std::vector<KnownEntry> wanted)
+--- a/src/server/coa/AscensionFreePick.h
++++ b/src/server/coa/AscensionFreePick.h
+@@ -110,6 +110,9 @@
+ std::vector<KnownEntry> KnownEntries(Player const* player);
+ Result Apply(Player* player, std::vector<KnownEntry> const& wanted, bool chargeIndividualRemoval = true,
+     bool specializationChange = false);
++Result PlanMasteryRemoval(Catalog const& catalog, std::vector<KnownEntry> const& current,
++    std::uint32_t entryId, std::vector<KnownEntry>& wanted);
++Result RemoveMasteryEntry(Player* player, std::uint32_t entryId);
+ Result Purge(Player* player, bool talents);
+ Result PlanSelection(Player const* player, Area52Build::Entry const& plan, std::vector<KnownEntry>& wanted,
+     bool retainExisting = false, std::uint32_t maximumLevel = 80, bool learnSpells = true);
+--- a/src/server/coa/AscensionCompat.cpp
++++ b/src/server/coa/AscensionCompat.cpp
+@@ -1786,6 +1786,13 @@
+     QueueTalentRequest(accountId, std::move(request));
+   }
+ 
++  void QueueMasteryRemoval(uint32 accountId, uint32 entryId)
++  {
++    TalentRequest request;
++    request.RemoveMasteryEntryId = entryId;
++    QueueTalentRequest(accountId, std::move(request));
++  }
++
+   void QueueTalentReset(uint32 accountId)
+   {
+     QueueTalentRequest(accountId, { true, {} });
+@@ -1819,6 +1826,15 @@
+       return;
+     for (TalentRequest const& request : requests)
+     {
++      if (request.RemoveMasteryEntryId)
++      {
++        auto const outcome = AscensionFreePick::RemoveMasteryEntry(player, request.RemoveMasteryEntryId);
++        SendCharacterAdvancementKnownEntries(player);
++        if (!outcome)
++          ChatHandler(player->GetSession()).PSendSysMessage("Removal refused: {}",
++              *outcome.Learn ? outcome.Learn : outcome.Status);
++        continue;
++      }
+       if (!request.Reset)
+       {
+         HandleKnownEntriesUpload(player, request.Upload);
+@@ -2284,6 +2300,7 @@
+     bool Reset = false;
+     std::vector<uint8> Upload;
+     bool Abilities = false;
++    uint32 RemoveMasteryEntryId = 0;
+   };
+ 
+   void QueueTalentRequest(uint32 accountId, TalentRequest request)
+@@ -5928,6 +5945,7 @@
+       : PlayerScript(
+             "AscensionCompatPlayerScript",
+             {PLAYERHOOK_ON_LOGIN, PLAYERHOOK_ON_LOGOUT, PLAYERHOOK_ON_UPDATE,
++             PLAYERHOOK_CAN_PLAYER_USE_PRIVATE_CHAT,
+              PLAYERHOOK_ON_AFTER_SET_VISIBLE_ITEM_SLOT, PLAYERHOOK_ON_EQUIP, PLAYERHOOK_ON_DELETE,
+              PLAYERHOOK_ON_STORE_NEW_ITEM, PLAYERHOOK_ON_CREATE_ITEM,
+              PLAYERHOOK_ON_PLAYER_COMPLETE_QUEST,
+@@ -5940,6 +5958,29 @@
+              PLAYERHOOK_ON_AFTER_UPDATE_ATTACK_POWER_AND_DAMAGE,
+              PLAYERHOOK_ON_SEND_INITIAL_PACKETS_BEFORE_ADD_TO_MAP,
+              PLAYERHOOK_CHECK_ITEM_IN_SLOT_AT_LOAD_INVENTORY}) {}
++
++    bool OnPlayerCanUseChat(Player* player, uint32 type, uint32 language, std::string& message,
++        Player* receiver) override
++    {
++        constexpr std::string_view prefix = "A52REMOVE\t";
++        if (type != CHAT_MSG_WHISPER || language != LANG_ADDON || !message.starts_with(prefix))
++            return true;
++        if (receiver != player || !AscensionFreePick::Applies(player))
++            return false;
++        std::string_view const digits(message.data() + prefix.size(), message.size() - prefix.size());
++        if (digits.empty() || digits.size() > 9)
++            return false;
++        uint32 entryId = 0;
++        for (char digit : digits)
++        {
++            if (digit < '0' || digit > '9')
++                return false;
++            entryId = entryId * 10 + uint32(digit - '0');
++        }
++        if (entryId)
++            AscensionClassService::Instance().QueueMasteryRemoval(player->GetSession()->GetAccountId(), entryId);
++        return false;
++    }
+ 
+     bool OnPlayerHasActivePowerType(Player const* player, Powers power) override
+     {

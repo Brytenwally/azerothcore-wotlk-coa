@@ -1,0 +1,23 @@
+{
+  "package": "area52-mastery-removal-20261019",
+  "status": "engineering checks passed; activation requires owner approval and successful package preflight",
+  "activated": false,
+  "binary_sha256": "8f01182fb0dc0e7379022aa515d9512347c0600cfea36c3cdc1943b16fb697c6",
+  "baseline_binary_sha256": "8ce96b51ed40de090b8e25de9db1401f9f96432cea5fcb3e3a02c951a390511f",
+  "mastery_groups": 21,
+  "members": 83,
+  "removal_refund_cases": 3664,
+  "reports": {
+    "build-mastery": "505198830b213c22ff7bb5b4f266b077699d086f93854e464d9a08315001ebd0",
+    "source-mastery": "b4f39d520e9a4954dec978234d79a7a22a79ac528e24b18bad8dcb69175c1fe1",
+    "focused-mastery-final": "54a2a5f1dd946acd820eaaab61cfa40aacc734f2634c897b0163bf60d309c74c",
+    "ui-checks": "f69d74af344b9a2f9c6cbd6f410c6e8d9eb4b80cab7ba25971bad7a92a863e5a",
+    "package-checks-final": "1fef1b796adabb80348c37b21e285fbd809ba2a271abbb1447557417e5f254f9"
+  },
+  "overlay_sha256": "52182f48e640d3be3d0a07127d321734ff194df49b734ba6aab437402ff157fe",
+  "client_archive_sha256": "84e29f6e764907a7663bbffb5dd3857c4de79e4e8ed7006f87af5297a7ca288d",
+  "client_distribution": "prepared launcher asset/canonical manifest/feed promotion before notes",
+  "limits": "Native selection/removal/validator and Lua confirmation checks offline; existing spell cleanup, persistence and dispatch integration source-traced. No gameplay, status promotion, activation or publication.",
+  "previous_package": "area52-charge-recharge-20261019",
+  "previous_state": "complete"
+}

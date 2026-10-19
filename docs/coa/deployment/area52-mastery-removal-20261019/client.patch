@@ -1,0 +1,39 @@
+--- a/Interface/FrameXML/Util/CharacterAdvancementUtil.lua
++++ b/Interface/FrameXML/Util/CharacterAdvancementUtil.lua
+@@ -289,7 +289,36 @@
+     end
+ end
+ 
++local function Area52ConfirmMasteryRemoval(internalID)
++    if GetRealmName() ~= "Area 52 - Free-Pick" or not C_Player or not C_Player:IsHero()
++        or type(internalID) ~= "number"
++        or (BuildCreatorUtil and BuildCreatorUtil.IsPickingSpells()) then
++        return false
++    end
++    local entry = C_CharacterAdvancement.GetEntryByInternalID(internalID)
++    if not entry or not C_CharacterAdvancement.IsKnownID(internalID) then return false end
++    local mastery = C_CharacterAdvancement.IsMastery(entry.Spells[1])
++    if not mastery and not next(entry.Masteries or {}) then return false end
++    StaticPopupDialogs["AREA52_REMOVE_MASTERY_ENTRY"] = {
++        text = "%s\n\n%s",
++        button1 = ACCEPT,
++        button2 = CANCEL,
++        OnAccept = function(self, id)
++            SendAddonMessage("A52REMOVE", tostring(id), "WHISPER", UnitName("player"))
++        end,
++        timeout = 0,
++        whileDead = false,
++        hideOnEscape = true,
++    }
++    local detail = mastery
++        and "Remove this Mastery and all its learned member abilities? Their Ability Essence will be refunded."
++        or "Remove only this ability and refund 1 Ability Essence? Your Mastery and other abilities will remain learned."
++    StaticPopup_Show("AREA52_REMOVE_MASTERY_ENTRY", entry.Name, detail, internalID)
++    return true
++end
++
+ function CharacterAdvancementUtil.ConfirmOrUnlearnID(internalID, preserveFilter)
++    if Area52ConfirmMasteryRemoval(internalID) then return true end
+     -- In WildCard mode, unlearn is a reroll and must have Ascension_WildCard
+     -- loaded before the server's unlearn/roll-ready events return, so the
+     -- addon's handlers register SoF state and drive the dice reveal.
