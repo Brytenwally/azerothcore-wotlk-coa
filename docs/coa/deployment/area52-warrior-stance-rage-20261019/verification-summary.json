@@ -1,0 +1,19 @@
+{
+  "package": "area52-warrior-stance-rage-20261019",
+  "status": "offline engineering passed; final package preflight pending",
+  "activated": false,
+  "package_ready": false,
+  "binary_sha256": "0016442001aaaea88ee30042bfbb10ea3bcf4b1c5bab03798026788735d3f798",
+  "baseline_binary_sha256": "7ba0c1f93b45564f2c9561844a4378eaab5775c5cdf269f31525ee2996bad084",
+  "reports": {
+    "build-stance": "b4fee752992bebd3262e6011d7494e7cef50702c6e49244b4c2869267b42169c",
+    "source-stance": "7c77390f2fcd0987d542de08f3ae6e471f76dec454828757ab9e97cfdc5ba558",
+    "focused-stance": "4a9d1c3dd4a659d8bd2febedb4439760c1b85d1e213cc1d348b0cd12c2fe4c4c"
+  },
+  "overlays_sha256": "3506dd227e1a6b8d105aa8759b72d3e5174c230f2ee98417f721564884c332c6",
+  "regression_cases": 12204,
+  "scope": "Area 52 Warrior stance removal retains current Rage; legacy rules preserved for other modes and NPCs.",
+  "limits": "Native source block and Applies gate exercised with mocked Player/spell storage. No gameplay. No ability or talent status promotion.",
+  "publication_fixture_tests": 12,
+  "deployment_fixture_tests": 11
+}

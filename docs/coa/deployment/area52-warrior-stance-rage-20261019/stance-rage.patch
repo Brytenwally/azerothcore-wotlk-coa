@@ -1,0 +1,12 @@
+--- a/src/server/game/Spells/Auras/SpellAuraEffects.cpp
++++ b/src/server/game/Spells/Auras/SpellAuraEffects.cpp
+@@ -2316,6 +2316,9 @@
+             case FORM_DEFENSIVESTANCE:
+             case FORM_BERSERKERSTANCE:
+                 {
++                    if (AscensionFreePick::Applies(target->ToPlayer()))
++                        break;
++
+                     uint32 Rage_val = 0;
+                     // Defensive Tactics
+                     if (form == FORM_DEFENSIVESTANCE)
