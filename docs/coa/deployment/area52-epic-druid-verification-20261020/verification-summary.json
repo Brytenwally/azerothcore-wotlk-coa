@@ -1,0 +1,40 @@
+{
+  "package": "area52-epic-druid-verification-20261020",
+  "engineering": "passed",
+  "activation": "not performed",
+  "package_preflight": "pending final combined CheckOnly",
+  "binary_sha256": "8a5937f1e6194fbdda26a2042dd7a03a626e60544841677b98420ff43110bd43",
+  "baseline_binary_sha256": "8f01182fb0dc0e7379022aa515d9512347c0600cfea36c3cdc1943b16fb697c6",
+  "entries": [
+    81248,
+    81501,
+    415012
+  ],
+  "reports": {
+    "build-hooks-final": "56bf47ff8b7461d3fcbb94f5f15f6b582b92379b5e84f2a1aefe8e81dff970bd",
+    "source-hooks-final": "31359e59c99dee1e44e5502b669240b84ffb2cc326cee044389df6b41d00deb7",
+    "focused-ranks-final": "ecea2390b78e44278c464efce16f31b5708d402c0c7cc7d87859ce7571dffa1d",
+    "sql-hooks-final": "2f39607bbfa7bb7a7b5f967683c5b0a2cf90768676eb6e452f996882e1bee22c",
+    "package-checks-qualified": "a97892e0f88f875817c0bc97faf6b896be0546563cdb68af9c971a757224c1e0",
+    "windows-checks": "5412688a1613c79d7a9d7103713a761243777a8491ffb578a174ead657a3128b",
+    "build-pet-login": "62b9bf1e0eb64d090409ae2a5675bf91bbbc110c902eb112aea2896502e7eb40",
+    "focused-pet-login-final": "adc9ce61efc86a1f9473f13ba4ba1b253b446ffe8b1d0c5188d69746cabf51bb",
+    "source-pet-login": "61a01504aa88e33e5e44c104b61db2b70c23675a100df5e6e78adc7c42abeacf",
+    "build-summon-removal": "1efa69ed7e1f7163a9baeb20eab08cb0fc2cb0176a9b97aad0b1c1d7b238c8e0",
+    "focused-summon-removal": "8e8dc47db35ae70667ff16cc471e1583aa86e68f329476e3702706c4379372c7",
+    "source-summon-removal": "b4e02ee4dee9dfe7fd99f2e939dad03210bede51472571db60739834e1a18db9",
+    "build-improved-kick": "0c06d71c851c636eaba4ec5e3291821583e0acecc158e0dec4c842131f396c81",
+    "focused-improved-kick": "ed09a8bfea58e172a7ee1a2571f8c4d91ea84a2d3d2deccb73c19adde9a3a0c2",
+    "source-improved-kick": "1afac9075e3424cb6543711fa2ee56ba3b9216ad0c3141b1ad89ad73bc6a1501",
+    "build-portal": "2587a376eb20eaee7309fc91067c67425abdaa4f149b49fbe498c7fb91f2d33a",
+    "focused-portal": "f4d617175e52d1434a300c0430b3079890436ce5181829256ee48b6576c3af1a",
+    "source-portal": "2bb2312fb53427142b91b6708075a504590f491e4231d985925bcf822019c0cd"
+  },
+  "source_overlays_sha256": "da2a50c53a9944ee9bfcdbc647c355d194ab7a3e721e85bba6c675b09d9ad1e2",
+  "client_distribution": "two changed components prepared; not published",
+  "limits": "Offline extracted native functions and mocked engine adapters; source-traced dispatch/lifecycle. Frozen patch qualifies against LF-normalized effective source; deployment guards use original exact byte hashes. No gameplay or tester certification.",
+  "pet_restoration": "Area 52 Call Pet families; 2410 native-prefix/ownership cases; ten baseline failures reproduced",
+  "summoned_pets": "Shared SUMMON_PET removal/login ownership; native HasActiveSpell and removal fragment; five standard demon baseline failures reproduced; helper/rank/independent grants checked",
+  "improved_kick": "Scoped missing capstone trigger repaired;576 native interrupt/ownership/dedup cases; no status promotion",
+  "portal_training": "Scoped Area52 portal trainer gossip class gate repaired;4608 native condition cases and13 exact trainer inventories; no status promotion"
+}

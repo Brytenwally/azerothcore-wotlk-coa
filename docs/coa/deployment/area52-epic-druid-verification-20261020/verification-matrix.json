@@ -1,0 +1,44 @@
+{
+  "scope": [81248, 81501, 415012],
+  "status": "engineering checks passed; package preflight pending; not activated",
+  "mechanics": [
+    {
+      "entry": 81248,
+      "name": "Druid of Rot: Call Fungarians",
+      "contract": "Transform known Force of Nature 33831 into 81249; summon three Fungarians for the native duration/shared cooldown; Cloud 81413 deals base + 1.25*owner level + 0.02*SP + 0.013*AP per second.",
+      "chain": "Mystic catalog/slots -> LoadConnections handler gate -> Synchronize and login restoration -> ownership-aware grant -> temporary spell replacement -> 81249 cast guard -> native summon properties 1562/count -> creature 43286 ScriptName -> AscensionSummonedEffects Attack AI -> Cloud aura amount callback -> ordinary periodic Nature damage dispatch.",
+      "evidence": ["focused-ranks-final", "sql-hooks-final", "fungarian-summoners.json", "81249-record.json", "81413-record.json"],
+      "lifecycle": "Existing grant function tested for repeats, removal, shared and independent ownership, temporary-to-durable migration, logout and realm guard. Login, spec, resurrection and prerequisite learn/forget callbacks traced; replacement requires both original and granted spell. Native summon expiry, owner/map checks and attack callbacks traced.",
+      "compatibility": "All three DBC summon records using creature 43286 mapped to avoid the shared AI despawning unmapped variants. 281618 retains Cloud 81413; 1580417 retains its distinct Cloud 1580397. No new variant spell grants or status promotions.",
+      "preserved": "All numeric cast/resource/range/duration/cooldown/target records remain unchanged. Instant non-channel summon retains ordinary native cast restrictions and modifiers. Effect 1 periodic dummy has no additional native dispatcher action; the summon AI supplies the described attacks and Cloud.",
+      "limits": "Extracted production functions and mocked engine adapters; full combat scheduling, hit resolution and live summon visuals belong to testers."
+    },
+    {
+      "entry": 81501,
+      "name": "Evergreen",
+      "contract": "Direct Regrowth or Healing Touch refreshes only the caster's existing Lifebloom, all three ranks, without altering stacks or strength.",
+      "chain": "Direct heal proc -> spell_proc positive Nature/Druid family mask 0x60 -> bound AuraScript Check -> same-caster periodic-heal aura with rank root 33763 -> RefreshDuration.",
+      "evidence": ["focused-ranks-final", "sql-hooks-final", "healing-rank-records.json", "33763-record.json", "48450-record.json", "48451-record.json"],
+      "coverage": "243 filter/ownership/rank cases; periodic Regrowth, other heal families, missing targets and another caster's Lifebloom excluded. Dedicated callback suppresses unsafe generic refresh helper 986196.",
+      "limits": "Native aura storage adapters mocked; no gameplay."
+    },
+    {
+      "entry": 415012,
+      "name": "Everliving",
+      "contract": "Effective direct or periodic Nature healing grants a stack; full overhealing grants none. Three percent per stack, maximum 15. Next Swiftmend consumes existing stacks; at 15 it preserves both charge and Rejuvenation/Regrowth.",
+      "chain": "Native heal sets effective healing before proc -> spell_proc heal/Nature masks -> parent Check and stack cast -> native 15-stack refresh -> Swiftmend OnCast snapshot -> charge consumption guard -> native HoT-consumption guard -> OnHit bonus once and old-stack removal -> healing proc may create a fresh stack -> AfterCast protection cleanup.",
+      "evidence": ["focused-ranks-final", "sql-hooks-final", "415012-record.json", "415013-record.json", "SpellCharges-selected.json", "SpellChargesCategory-selected.json"],
+      "coverage": "384 effective-healing/ownership/school/target/realm cases; native stack clamp/refresh/removal; all 0–15 Swiftmend snapshots; missed/no-hit and absent-parent handling; fresh stack survives old-stack cleanup; two charges and sequential 15-second recharge; full-stack cast preserves charge; other-mode and existing Charge metadata isolation.",
+      "cleanup": "Parent effect removal removes owned stack/protection auras idempotently. Old helper proc effects have zero proc flags and no proc SQL; parent effect 1 is disabled to prevent premature protection. Stack SpellModifier value suppressed only on Area 52 to prevent double healing amplification.",
+      "limits": "Native extracted charge state, stack functions and callbacks with mocked persistence/clock/packets; dispatcher ordering source-traced. No live healing or gameplay."
+    }
+  ],
+  "shared": {
+    "catalog": "All three native catalog rows enabled Epic, distinct row IDs retained; existing collection, slot validation, copies and investment rules reused.",
+    "talent_gates": "Not applicable to these three Mystic Enchants; no talent rank authorization or login machinery weakened.",
+    "sql": "Actual deployment hook on production schemas: immutable backup, apply, repeat, readback, partial-table rollback, repeat rollback, atomic guard and external-edit rejection. No live SQL writes.",
+    "client": "Only seven description offsets changed in Spell.dbc; all numeric fields and unrelated archive members preserved. Four helper mappings point to existing parent certification IDs. Three projected catalog status changes; Certified records preserved.",
+    "distribution": "Complete 509-file managed inventory compared to public baseline using valid cache stamps; only two changed components staged. Publication remains unauthorized until owner activation.",
+    "certification": "Engineering Verification is not tester Certification. No live tester flags changed."
+  }
+}

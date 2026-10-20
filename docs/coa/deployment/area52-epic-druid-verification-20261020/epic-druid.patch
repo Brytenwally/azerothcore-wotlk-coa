@@ -1,0 +1,672 @@
+--- /dev/null
++++ b/data/sql/updates/pending_db_world/rev_20261020000000_area52_epic_druid.sql
+@@ -0,0 +1,28 @@
++DELETE FROM `spell_proc` WHERE `SpellId` = 81501;
++INSERT INTO `spell_proc` (`SpellId`, `SchoolMask`, `SpellFamilyName`, `SpellFamilyMask0`, `SpellFamilyMask1`, `SpellFamilyMask2`, `ProcFlags`, `SpellTypeMask`, `SpellPhaseMask`, `HitMask`, `AttributesMask`, `DisableEffectsMask`, `ProcsPerMinute`, `Chance`, `Cooldown`, `Charges`) VALUES
++(81501, 8, 7, 96, 0, 0, 16384, 2, 2, 3, 0, 0, 0, 100, 0, 0);
++
++DELETE FROM `spell_script_names` WHERE `spell_id` = 81501 AND `ScriptName` = 'spell_area52_evergreen';
++INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`) VALUES
++(81501, 'spell_area52_evergreen');
++
++DELETE FROM `spell_script_names` WHERE (`spell_id` = 81249 AND `ScriptName` = 'spell_area52_call_fungarians') OR (`spell_id` = 81413 AND `ScriptName` = 'aura_area52_cloud_of_rot');
++INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`) VALUES
++(81249, 'spell_area52_call_fungarians'),
++(81413, 'aura_area52_cloud_of_rot');
++
++DELETE FROM `spell_bonus_data` WHERE `entry` = 81413;
++INSERT INTO `spell_bonus_data` (`entry`, `direct_bonus`, `dot_bonus`, `ap_bonus`, `ap_dot_bonus`, `comments`) VALUES
++(81413, 0, 0, 0, 0, 'Area 52 - Cloud of Rot uses summoner stats in native aura calculation');
++
++UPDATE `creature_template` SET `ScriptName` = 'npc_ascension_summoned_effect' WHERE `entry` = 43286;
++
++DELETE FROM `spell_proc` WHERE `SpellId` = 415012;
++INSERT INTO `spell_proc` (`SpellId`, `SchoolMask`, `SpellFamilyName`, `SpellFamilyMask0`, `SpellFamilyMask1`, `SpellFamilyMask2`, `ProcFlags`, `SpellTypeMask`, `SpellPhaseMask`, `HitMask`, `AttributesMask`, `DisableEffectsMask`, `ProcsPerMinute`, `Chance`, `Cooldown`, `Charges`) VALUES
++(415012, 8, 0, 0, 0, 0, 279552, 2, 2, 3, 2, 2, 0, 100, 0, 0);
++
++DELETE FROM `spell_script_names` WHERE (`spell_id` = 415012 AND `ScriptName` = 'aura_area52_everliving') OR (`spell_id` = 415013 AND `ScriptName` = 'aura_area52_everliving_stacks') OR (`spell_id` = 18562 AND `ScriptName` = 'spell_area52_everliving_swiftmend');
++INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`) VALUES
++(415012, 'aura_area52_everliving'),
++(415013, 'aura_area52_everliving_stacks'),
++(18562, 'spell_area52_everliving_swiftmend');
+--- /dev/null
++++ b/src/server/coa/Area52EpicDruid.inc
+@@ -0,0 +1,106 @@
++/* Copyright (C) 2016+ AzerothCore, GNU AGPL v3. */
++
++namespace Area52EpicDruid
++{
++constexpr uint32 Evergreen = 81501;
++constexpr uint32 Lifebloom = 33763;
++constexpr uint32 DruidOfRot = 81248;
++constexpr uint32 CallFungarians = 81249;
++constexpr uint32 Fungarian = 43286;
++constexpr uint32 CloudOfRot = 81413;
++
++int32 RotDamage(uint32 level, int32 base, int32 spellPower, float attackPower)
++{
++    return std::max<int32>(0, int32(float(base) + 1.25f * level +
++        0.02f * std::max<int32>(0, spellPower) + 0.013f * std::max(0.0f, attackPower)));
++}
++
++bool EvergreenHeal(uint32 family, uint32 mask, uint32 type, bool heal, bool owned)
++{
++    return owned && heal && family == SPELLFAMILY_DRUID && (mask & 0x60u) &&
++        (type & PROC_FLAG_DONE_SPELL_MAGIC_DMG_CLASS_POS) && !(type & PROC_FLAG_DONE_PERIODIC);
++}
++
++void RefreshLifebloom(Unit* target, ObjectGuid caster)
++{
++    Unit::AuraEffectList const& effects = target->GetAuraEffectsByType(SPELL_AURA_PERIODIC_HEAL);
++    for (AuraEffect* effect : effects)
++        if (effect->GetCasterGUID() == caster &&
++            sSpellMgr->GetFirstSpellInChain(effect->GetId()) == Lifebloom)
++            effect->GetBase()->RefreshDuration();
++}
++}
++
++class spell_area52_evergreen : public AuraScript
++{
++    PrepareAuraScript(spell_area52_evergreen);
++
++    bool Check(ProcEventInfo& event)
++    {
++        Player* player = GetTarget()->ToPlayer();
++        SpellInfo const* spell = event.GetSpellInfo();
++        return player && AscensionMysticEnchant::Applies(player) && spell && event.GetProcTarget() &&
++            Area52EpicDruid::EvergreenHeal(spell->SpellFamilyName, spell->SpellFamilyFlags[0],
++                event.GetTypeMask(), event.GetHealInfo() != nullptr, event.GetActor() == GetTarget());
++    }
++
++    void Handle(AuraEffect const*, ProcEventInfo& event)
++    {
++        PreventDefaultAction();
++        Area52EpicDruid::RefreshLifebloom(event.GetProcTarget(), GetTarget()->GetGUID());
++    }
++
++    void Register() override
++    {
++        DoCheckProc += AuraCheckProcFn(spell_area52_evergreen::Check);
++        OnEffectProc += AuraEffectProcFn(spell_area52_evergreen::Handle, EFFECT_0, SPELL_AURA_PROC_TRIGGER_SPELL);
++    }
++};
++
++class spell_area52_call_fungarians : public SpellScript
++{
++    PrepareSpellScript(spell_area52_call_fungarians);
++
++    SpellCastResult Check()
++    {
++        Player* player = GetCaster()->ToPlayer();
++        if (!player || !AscensionMysticEnchant::Applies(player))
++            return SPELL_CAST_OK;
++        if (!player->HasAura(Area52EpicDruid::DruidOfRot) || !player->HasActiveSpell(33831))
++            return SPELL_FAILED_CASTER_AURASTATE;
++        return player->GetPet() ? SPELL_FAILED_ALREADY_HAVE_SUMMON : SPELL_CAST_OK;
++    }
++
++    void Register() override
++    {
++        OnCheckCast += SpellCheckCastFn(spell_area52_call_fungarians::Check);
++    }
++};
++
++class aura_area52_cloud_of_rot : public AuraScript
++{
++    PrepareAuraScript(aura_area52_cloud_of_rot);
++
++    void Amount(AuraEffect const*, int32& amount, bool& recalculate)
++    {
++        Unit* caster = GetCaster();
++        Unit* owner = caster ? caster->GetOwner() : nullptr;
++        Player* player = owner ? owner->ToPlayer() : nullptr;
++        if (!player || !AscensionMysticEnchant::Applies(player) ||
++            caster->GetEntry() != Area52EpicDruid::Fungarian ||
++            (caster->GetUInt32Value(UNIT_CREATED_BY_SPELL) != Area52EpicDruid::CallFungarians &&
++                caster->GetUInt32Value(UNIT_CREATED_BY_SPELL) != 281618))
++            return;
++        recalculate = false;
++        amount = Area52EpicDruid::RotDamage(player->GetLevel(),
++            GetSpellInfo()->Effects[EFFECT_0].BasePoints + 1,
++            player->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_NATURE),
++            player->GetTotalAttackPowerValue(BASE_ATTACK));
++    }
++
++    void Register() override
++    {
++        DoEffectCalcAmount += AuraEffectCalcAmountFn(aura_area52_cloud_of_rot::Amount,
++            EFFECT_0, SPELL_AURA_PERIODIC_DAMAGE);
++    }
++};
+--- /dev/null
++++ b/src/server/coa/Area52Everliving.inc
+@@ -0,0 +1,103 @@
++/* Copyright (C) 2016+ AzerothCore, GNU AGPL v3. */
++
++class aura_area52_everliving : public AuraScript
++{
++    PrepareAuraScript(aura_area52_everliving);
++
++    bool Check(ProcEventInfo& event)
++    {
++        Player* player = GetTarget()->ToPlayer();
++        HealInfo* heal = event.GetHealInfo();
++        return player && AscensionMysticEnchant::Applies(player) && event.GetActor() == player &&
++            heal && heal->GetEffectiveHeal() > 0 && (heal->GetSchoolMask() & SPELL_SCHOOL_MASK_NATURE) &&
++            event.GetProcTarget() && player->IsValidAssistTarget(event.GetProcTarget());
++    }
++
++    void Handle(AuraEffect const*, ProcEventInfo&)
++    {
++        PreventDefaultAction();
++        GetTarget()->CastSpell(GetTarget(), 415013, true);
++    }
++
++    void Cleanup(AuraEffect const*, AuraEffectHandleModes)
++    {
++        Player* player = GetTarget()->ToPlayer();
++        if (!player || !AscensionMysticEnchant::Applies(player))
++            return;
++        player->RemoveAurasDueToSpell(415013, player->GetGUID());
++        player->RemoveAurasDueToSpell(415014, player->GetGUID());
++    }
++
++    void Register() override
++    {
++        DoCheckProc += AuraCheckProcFn(aura_area52_everliving::Check);
++        OnEffectProc += AuraEffectProcFn(aura_area52_everliving::Handle,
++            EFFECT_0, SPELL_AURA_PROC_TRIGGER_SPELL);
++        AfterEffectRemove += AuraEffectRemoveFn(aura_area52_everliving::Cleanup,
++            EFFECT_0, SPELL_AURA_PROC_TRIGGER_SPELL, AURA_EFFECT_HANDLE_REAL);
++    }
++};
++
++class spell_area52_everliving_swiftmend : public SpellScript
++{
++    PrepareSpellScript(spell_area52_everliving_swiftmend);
++
++    uint32 stacks = 0;
++
++    bool Load() override
++    {
++        Player* player = GetCaster()->ToPlayer();
++        return player && AscensionMysticEnchant::Applies(player);
++    }
++
++    void Snapshot()
++    {
++        Unit* caster = GetCaster();
++        if (!caster->HasAura(415012))
++            return;
++        if (Aura* aura = caster->GetAura(415013, caster->GetGUID()))
++            stacks = std::min<uint32>(15, aura->GetStackAmount());
++        caster->RemoveAurasDueToSpell(415014, caster->GetGUID());
++        if (stacks == 15)
++            caster->CastSpell(caster, 415014, true);
++    }
++
++    void Heal()
++    {
++        if (!stacks || !GetHitUnit() || !GetHitHeal())
++            return;
++        SetHitHeal(GetHitHeal() + CalculatePct(GetHitHeal(), stacks * 3));
++        GetCaster()->RemoveAurasDueToSpell(415013, GetCaster()->GetGUID());
++        GetCaster()->RemoveAurasDueToSpell(415014, GetCaster()->GetGUID());
++    }
++
++    void Finish()
++    {
++        GetCaster()->RemoveAurasDueToSpell(415014, GetCaster()->GetGUID());
++    }
++
++    void Register() override
++    {
++        OnCast += SpellCastFn(spell_area52_everliving_swiftmend::Snapshot);
++        OnHit += SpellHitFn(spell_area52_everliving_swiftmend::Heal);
++        AfterCast += SpellCastFn(spell_area52_everliving_swiftmend::Finish);
++    }
++};
++
++class aura_area52_everliving_stacks : public AuraScript
++{
++    PrepareAuraScript(aura_area52_everliving_stacks);
++
++    void Modifier(AuraEffect const*, SpellModifier*& modifier)
++    {
++        Player* player = GetTarget()->ToPlayer();
++        if (player && AscensionMysticEnchant::Applies(player) && modifier)
++            modifier->value = 0;
++    }
++
++    void Register() override
++    {
++        DoEffectCalcSpellMod += AuraEffectCalcSpellModFn(aura_area52_everliving_stacks::Modifier,
++            EFFECT_2, SPELL_AURA_ADD_PCT_MODIFIER);
++    }
++};
+--- a/src/server/coa/Area52FollowupProcs.inc
++++ b/src/server/coa/Area52FollowupProcs.inc
+@@ -156,7 +156,15 @@
+     void OnSpellSuccessfulInterrupt(Spell* spell, Unit*) override
+     {
+         Player* player = spell && spell->GetCaster() ? spell->GetCaster()->ToPlayer() : nullptr;
+-        if (!player || !Area52FollowupProcs::WindRush(AscensionFreePick::Applies(player),
++        if (!player || !AscensionFreePick::Applies(player))
++            return;
++        if (spell->GetSpellInfo()->GetFirstRankSpell()->Id == 1766 && player->HasSpell(13867) &&
++            player->HasAura(13867) && !spell->GetScriptValue(18425))
++        {
++            spell->SetScriptValue(18425, 1);
++            player->CastSpell(player, 18425, true);
++        }
++        if (!Area52FollowupProcs::WindRush(AscensionFreePick::Applies(player),
+             player->HasAura(32511), spell->GetSpellInfo()->GetFirstRankSpell()->Id, true) ||
+             spell->GetScriptValue(411139))
+             return;
+--- a/src/server/coa/AscensionClassMechanics.cpp
++++ b/src/server/coa/AscensionClassMechanics.cpp
+@@ -1066,7 +1066,7 @@
+     if (charge == ClientSpellCharges().end() || spellInfo->IsDeprecatedForPlayers)
+         return;
+ 
+-    bool const area52Charge = (spellInfo->Id == 6178 || spellInfo->Id == 11578) &&
++    bool const area52Charge = (spellInfo->Id == 6178 || spellInfo->Id == 11578 || spellInfo->Id == 18562) &&
+         sConfigMgr->GetOption<bool>("CoA.Enable", true) &&
+         sConfigMgr->GetOption<std::string>("CoA.ClassModel", "coa") == "hero" &&
+         sConfigMgr->GetOption<std::string>("CoA.RealmType", "live") == "live" &&
+@@ -1074,7 +1074,7 @@
+     if (!area52Charge && !IsCustomClassFamily(spellInfo->SpellFamilyName))
+         return;
+ 
+-    uint32 const root = area52Charge ? 100 : ChargeRankRoot(spellInfo->Id);
++    uint32 const root = area52Charge && spellInfo->Id != 18562 ? 100 : ChargeRankRoot(spellInfo->Id);
+     uint32 recoveryMs = charge->second.RecoveryMs;
+     if (root == 707141 && charge->second.Category == 110 && charge->second.Maximum == 3 && recoveryMs == 5000)
+         recoveryMs = 6000;
+--- a/src/server/coa/AscensionMysticEnchant.cpp
++++ b/src/server/coa/AscensionMysticEnchant.cpp
+@@ -187,12 +187,15 @@
+     }
+     for (auto const& grant : SpellGrants)
+     {
+-        bool const enabled = GrantsActive(player, grant.Enchant);
++        bool const enabled = GrantsActive(player, grant.Enchant) &&
++            (grant.Enchant != 81248 || player->HasActiveSpell(33831));
+         std::set<std::uint32_t> visited;
+         for (auto rank = grant.Spell; rank && visited.insert(rank).second;
+             rank = sSpellMgr->GetNextSpellInChain(rank))
+             SetGrantedSpell(player, grant.Enchant, rank,
+                 enabled && (rank == grant.Spell || player->HasSpell(rank)));
++        if (grant.Enchant == 81248)
++            player->SetTemporarySpellReplacement(33831, enabled ? 81249 : 0);
+     }
+ }
+ 
+@@ -474,6 +477,61 @@
+     return true;
+ }
+ 
++bool HasEpicDruidHandlers(uint32 spell)
++{
++    uint32 const aura = spell == 81248 ? 81413 : spell;
++    if ((spell == 81501 || spell == 415012) && !sSpellMgr->GetSpellProcEntry(spell))
++        return false;
++    if (spell == 415012)
++    {
++        std::list<SpellScript*> casts;
++        sScriptMgr->CreateSpellScripts(18562, casts);
++        bool swiftmend = false;
++        for (auto* script : casts)
++        {
++            swiftmend |= *script->_GetScriptName() == "spell_area52_everliving_swiftmend";
++            delete script;
++        }
++        std::list<AuraScript*> stacks;
++        sScriptMgr->CreateAuraScripts(415013, stacks);
++        bool modifier = false;
++        for (auto* script : stacks)
++        {
++            modifier |= *script->_GetScriptName() == "aura_area52_everliving_stacks";
++            delete script;
++        }
++        if (!swiftmend || !modifier)
++            return false;
++    }
++    if (spell == 81248)
++    {
++        auto const* creature = sObjectMgr->GetCreatureTemplate(43286);
++        if (!creature || creature->ScriptID != sObjectMgr->GetScriptId("npc_ascension_summoned_effect") ||
++            !sSpellMgr->GetSpellInfo(81249) || !sSpellMgr->GetSpellBonusData(81413))
++            return false;
++        std::list<SpellScript*> casts;
++        sScriptMgr->CreateSpellScripts(81249, casts);
++        bool found = false;
++        for (auto* script : casts)
++        {
++            found |= *script->_GetScriptName() == "spell_area52_call_fungarians";
++            delete script;
++        }
++        if (!found)
++            return false;
++    }
++    std::list<AuraScript*> scripts;
++    sScriptMgr->CreateAuraScripts(aura, scripts);
++    bool found = false;
++    for (auto* script : scripts)
++    {
++        found |= *script->_GetScriptName() == (spell == 81248 ?
++            "aura_area52_cloud_of_rot" : spell == 415012 ? "aura_area52_everliving" : "spell_area52_evergreen");
++        delete script;
++    }
++    return found;
++}
++
+ void LoadConnections()
+ {
+     Active = false;
+@@ -540,6 +598,12 @@
+         if (entry.Quality < 2 || entry.Quality > 5 || !info || !info->IsPassive() ||
+             info->HasAttribute(SPELL_ATTR0_CU_FORCE_AURA_SAVING))
+             continue;
++        if (spell == 81248 || spell == 81501 || spell == 415012)
++        {
++            if (HasEpicDruidHandlers(spell))
++                Connected.emplace(spell, 1);
++            continue;
++        }
+         if (spell == 965937)
+         {
+             if (HasSeedOfLifeHandlers())
+@@ -741,7 +805,18 @@
+ public:
+     MysticPlayer() : PlayerScript("FreePickMysticPlayer", {PLAYERHOOK_ON_LOGIN,
+         PLAYERHOOK_ON_AFTER_SPEC_SLOT_CHANGED, PLAYERHOOK_ON_PLAYER_RESURRECT, PLAYERHOOK_ON_LEVEL_CHANGED,
+-        PLAYERHOOK_ON_UPDATE, PLAYERHOOK_ON_LOGOUT}) { }
++        PLAYERHOOK_ON_UPDATE, PLAYERHOOK_ON_LOGOUT, PLAYERHOOK_ON_LEARN_SPELL,
++        PLAYERHOOK_ON_FORGOT_SPELL}) { }
++    void OnPlayerLearnSpell(Player* player, uint32 spell) override
++    {
++        if (spell == 33831)
++            Synchronize(player);
++    }
++    void OnPlayerForgotSpell(Player* player, uint32 spell) override
++    {
++        if (spell == 33831)
++            Synchronize(player);
++    }
+     void OnPlayerLogin(Player* player) override
+     {
+         Load(player);
+@@ -921,6 +996,9 @@
+ }
+ }
+ 
++#include "Area52EpicDruid.inc"
++#include "Area52Everliving.inc"
++
+ namespace Area52SeedOfLife
+ {
+ constexpr char StateKey[] = "area52.seed-of-life.bloom";
+@@ -1105,6 +1183,12 @@
+ 
+ void AddSC_AscensionMysticEnchant()
+ {
++    RegisterSpellScript(spell_area52_everliving_swiftmend);
++    RegisterSpellScript(aura_area52_everliving);
++    RegisterSpellScript(aura_area52_everliving_stacks);
++    RegisterSpellScript(spell_area52_evergreen);
++    RegisterSpellScript(spell_area52_call_fungarians);
++    RegisterSpellScript(aura_area52_cloud_of_rot);
+     RegisterSpellScript(spell_area52_bloom);
+     RegisterSpellScript(spell_area52_bloom_heal);
+     new area52_bloom_lifecycle();
+@@ -1192,7 +1276,8 @@
+         {
+             auto const& entry = Data.BySpell.at(grant.Enchant);
+             if (InvestmentMet(player, entry, false) && InvestmentMet(player, entry, true) &&
+-                (grant.Enchant != 978724 || player->HasSpell(2565)))
++                (grant.Enchant != 978724 || player->HasSpell(2565)) &&
++                (grant.Enchant != 81248 || player->HasActiveSpell(33831)))
+                 SetGrantedSpell(player, grant.Enchant, grant.Spell, true);
+         }
+     constexpr std::array<std::uint32_t, 6> spellGrantingEnchants = {81116, 92580, 926573, 954081, 978217, 983240};
+--- a/src/server/coa/AscensionMysticSpellGrants.h
++++ b/src/server/coa/AscensionMysticSpellGrants.h
+@@ -11,7 +11,8 @@
+     std::uint32_t Enchant;
+     std::uint32_t Spell;
+ };
+-inline constexpr std::array<SpellGrant, 6> SpellGrants = {{
++inline constexpr std::array<SpellGrant, 7> SpellGrants = {{
++    {81248, 81249},
+     {84408, 84409},
+     {84466, 84467},
+     {92574, 92575},
+--- /dev/null
++++ b/src/server/coa/AscensionPetOwnership.h
+@@ -0,0 +1,58 @@
++/* Copyright (C) 2016+ AzerothCore, GNU AGPL v3. */
++
++#ifndef ASCENSION_PET_OWNERSHIP_H
++#define ASCENSION_PET_OWNERSHIP_H
++
++#include "Player.h"
++#include "SpellInfo.h"
++#include "SpellMgr.h"
++#include <set>
++
++namespace AscensionPetOwnership
++{
++inline bool ReachesSummon(uint32 spell, uint32 summon, std::set<uint32>& visited)
++{
++    if (!spell || !summon || !visited.insert(spell).second)
++        return false;
++
++    if (spell == summon || sSpellMgr->GetFirstSpellInChain(spell) == sSpellMgr->GetFirstSpellInChain(summon))
++        return true;
++
++    SpellInfo const* info = sSpellMgr->GetSpellInfo(spell);
++    if (!info)
++        return false;
++
++    if (spell == 31687 && (summon == 70907 || summon == 70908))
++        return true;
++
++    if (spell == 46584)
++        for (uint8 index : { uint8(EFFECT_1), uint8(EFFECT_2) })
++            if (int32 child = info->Effects[index].CalcValue(); child > 0 &&
++                ReachesSummon(uint32(child), summon, visited))
++                return true;
++
++    for (SpellEffectInfo const& effect : info->Effects)
++        if (effect.Effect != SPELL_EFFECT_LEARN_SPELL && effect.TriggerSpell &&
++            ReachesSummon(effect.TriggerSpell, summon, visited))
++            return true;
++
++    return false;
++}
++
++inline bool Authorizes(uint32 spell, uint32 summon)
++{
++    std::set<uint32> visited;
++    return ReachesSummon(spell, summon, visited);
++}
++
++inline bool IsOwned(Player const* player, uint32 summon)
++{
++    for (auto const& [spell, state] : player->GetSpellMap())
++        if (player->HasActiveSpell(spell) && Authorizes(spell, summon))
++            return true;
++
++    return false;
++}
++}
++
++#endif
+--- a/src/server/coa/AscensionSummonedEffects.h
++++ b/src/server/coa/AscensionSummonedEffects.h
+@@ -77,6 +77,9 @@
+ }
+ 
+ constexpr Summon SUMMONS[] = {
++    Timed(81249, 43286, Behaviour::Attack, 0, 0, 81413),
++    Timed(281618, 43286, Behaviour::Attack, 0, 0, 81413),
++    Timed(1580417, 43286, Behaviour::Attack, 0, 0, 1580397),
+     Timed(954514, 105927, Behaviour::Pulse, 954515, 1000, 954568),
+     Timed(955062, 105938, Behaviour::Spawn, 954805, 0),
+ 
+@@ -149,12 +152,9 @@
+ 
+     Still(760080, 840059),
+ 
+-
+     Ranked(760009, 841000, Behaviour::Store, 760010, 760011, 30),
+ 
+     Timed(954611, 855350, Behaviour::Attack, 413110, 2000),
+-
+-
+ 
+ };
+ 
+--- a/src/server/game/Conditions/ConditionMgr.cpp
++++ b/src/server/game/Conditions/ConditionMgr.cpp
+@@ -16,6 +16,9 @@
+  */
+ 
+ #include "ConditionMgr.h"
++#include "../../coa/Area52CompanionTraining.h"
++#include "../../coa/AscensionFreePick.h"
++#include "Trainer.h"
+ #include "AchievementMgr.h"
+ #include "GameEventMgr.h"
+ #include "GameObject.h"
+@@ -133,6 +136,17 @@
+     {
+         if (Unit* unit = object->ToUnit())
+             condMeets = unit->getClassMask() & ConditionValue1;
++        if (ConditionTarget == 0 && (SourceType == CONDITION_SOURCE_TYPE_GOSSIP_MENU ||
++            SourceType == CONDITION_SOURCE_TYPE_GOSSIP_MENU_OPTION) &&
++            (ConditionValue1 == 128 || ConditionValue1 == 1407))
++            if (Player* player = object->ToPlayer(); player && AscensionFreePick::Applies(player))
++                if (WorldObject* source = sourceInfo.mConditionTargets[1])
++                    if (Creature* npc = source->ToCreature(); npc &&
++                        npc->GetCreatureTemplate()->GossipMenuId == SourceGroup)
++                        if (auto const* trainer = sObjectMgr->GetTrainer(npc->GetEntry()); trainer &&
++                            std::any_of(trainer->GetSpells().begin(), trainer->GetSpells().end(),
++                                [](auto const& spell) { return Area52CompanionTraining::Contains(spell.SpellId); }))
++                            condMeets = player->HasSpell(Area52CompanionTraining::Mastery) == (ConditionValue1 == 128);
+         break;
+     }
+     case CONDITION_RACE:
+--- a/src/server/game/Entities/Pet/Pet.cpp
++++ b/src/server/game/Entities/Pet/Pet.cpp
+@@ -16,6 +16,9 @@
+  */
+ 
+ #include "Pet.h"
++#include "../../../coa/AscensionFreePick.h"
++#include "../../../coa/AscensionPetOwnership.h"
++#include "../../../coa/AscensionTamingData.h"
+ #include "AreaDefines.h"
+ #include "ArenaSpectator.h"
+ #include "CharmInfo.h"
+@@ -213,6 +216,31 @@
+     return { nullptr, PET_SAVE_AS_DELETED };
+ }
+ 
++namespace
++{
++bool CanRestoreArea52Pet(Player const* owner, PetStable::PetInfo const& pet)
++{
++    if (!AscensionFreePick::Applies(owner))
++        return true;
++
++    if (pet.Type == SUMMON_PET)
++        return AscensionPetOwnership::IsOwned(owner, pet.CreatedBySpellId);
++
++    if (pet.Type != HUNTER_PET)
++        return true;
++
++    CreatureTemplate const* creature = sObjectMgr->GetCreatureTemplate(pet.CreatureId);
++    if (!creature)
++        return false;
++
++    for (AscensionTaming::FamilyCall const& call : AscensionTaming::FAMILY_CALLS)
++        if (call.Kind == creature->type && owner->HasActiveSpell(call.SpellId))
++            return true;
++
++    return false;
++}
++}
++
+ bool Pet::LoadPetFromDB(Player* owner, uint32 petEntry, uint32 petnumber, bool current, uint32 healthPct /*= 0*/, bool fullMana /*= false*/)
+ {
+     m_loading = true;
+@@ -224,6 +252,12 @@
+     PetStable::PetInfo const* petInfo = info.first;
+     PetSaveMode slot = info.second;
+     if (!petInfo)
++    {
++        m_loading = false;
++        return false;
++    }
++
++    if (!CanRestoreArea52Pet(owner, *petInfo))
+     {
+         m_loading = false;
+         return false;
+--- a/src/server/game/Entities/Player/Player.cpp
++++ b/src/server/game/Entities/Player/Player.cpp
+@@ -25,6 +25,7 @@
+ #include "ArenaSeasonMgr.h"
+ #include "AscensionPooledVitality.h"
+ #include "../../../coa/AscensionFreePick.h"
++#include "../../../coa/AscensionPetOwnership.h"
+ #include "Battlefield.h"
+ #include "BattlefieldMgr.h"
+ #include "BattlefieldWG.h"
+@@ -3762,6 +3763,15 @@
+             }
+         }
+     }
++
++    if (AscensionFreePick::Applies(this))
++        if (Pet* pet = GetPet(); pet && pet->getPetType() == SUMMON_PET)
++        {
++            uint32 const summon = pet->GetUInt32Value(UNIT_CREATED_BY_SPELL);
++            if (AscensionPetOwnership::Authorizes(spell_id, summon) &&
++                !AscensionPetOwnership::IsOwned(this, summon))
++                RemovePet(pet, PET_SAVE_NOT_IN_SLOT);
++        }
+ 
+     if (spell_id == SPELL_BURNING_COMMANDER)
+         AutoUnequipOffhandIfNeed();
+@@ -17272,6 +17282,8 @@
+ 
+ void Player::ConsumeSpellCharge(SpellInfo const* spellInfo, Spell* spell)
+ {
++    if (spellInfo->Id == 18562 && AscensionFreePick::Applies(this) && HasAura(415012) && HasAura(415014))
++        return;
+     if (!spellInfo->MaxCharges || GetCommandStatus(CHEAT_COOLDOWN) || GetCommandStatus(CHEAT_SPELLCHARGES))
+         return;
+     int32 recovery = int32(spellInfo->ChargeRecoveryTime);
+--- a/src/server/game/Spells/SpellEffects.cpp
++++ b/src/server/game/Spells/SpellEffects.cpp
+@@ -17,6 +17,7 @@
+ 
+ #include "Battleground.h"
+ #include "../../coa/AscensionWhiteWalkerSupportRules.h"
++#include "../../coa/AscensionFreePick.h"
+ #include "Config.h"
+ #include "BattlegroundIC.h"
+ #include "BattlegroundMgr.h"
+@@ -1921,7 +1922,8 @@
+             addhealth += tickheal * tickcount;
+ 
+             // Glyph of Swiftmend
+-            if (!caster->HasAura(54824))
++            if (!caster->HasAura(54824) && !(m_spellInfo->Id == 18562 && caster->ToPlayer() &&
++                AscensionFreePick::Applies(caster->ToPlayer()) && caster->HasAura(415012) && caster->HasAura(415014)))
+                 unitTarget->RemoveAura(targetAura->GetId(), targetAura->GetCasterGUID());
+ 
+             //addhealth += tickheal * tickcount;
