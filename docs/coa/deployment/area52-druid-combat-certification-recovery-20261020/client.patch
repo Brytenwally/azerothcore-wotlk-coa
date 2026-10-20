@@ -1,0 +1,10 @@
+--- a/client/Interface/AddOns/Area52MysticRules/TesterCertification.lua
++++ b/client/Interface/AddOns/Area52MysticRules/TesterCertification.lua
+@@ -7931,6 +7931,7 @@
+     [954501]={1193},
+     [954504]={1210},
+     [954507]={1209},
++    [954499]={1209},
+     [954508]={1208},
+     [954510]={1200},
+     [954512]={1204},

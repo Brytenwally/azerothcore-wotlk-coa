@@ -1,0 +1,312 @@
+--- a/src/server/coa/AscensionSummonedEffects.cpp
++++ b/src/server/coa/AscensionSummonedEffects.cpp
+@@ -1,6 +1,7 @@
+ /* Copyright (C) 2016+ AzerothCore, GNU AGPL v3. */
+ 
+ #include "AscensionSummonedEffects.h"
++#include "AscensionFreePick.h"
+ #include "CellImpl.h"
+ #include "Creature.h"
+ #include "DBCStores.h"
+@@ -698,6 +699,40 @@
+     }
+ };
+ 
++class Area52MassEntanglement : public UnitScript
++{
++public:
++    Area52MassEntanglement() : UnitScript("Area52MassEntanglement", true, { UNITHOOK_ON_AURA_REMOVE }) { }
++
++    void OnAuraRemove(Unit* target, AuraApplication* application, AuraRemoveMode mode) override
++    {
++        Aura* aura = application->GetBase();
++        Unit* caster = aura->GetCaster();
++        if (aura->GetId() != 954507 || !target->IsAlive() ||
++            !AscensionFreePick::Applies(caster ? caster->ToPlayer() : nullptr) ||
++            (mode != AURA_REMOVE_BY_EXPIRE && mode != AURA_REMOVE_BY_ENEMY_SPELL))
++            return;
++        caster->CastSpell(target, 954499, true);
++    }
++};
++
++class Area52DruidControlContracts : public GlobalScript
++{
++public:
++    Area52DruidControlContracts() : GlobalScript("Area52DruidControlContracts",
++        { GLOBALHOOK_ON_LOAD_SPELL_CUSTOM_ATTR }) { }
++
++    void OnLoadSpellCustomAttr(SpellInfo* info) override
++    {
++        if (!AscensionFreePick::Enabled())
++            return;
++        if (info->Id == 954507)
++            info->AttributesEx7 |= SPELL_ATTR7_NO_ATTACK_MISS;
++        if (info->Id == 954499)
++            info->AttributesEx4 &= ~SPELL_ATTR4_NO_CAST_LOG;
++    }
++};
++
+ void AddSC_AscensionSummonedEffects()
+ {
+     RegisterCreatureAI(npc_ascension_summoned_effect);
+@@ -711,4 +746,6 @@
+     RegisterSpellScript(spell_ascension_summoned_effect_summon);
+     RegisterSpellScript(spell_ascension_summoned_effect_ally_area);
+     new AscensionCloudburstStorage();
+-}
++    new Area52MassEntanglement();
++    new Area52DruidControlContracts();
++}
+--- a/src/server/scripts/Spells/spell_warrior.cpp
++++ b/src/server/scripts/Spells/spell_warrior.cpp
+@@ -122,7 +122,11 @@
+     void HandleCast()
+     {
+         if (Unit* caster = GetCaster())
++        {
+             caster->RemoveAurasDueToSpell(SPELL_VICTORIOUS);
++            if (AscensionFreePick::Applies(caster->ToPlayer()))
++                caster->RemoveAurasDueToSpell(965664);
++        }
+     }
+ 
+     void Register() override
+--- a/src/server/game/Handlers/SpellHandler.cpp
++++ b/src/server/game/Handlers/SpellHandler.cpp
+@@ -15,6 +15,7 @@
+  * with this program. If not, see <http://www.gnu.org/licenses/>.
+  */
+ 
++#include "../../coa/AscensionFreePick.h"
+ #include "DBCStores.h"
+ #include "GameObjectAI.h"
+ #include "Log.h"
+@@ -553,6 +554,21 @@
+                     spellInfo = actualSpellInfo;
+             }
+ 
++    if (mover == _player && AscensionFreePick::Applies(_player) &&
++        !spellInfo->IsPassive() && spellInfo->IsPositive() &&
++        !spellInfo->HasAttribute(SPELL_ATTR0_NO_AURA_CANCEL) &&
++        _player->HasAura(spellInfo->Id, _player->GetGUID()))
++    {
++        auto const specific = spellInfo->GetSpellSpecific();
++        bool const stanceOrForm = spellInfo->HasAura(SPELL_AURA_MOD_SHAPESHIFT) &&
++            (spellInfo->SpellFamilyName == SPELLFAMILY_WARRIOR || spellInfo->SpellFamilyName == SPELLFAMILY_DRUID);
++        if (stanceOrForm || specific == SPELL_SPECIFIC_ASPECT || specific == SPELL_SPECIFIC_AURA)
++        {
++            _player->RemoveOwnedAura(spellInfo->Id, _player->GetGUID(), 0, AURA_REMOVE_BY_CANCEL);
++            return;
++        }
++    }
++
+     Spell* spell = new Spell(mover, spellInfo, triggerFlag, ObjectGuid::Empty, false);
+ 
+     sScriptMgr->ValidateSpellAtCastSpellResult(_player, mover, spell, oldSpellId, spellId);
+--- a/src/server/game/Spells/Spell.cpp
++++ b/src/server/game/Spells/Spell.cpp
+@@ -15,6 +15,7 @@
+  * with this program. If not, see <http://www.gnu.org/licenses/>.
+  */
+ 
++#include "../../coa/AscensionFreePick.h"
+ #include "../../coa/AscensionPowerSurge.h"
+ #include "Spell.h"
+ #include "../../coa/AscensionWhiteWalkerSupportRules.h"
+@@ -5989,7 +5990,14 @@
+         {
+             // Must be behind the target
+             if (m_spellInfo->HasAttribute(SPELL_ATTR0_CU_REQ_CASTER_BEHIND_TARGET) && target->HasInArc(static_cast<float>(M_PI), m_caster))
+-                return SPELL_FAILED_NOT_BEHIND;
++            {
++                uint32 const firstRank = m_spellInfo->GetFirstRankSpell()->Id;
++                bool const area52PvePositioning = (firstRank == 53 || firstRank == 703) &&
++                    AscensionFreePick::Applies(m_caster->ToPlayer()) &&
++                    !target->GetCharmerOrOwnerPlayerOrPlayerItself();
++                if (!area52PvePositioning)
++                    return SPELL_FAILED_NOT_BEHIND;
++            }
+ 
+             // Target must be facing you
+             if (m_spellInfo->HasAttribute(SPELL_ATTR0_CU_REQ_TARGET_FACING_CASTER) && !target->HasInArc(static_cast<float>(M_PI), m_caster))
+--- a/src/server/game/Spells/SpellMgr.cpp
++++ b/src/server/game/Spells/SpellMgr.cpp
+@@ -16,6 +16,7 @@
+  */
+ 
+ #include "SpellMgr.h"
++#include "../../coa/AscensionFreePick.h"
+ #include "Log.h"
+ #include "BattlefieldMgr.h"
+ #include "BattlegroundIC.h"
+@@ -336,6 +337,8 @@
+ {
+     if (!IsDiminishingReturnsGroupDurationLimited(group))
+         return 0;
++    if (AscensionFreePick::Enabled() && spellproto->Id == 954507)
++        return 6 * IN_MILLISECONDS;
+ 
+     // Stone Grip's active tooltip specifies eight seconds against players, before diminishing returns.
+     if (spellproto->SpellFamilyName == 37 && spellproto->Id == 800145)
+@@ -979,6 +982,12 @@
+ 
+ SpellBonusEntry const* SpellMgr::GetSpellBonusData(uint32 spellId) const
+ {
++    if (spellId == 954204 && AscensionFreePick::Enabled())
++    {
++        static SpellBonusEntry const bonus{0.0f, 0.0f, 0.4f, 0.0f};
++        return &bonus;
++    }
++
+     // Lookup data
+     SpellBonusMap::const_iterator itr = mSpellBonusMap.find(spellId);
+     if (itr != mSpellBonusMap.end())
+@@ -2330,6 +2339,20 @@
+ 
+         mSpellProcMap[spellInfo->Id] = procEntry;
+         ++count;
++    }
++
++    if (AscensionFreePick::Enabled())
++    {
++        auto found = mSpellProcMap.find(954194);
++        if (found != mSpellProcMap.end())
++        {
++            SpellProcEntry& proc = found->second;
++            proc.ProcFlags = PROC_FLAG_KILL | PROC_FLAG_DONE_SPELL_MELEE_DMG_CLASS;
++            proc.SpellPhaseMask = PROC_SPELL_PHASE_CAST;
++            proc.AttributesMask = 0;
++            proc.DisableEffectsMask = (1u << EFFECT_0) | (1u << EFFECT_2);
++            proc.Cooldown = Milliseconds(5000);
++        }
+     }
+ 
+     LOG_INFO("server.loading", ">> Generated spell proc data for {} spells in {} ms", count, GetMSTimeDiffToNow(oldMSTime));
+--- a/src/server/game/Spells/Auras/SpellAuraEffects.cpp
++++ b/src/server/game/Spells/Auras/SpellAuraEffects.cpp
+@@ -858,6 +858,10 @@
+            || mode == AURA_EFFECT_HANDLE_REAPPLY
+            || mode == (AURA_EFFECT_HANDLE_CHANGE_AMOUNT | AURA_EFFECT_HANDLE_REAPPLY));
+ 
++    if ((mode & AURA_EFFECT_HANDLE_REAL) && !apply && GetEffIndex() == EFFECT_0 &&
++        GetId() >= 954192 && GetId() <= 954194 && AscensionFreePick::Applies(aurApp->GetTarget()->ToPlayer()))
++        aurApp->GetTarget()->RemoveAurasDueToSpell(954205, GetCasterGUID());
++
+     // register/unregister effect in lists in case of real AuraEffect apply/remove
+     // registration/unregistration is done always before real effect handling (some effect handlers code is depending on this)
+     if (mode & AURA_EFFECT_HANDLE_REAL)
+@@ -1316,6 +1320,18 @@
+     bool result = GetBase()->CallScriptCheckEffectProcHandlers(this, aurApp, eventInfo);
+     if (!result)
+         return false;
++
++    if (GetId() == 954194 && AscensionFreePick::Applies(aurApp->GetTarget()->ToPlayer()))
++    {
++        Player* player = aurApp->GetTarget()->ToPlayer();
++        if (GetEffIndex() != EFFECT_1 || eventInfo.GetActor() != player || !player->HasSpell(954194))
++            return false;
++        if (eventInfo.GetTypeMask() & PROC_FLAG_KILL)
++            return eventInfo.GetActionTarget() && player->isHonorOrXPTarget(eventInfo.GetActionTarget());
++        SpellInfo const* spell = eventInfo.GetSpellInfo();
++        return spell && sSpellMgr->GetFirstSpellInChain(spell->Id) == 954876 &&
++            (eventInfo.GetSpellPhaseMask() & PROC_SPELL_PHASE_CAST);
++    }
+ 
+     SpellInfo const* spellInfo = eventInfo.GetSpellInfo();
+     switch (GetAuraType())
+@@ -6218,6 +6234,14 @@
+ 
+ void AuraEffect::HandlePeriodicTriggerSpellAuraTick(Unit* target, Unit* caster) const
+ {
++    if (GetId() == 954507 && AscensionFreePick::Applies(caster ? caster->ToPlayer() : nullptr))
++    {
++        if (GetEffIndex() == EFFECT_1 && !caster->HasAura(954646))
++            return;
++        if (GetEffIndex() == EFFECT_2 && !caster->HasAura(283456) && !caster->HasAura(1584669))
++            return;
++    }
++
+     // generic casting code with custom spells and target/caster customs
+     uint32 triggerSpellId = GetSpellInfo()->Effects[GetEffIndex()].TriggerSpell;
+ 
+@@ -6461,6 +6485,18 @@
+ 
+ void AuraEffect::HandlePeriodicTriggerSpellWithValueAuraTick(Unit* target, Unit* caster) const
+ {
++    if (GetId() >= 954192 && GetId() <= 954194 && AscensionFreePick::Applies(target->ToPlayer()))
++    {
++        if (!target->IsAlive() || !target->HealthBelowPct(75) || !target->ToPlayer()->HasSpell(GetId()))
++        {
++            target->RemoveAurasDueToSpell(954205, GetCasterGUID());
++            return;
++        }
++        int32 amount = GetAmount();
++        target->CastCustomSpell(target, 954205, &amount, &amount, nullptr, true, nullptr, this);
++        return;
++    }
++
+     uint32 triggerSpellId = GetSpellInfo()->Effects[m_effIndex].TriggerSpell;
+     if (SpellInfo const* triggeredSpellInfo = sSpellMgr->GetSpellInfo(triggerSpellId))
+     {
+@@ -7134,13 +7170,38 @@
+     int32 const damageLeft = GetAmount() - static_cast<int32>(eventInfo.GetDamageInfo()->GetDamage());
+ 
+     if (damageLeft <= 0)
+-        aurApp->GetTarget()->RemoveAura(aurApp);
++    {
++        Unit* caster = GetCaster();
++        bool const massEntanglement = GetId() == 954507 &&
++            AscensionFreePick::Applies(caster ? caster->ToPlayer() : nullptr);
++        aurApp->GetTarget()->RemoveAura(aurApp,
++            massEntanglement ? AURA_REMOVE_BY_ENEMY_SPELL : AURA_REMOVE_BY_DEFAULT);
++    }
+     else
+         SetAmount(damageLeft);
+ }
+ 
+ void AuraEffect::HandleProcTriggerSpellAuraProc(AuraApplication* aurApp, ProcEventInfo& eventInfo)
+ {
++    if (GetId() == 954194 && AscensionFreePick::Applies(aurApp->GetTarget()->ToPlayer()))
++    {
++        if (GetEffIndex() != EFFECT_1)
++            return;
++        Player* player = aurApp->GetTarget()->ToPlayer();
++        player->CastSpell(player, 954204, true, nullptr, this);
++        for (auto const& known : player->GetSpellMap())
++        {
++            uint32 root = sSpellMgr->GetFirstSpellInChain(known.first);
++            if (root != 20252 && root != 271897)
++                continue;
++            player->RemoveSpellCooldown(known.first, true);
++            if (SpellInfo const* spell = sSpellMgr->GetSpellInfo(known.first))
++                if (uint32 category = spell->GetCategory())
++                    player->RemoveCategoryCooldown(category);
++        }
++        return;
++    }
++
+     Unit* triggerCaster = aurApp->GetTarget();
+     Unit* triggerTarget = triggerCaster == eventInfo.GetActor() ? eventInfo.GetActionTarget() : eventInfo.GetActor();
+ 
+--- a/src/server/game/Spells/Auras/SpellAuras.cpp
++++ b/src/server/game/Spells/Auras/SpellAuras.cpp
+@@ -28,6 +28,7 @@
+ #include "ScriptMgr.h"
+ #include "Spell.h"
+ #include "SpellAuraEffects.h"
++#include "../../../coa/AscensionFreePick.h"
+ #include "SpellMgr.h"
+ #include "SpellScript.h"
+ #include "Unit.h"
+@@ -2206,7 +2207,10 @@
+ 
+     // check if spell was affected by this aura's spellmod (used by Arcane Potency and similar effects)
+     // only applies when consuming charges or stacks
+-    if ((procEntry->AttributesMask & PROC_ATTR_REQ_SPELLMOD) && (IsUsingCharges() || (procEntry->AttributesMask & PROC_ATTR_USE_STACKS_FOR_CHARGES)))
++    bool const area52Clearcasting = GetId() == 12536 &&
++        AscensionFreePick::Applies(GetCaster() ? GetCaster()->ToPlayer() : nullptr);
++    if (!area52Clearcasting && (procEntry->AttributesMask & PROC_ATTR_REQ_SPELLMOD) &&
++        (IsUsingCharges() || (procEntry->AttributesMask & PROC_ATTR_USE_STACKS_FOR_CHARGES)))
+     {
+         Spell const* procSpell = eventInfo.GetProcSpell();
+         if (!procSpell || procSpell->m_appliedMods.find(const_cast<Aura*>(this)) == procSpell->m_appliedMods.end())

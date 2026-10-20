@@ -1,0 +1,92 @@
+{
+  "scope": {
+    "1209": 954507,
+    "1210": 954504,
+    "1211": 954523
+  },
+  "owner_contract": [
+    "Slow on damage break, expiry and dispel",
+    "Restore untouched-client slow resistance behavior",
+    "Optional Spreading Roots propagation separate; ownership gating required"
+  ],
+  "checks": [
+    {
+      "requirement": "Acquisition and cost",
+      "evidence": "catalog.json and untouched/advancement-mappings.json; existing shared acquisition path preserved",
+      "result": "pass",
+      "limits": "No acquisition code changed; catalog entries1209/1210/1211 select single-rank spells at18/42/34"
+    },
+    {
+      "requirement": "Record values and dependencies",
+      "evidence": "harness/data-contract.json; focused-resistance/report.json",
+      "result": "pass",
+      "limits": "1020 numeric fields compared; slow flag corrected by executed native hook; Vortex metadata42 retained with catalog evidence"
+    },
+    {
+      "requirement": "Mass Entanglement root/slow/DR/immunity",
+      "evidence": "100 native-function checks; captured baseline failure; native MagicSpellHitResult and Unit aura-removal dispatch",
+      "result": "pass",
+      "limits": "Native functions extracted with mocked engine adapters; immunity dispatch source-traced, no gameplay"
+    },
+    {
+      "requirement": "Optional enchant ownership",
+      "evidence": "Periodic trigger prefix executed for no enchant and each supported parent",
+      "result": "pass",
+      "limits": "Full owned propagation intentionally separate and not promoted"
+    },
+    {
+      "requirement": "Solar Beam silence and area lifetime",
+      "evidence": "Native HandleAuraModSilence tested for overlapping silence and interrupt eligibility; DynObjAura enemy target selection and duration/owner cleanup source traced; effect164 helper dispatcher present",
+      "result": "pass",
+      "limits": "Dynamic-object world movement not simulated"
+    },
+    {
+      "requirement": "Vortex ownership/pull/lockout/lifetime",
+      "evidence": "Native Check tests inside/outside, missing owner/anchor, shared marker lockout and expiry; OwnedCreature and summoned anchor owner checks traced; native pull immunity dispatch and persistent aura expiry traced",
+      "result": "pass",
+      "limits": "Physical movement not simulated; existing handler retained"
+    },
+    {
+      "requirement": "Build and shared source regression",
+      "evidence": "build-resistance/report.json; source-resistance/report.json",
+      "result": "pass"
+    },
+    {
+      "requirement": "Client labels and rollback",
+      "evidence": "client-qualification.json; package-qualified/report.json",
+      "result": "pass",
+      "limits": "Staged only; Certified labels preserved; no tester certification claimed"
+    },
+    {
+      "requirement": "Publication and launcher preparation",
+      "evidence": "release-qualification.json; package-qualified/report.json",
+      "result": "pass",
+      "limits": "509 managed files compared; two changed components; remote upload/live feed validation will occur only during authorized publication"
+    }
+  ],
+  "optional_enchants_status": "unchanged; separate verification required",
+  "gameplay": "not run; Certification remains with testers",
+  "dance_of_death": {
+    "entry": 1137,
+    "ranks": [
+      954192,
+      954193,
+      954194
+    ],
+    "scope": "reported health/proc/cooldown/heal/reset repair",
+    "status": "existing Certified preserved",
+    "checks": "native extracted conditions/cooldown and rank cleanup; combined build/source checks",
+    "limits": "mocked engine adapters, source-traced native dispatch; no gameplay"
+  },
+  "combat_corrections": {
+    "scope": [
+      "Area52 Backstab/Garrote PvE positioning,22 ranks",
+      "Improved Victory Rush965664 consumption",
+      "Warrior/Druid shapeshifts and native Hunter aspect/Paladin aura cancellation"
+    ],
+    "native_cases": 3856,
+    "status": "existing labels unchanged",
+    "limits": "native functions with mock adapters; no gameplay",
+    "opportunity": "unchanged; owner Opptest results pass across relog"
+  }
+}

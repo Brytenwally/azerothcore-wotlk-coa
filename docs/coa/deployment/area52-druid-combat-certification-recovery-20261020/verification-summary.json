@@ -1,0 +1,39 @@
+{
+  "package": "area52-druid-combat-certification-recovery-20261020",
+  "engineering": "passed",
+  "activation": "not performed",
+  "package_preflight": "Required exact wrapper result recorded separately in combat-talents-toggles-20261020/package-preflight.json; activation remains prohibited until PASS.",
+  "binary_sha256": "44036bfd84bef27086bcb5dc1652ddfe5dd764e653878569bd1ec9edbc66f1a1",
+  "baseline_binary_sha256": "8a5937f1e6194fbdda26a2042dd7a03a626e60544841677b98420ff43110bd43",
+  "entries": [
+    1209,
+    1210,
+    1211
+  ],
+  "reports": {
+    "build-resistance": "46ce0a09720c5516ad5a5cafe28e52bbf06e0201d41bf11e55a915bf55e65b02",
+    "source-resistance": "27b37f489f006e74ad4950d3d06c9a53e987916db77ea7d22ca8c0ba9400127d",
+    "focused-resistance": "5b27ea01682eedf2571271faada187957249174ad763d74b2000dc6a3cee47a0",
+    "package-qualified": "dbfb9dbb5abf7db25b878f9cc42ea490e61e3aaa3fd4ebed926cb6b1002c3c01",
+    "windows-checks": "54c119afd297921d9d873e156f9d089909715f902b156270753525fe44d63dc4"
+  },
+  "source_overlays_sha256": "5d4746cad35c03af8a911276e8d1f90e5b87f7b83a654638b38b43ef6c0eb86d",
+  "client_distribution": "two changed components prepared; not published",
+  "limits": "Offline extracted native functions and mocked engine adapters; source-traced dispatch/lifecycle. Frozen patch qualifies against LF-normalized effective source; deployment guards use original exact byte hashes. No gameplay or tester certification.",
+  "combined_reports": {
+    "build-final": "bead95b7a59de07f43abdba9ec709614c542c169d9d596bc2eea7b6563a8b31f",
+    "source-final": "6af26bec5e08b50777e5eea208e6b8292eca32c01afc7f277d2d6dd70e294569",
+    "focused-verified": "81011728783cc4c67244f2a863b08fb543fabf8fe6294f942d7e3c8bd2b31c58"
+  },
+  "additional_repair": "Area52 Clearcasting and Dance of Death; Certified retained; no talent status promotion",
+  "tooltip_qualification_sha256": "075073ec14e098c337d96e56a0febf7909dcf5d335a42bf6184e94c69e968875",
+  "release_qualification_sha256": "01dd6acecdfbb6ebddf14cd5d68e62365a9927b1a91bd5707310722ea8e17a80",
+  "combat_native_cases": 3856,
+  "combat_reports": {
+    "build-combat": "afc8f9bbdb959cdf1051bfa17f5fab851c1ad742477fcc87b15fd963f1a1ccae",
+    "source-combat": "5502238c031ef71792f21f765fbfeb4fca89b877f97f7bb2d1aa6128b232ab54",
+    "focused-combat": "8d6aeff9e2a4adcca99c9151dafc1033138c6c0867dcba2c5dc8461e9a706bc8",
+    "package-final": "ff6a96d8640a6ceb9c34dab8fc8986af3104198137ee52a41916cbd0455b1e4e"
+  },
+  "opportunity": "Unchanged: owner reproduced working damage bonuses across relog on Opptest; Kosha earlier report unresolved, no universal defect or new status claim."
+}
