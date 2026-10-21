@@ -17,6 +17,7 @@
 
 #include "AllBattlegroundScript.h"
 #include "AllSpellScript.h"
+#include "AscensionFreepick.h"
 #include "AscensionHighRiskPolicy.h"
 #include "AscensionMysticEnchant.h"
 #include "AscensionRulesets.h"
@@ -53,6 +54,7 @@
 #include "Spell.h"
 #include "SpellAuras.h"
 #include "SpellMgr.h"
+#include "World.h"
 #include "WorldPacket.h"
 #include "WorldScript.h"
 #include "WorldSession.h"
@@ -78,7 +80,7 @@ namespace
     };
 
     std::atomic<bool> g_enabled{ true };
-    std::atomic<uint32> g_requiredLevel{ 60 };
+    std::atomic<uint32> g_requiredLevel{ 0 };
     std::atomic<uint32> g_experienceBonusPercent{ 300 };
 
     std::mutex g_rewardsLock;
@@ -146,7 +148,8 @@ namespace
     void LoadConfig()
     {
         g_enabled = sConfigMgr->GetOption<bool>("CoAPrestige.Enable", true);
-        g_requiredLevel = std::max<uint32>(2, sConfigMgr->GetOption<uint32>("CoAPrestige.RequiredLevel", 60));
+        g_requiredLevel = ResolveRequiredLevel(sConfigMgr->GetOption<uint32>("CoAPrestige.RequiredLevel", 0),
+            sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL));
         g_experienceBonusPercent = sConfigMgr->GetOption<uint32>("CoAPrestige.ExperienceBonusPercent", 300);
 
         std::string const text = sConfigMgr->GetOption<std::string>("CoAPrestige.Rewards", DefaultRewards);
@@ -488,13 +491,14 @@ namespace
         uint32 const requiredLevel = g_requiredLevel;
         bool const wildcard = AscensionWildcard::IsWildcardHero(player);
         bool const reborn = AscensionWarcraftReborn::IsRebornCharacter(player);
-        // A Warcraft Reborn character's specialization is its talent spec, 1 or 2.
+        bool const freepick = AscensionFreepick::IsFreepickHero(player);
+        bool const customClass = IsAscensionCustomClassId(player->getClass());
         uint32 const specialization = wildcard ? AscensionWildcard::ActiveSpec(player) + 1 :
-            reborn ? player->GetActiveSpec() + 1u : GetAscensionActiveSpecialization(player);
+            freepick ? AscensionFreepick::ActiveSpecialization(player) + 1u :
+            customClass ? GetAscensionActiveSpecialization(player) : player->GetActiveSpec() + 1u;
 
         ActivationFacts facts;
         facts.enabled = g_enabled;
-        facts.customClass = wildcard || reborn || IsAscensionCustomClassId(player->getClass());
         facts.level = player->GetLevel();
         facts.requiredLevel = requiredLevel;
         facts.active = state.active;
@@ -525,8 +529,17 @@ namespace
         sLFGMgr->LeaveLfg(player->GetGUID());
         ResetQuests(player, requiredLevel);
 
-        uint32 const talents = wildcard ? AscensionWildcard::PrestigeSpecialization(player) :
-            reborn ? AscensionWarcraftReborn::ResetActiveTalents(player) : ForgetAscensionClassTalents(player);
+        uint32 talents = 0;
+        if (wildcard)
+            talents = AscensionWildcard::PrestigeSpecialization(player);
+        else if (freepick)
+            talents = AscensionFreepick::PrestigeSpecialization(player);
+        else if (reborn)
+            talents = AscensionWarcraftReborn::ResetActiveTalents(player);
+        else if (customClass)
+            talents = ForgetAscensionClassTalents(player);
+        else
+            player->resetTalents(true);
         uint32 const enchants = reborn ? AscensionMysticEnchant::ClearActivePreset(player) : 0;
         std::unordered_set<uint32> chains = ForgetRanksAbove(player, FirstLevel);
         if (reborn)
@@ -602,7 +615,7 @@ namespace
             return;
 
         state.active = false;
-        if (player->GetLevel() < 10 && !AscensionWildcard::IsWildcardHero(player))
+        if (player->GetLevel() < 10 && IsAscensionCustomClassId(player->getClass()))
             state.signaturePending = true;
         SaveState(player, state);
         player->RemoveAurasDueToSpell(PrestigedAura);
@@ -615,7 +628,7 @@ namespace
     void RestoreSpecializationSignature(Player* player)
     {
         State state = LoadState(player);
-        if ((state.active || state.signaturePending) && !AscensionWildcard::IsWildcardHero(player) &&
+        if ((state.active || state.signaturePending) && IsAscensionCustomClassId(player->getClass()) &&
             state.specialization == GetAscensionActiveSpecialization(player) &&
             RestoreAscensionSpecializationSignature(player) && state.signaturePending)
         {
@@ -928,7 +941,8 @@ public:
     void OnSpellCheckCast(Spell* spell, bool /*strict*/, SpellCastResult& result) override
     {
         Player* player = spell->GetCaster() ? spell->GetCaster()->ToPlayer() : nullptr;
-        if (!g_enabled || result != SPELL_CAST_OK || !player || !AscensionWarcraftReborn::IsRebornCharacter(player))
+        if (!g_enabled || result != SPELL_CAST_OK || !player || IsAscensionCustomClassId(player->getClass()) ||
+            AscensionWildcard::IsWildcardHero(player) || AscensionFreepick::IsFreepickHero(player))
             return;
 
         for (SpellEffectInfo const& effect : spell->GetSpellInfo()->Effects)
