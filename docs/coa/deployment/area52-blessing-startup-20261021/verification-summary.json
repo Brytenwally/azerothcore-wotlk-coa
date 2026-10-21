@@ -1,0 +1,13 @@
+{
+  "package": "area52-blessing-startup-20261021",
+  "server_sha256": "55005ef8a8dccf6f17fdba80f5b04aaeb0b69645520a9442828aa80d24db2283",
+  "baseline_binary_sha256": "591e25267f4f0200107914383213e5116a18138f3cf1c28f42d3456dbf8555f0",
+  "reports": {
+    "build": "9e7f237236673928659a96e5b0e649cb02ca1d8bac275af0979a14e1bc33b72b",
+    "focused": "fda1be93ea340152797ecaa6d8390bde8e7bf6456122b60d7575a44915f03212",
+    "source-checks": "78baf506c9c34b12bce845558750e8f897500c31525ab632a75dd08f6a736c0d"
+  },
+  "frozen_patch_apply_reverse": "passed",
+  "status_changes": false,
+  "scope": "Startup-order-safe blessing rule; 33 ranks; native engine adapters, no gameplay."
+}

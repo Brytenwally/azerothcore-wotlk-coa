@@ -1,0 +1,37 @@
+--- a/src/server/game/Spells/SpellMgr.cpp
++++ b/src/server/game/Spells/SpellMgr.cpp
+@@ -882,9 +882,7 @@
+ 
+     for (std::set<SpellGroup>::iterator itr = groups.begin(); itr!= groups.end(); ++itr)
+     {
+-        SpellGroupStackMap::const_iterator found = mSpellGroupStack.find(*itr);
+-        if (found != mSpellGroupStack.end())
+-            rule = found->second;
++        rule = GetSpellGroupStackRule(*itr);
+         if (rule)
+             break;
+     }
+@@ -895,7 +893,12 @@
+ {
+     SpellGroupStackMap::const_iterator itr = mSpellGroupStack.find(group);
+     if (itr != mSpellGroupStack.end())
++    {
++        if (group == 1010 && itr->second == SPELL_GROUP_STACK_RULE_EXCLUSIVE_FROM_SAME_CASTER &&
++            AscensionFreePick::Enabled())
++            return SPELL_GROUP_STACK_RULE_DEFAULT;
+         return itr->second;
++    }
+ 
+     return SPELL_GROUP_STACK_RULE_DEFAULT;
+ }
+@@ -1865,10 +1868,6 @@
+             LOG_ERROR("sql.sql", "SpellGroup id {} listed in `spell_group_stack_rules` does not exist.", group_id);
+             continue;
+         }
+-
+-        if (group_id == 1010 && stack_rule == SPELL_GROUP_STACK_RULE_EXCLUSIVE_FROM_SAME_CASTER &&
+-            AscensionFreePick::Enabled())
+-            stack_rule = SPELL_GROUP_STACK_RULE_DEFAULT;
+ 
+         mSpellGroupStack.emplace(SpellGroup(group_id), SpellGroupStackRule(stack_rule));
+ 
