@@ -63,7 +63,7 @@ int main()
     for (uint32 cap : {60u, 70u, 80u})
     {
         CoAPrestige::ActivationFacts f;
-        f.requiredLevel = CoAPrestige::ResolveRequiredLevel(0, cap);
+        f.requiredLevel = CoAPrestige::ResolveRequiredLevel(cap);
         f.specialization = 1;
         for (uint32 level : {cap - 1, cap, cap + 1})
         {

@@ -98,9 +98,9 @@ namespace CoAPrestige
         NotInOpenWorld
     };
 
-    inline uint32_t ResolveRequiredLevel(uint32_t configuredLevel, uint32_t realmCap)
+    inline uint32_t ResolveRequiredLevel(uint32_t realmCap)
     {
-        return std::max(2u, configuredLevel ? std::min(configuredLevel, realmCap) : realmCap);
+        return std::max(2u, realmCap);
     }
 
     struct ActivationFacts

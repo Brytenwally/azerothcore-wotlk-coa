@@ -255,7 +255,7 @@ TEST(CoAPrestige, RealmCapControlsActivationAndCompletionThreshold)
 {
     for (uint32_t cap : { 60u, 70u, 80u })
     {
-        uint32_t const level = ResolveRequiredLevel(0, cap);
+        uint32_t const level = ResolveRequiredLevel(cap);
         EXPECT_EQ(level, cap);
         ActivationFacts facts;
         facts.requiredLevel = level;
@@ -266,9 +266,5 @@ TEST(CoAPrestige, RealmCapControlsActivationAndCompletionThreshold)
         EXPECT_EQ(CheckActivation(facts), Refusal::None);
         EXPECT_NE(SpecializationLockedMessage(level).find(std::to_string(cap)), std::string::npos);
     }
-    EXPECT_EQ(ResolveRequiredLevel(60, 80), 60u);
-    EXPECT_EQ(ResolveRequiredLevel(80, 60), 60u);
-    EXPECT_EQ(ResolveRequiredLevel(1, 80), 2u);
-    EXPECT_EQ(ResolveRequiredLevel(0, 1), 2u);
-    EXPECT_EQ(ResolveRequiredLevel(60, 1), 2u);
+    EXPECT_EQ(ResolveRequiredLevel(1), 2u);
 }

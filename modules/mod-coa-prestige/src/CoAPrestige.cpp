@@ -148,8 +148,7 @@ namespace
     void LoadConfig()
     {
         g_enabled = sConfigMgr->GetOption<bool>("CoAPrestige.Enable", true);
-        g_requiredLevel = ResolveRequiredLevel(sConfigMgr->GetOption<uint32>("CoAPrestige.RequiredLevel", 0),
-            sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL));
+        g_requiredLevel = ResolveRequiredLevel(sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL));
         g_experienceBonusPercent = sConfigMgr->GetOption<uint32>("CoAPrestige.ExperienceBonusPercent", 300);
 
         std::string const text = sConfigMgr->GetOption<std::string>("CoAPrestige.Rewards", DefaultRewards);

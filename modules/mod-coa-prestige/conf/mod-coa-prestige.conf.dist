@@ -18,12 +18,9 @@
 #                     0 - (Disabled)
 CoAPrestige.Enable = 1
 
-#    CoAPrestige.RequiredLevel
-#        Description: The level a character must reach to activate Prestige Mode, and to complete
-#                     it again. 0 follows MaxPlayerLevel. A nonzero override is clamped to
-#                     the realm cap. At least level 2 is required to prevent level-1 reward loops.
-#        Default:     0 - (Realm level cap)
-CoAPrestige.RequiredLevel = 0
+# Prestige activation and completion follow MaxPlayerLevel on every realm.
+# CoAPrestige.RequiredLevel is retired and ignored; there is no separate level override.
+# A realm capped at level 1 cannot prestige, preventing repeated level-1 reward grants.
 
 #    CoAPrestige.ExperienceBonusPercent
 #        Description: Total experience, in percent, for a character in an active prestige cycle

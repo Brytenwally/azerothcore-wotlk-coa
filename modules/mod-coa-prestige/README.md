@@ -121,11 +121,11 @@ The spawn points are chosen, not recovered. Every price is a row of the client's
 
 ## Realm level cap and classless characters
 
-`CoAPrestige.RequiredLevel = 0` follows `MaxPlayerLevel` (for example 60, 70 or 80).
+Prestige follows `MaxPlayerLevel` (for example 60, 70 or 80) on every realm.
 The resolved value governs activation, replayable quest reset, completion, daily max-level credit,
-experience-bonus eligibility and specialization-lock messages. Existing nonzero overrides remain supported,
-but cannot exceed the realm cap. Existing installations with `CoAPrestige.RequiredLevel = 60` must set it
-to `0` to opt into automatic tracking. The core's MaxPlayerLevel setting requires a restart to change.
+experience-bonus eligibility and specialization-lock messages. `CoAPrestige.RequiredLevel` is retired and
+ignored, including existing explicit values. The core's MaxPlayerLevel setting requires a restart to change.
+A realm capped at level 1 cannot prestige, to prevent reward loops without any releveling.
 
 CoA, Wildcard and Warcraft Reborn retain their existing reset implementations. Free Pick resets its active
 advancement build without charging unlearning costs, updates its saved active-slot copy and honors the
@@ -142,5 +142,4 @@ The tool changes only the MAX_LEVEL assignment to the existing client GetMaxLeve
 unknown baseline or overwriting the input. Distribute the staged file at
 Interface/AddOns/AscensionUI/Gossips/PrestigeMode.lua using the realm's normal client patch process.
 This is an existing UI replacement, not a new addon or DLL. It updates the threshold and all labels which
-already read MAX_LEVEL. Explicit nonzero Prestige level overrides need a corresponding realm-specific UI
-threshold; GetMaxLevel() represents the normal realm cap. No client installation or binary is included.
+already read MAX_LEVEL. No client installation or binary is included.
