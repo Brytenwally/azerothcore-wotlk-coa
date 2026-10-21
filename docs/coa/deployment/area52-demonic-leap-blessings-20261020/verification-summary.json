@@ -1,0 +1,12 @@
+{
+  "package": "area52-demonic-leap-blessings-20261020",
+  "binary_sha256": "1835d899c021790126230bc814829d162dfeb49ca07e3267f668e63b96b8c494",
+  "baseline_binary_sha256": "44036bfd84bef27086bcb5dc1652ddfe5dd764e653878569bd1ec9edbc66f1a1",
+  "reports": {
+    "build-qualified": "e390b37a68920530c05ea2ca53745d8c50c635c44ff8a435fe5cef3d4af4b5a1",
+    "source-qualified": "b0204718b7382f295f8aa1f45f6f77904bf408d5b24abc48955ba752bc6738a2",
+    "focused-final": "66c72213a23fd1ddd391951e40cb41dc0f92a2a1a31bd7457682443e4fe51ae9"
+  },
+  "status_changes": false,
+  "limits": "Extracted native functions with mocked engine adapters; no gameplay. Audit distinguishes migrated shared paths from remaining custom scripts."
+}

@@ -1,0 +1,229 @@
+--- a/src/server/coa/Area52HopliteRemaining.inc
++++ b/src/server/coa/Area52HopliteRemaining.inc
+@@ -1,6 +1,20 @@
+ #include "Area52HopliteRemainingRules.h"
+ 
+ namespace HopliteRules = Area52HopliteRemaining;
++
++template <class Predicate>
++bool HopliteInteractionMatches(Player const* player, SpellInfo const* spell, Predicate accepts)
++{
++    if (!spell)
++        return false;
++    if (accepts(spell))
++        return true;
++    if (player)
++        for (uint32 original : player->GetSpellInteractionOrigins(spell->Id))
++            if (SpellInfo const* origin = sSpellMgr->GetSpellInfo(original); origin && accepts(origin))
++                return true;
++    return false;
++}
+ 
+ class area52_hoplite_remaining_metadata : public GlobalScript
+ {
+@@ -118,9 +132,11 @@
+             !event.GetDamageInfo()->GetDamage() || (event.GetTypeMask() & PROC_FLAG_DONE_PERIODIC))
+             return false;
+         if (GetId() == HopliteRules::WindSlamEnchant)
+-            return spell->SpellFamilyName == SPELLFAMILY_SHAMAN && (spell->SpellFamilyFlags[0] & 0x800000);
++            return HopliteInteractionMatches(GetTarget()->ToPlayer(), spell, [](SpellInfo const* info)
++                { return info->SpellFamilyName == SPELLFAMILY_SHAMAN && (info->SpellFamilyFlags[0] & 0x800000); });
+         return GetTarget()->HasAura(HopliteRules::WindSlamEnchant) &&
+-            Area52HopliteRemaining::WindConsumer(spell->GetFirstRankSpell()->Id);
++            HopliteInteractionMatches(GetTarget()->ToPlayer(), spell, [](SpellInfo const* info)
++                { return Area52HopliteRemaining::WindConsumer(info->GetFirstRankSpell()->Id); });
+     }
+     void Handle(AuraEffect const* effect, ProcEventInfo& event)
+     {
+@@ -134,8 +150,11 @@
+         Unit* target = event.GetActionTarget();
+         if (!target)
+             return;
+-        uint32 const root = event.GetSpellInfo()->GetFirstRankSpell()->Id;
+-        bool const shield = Area52HopliteRemaining::ShieldConsumer(root) || root == HopliteRules::LegacyShieldStrike;
++        bool const shield = HopliteInteractionMatches(owner->ToPlayer(), event.GetSpellInfo(), [](SpellInfo const* info)
++            {
++                uint32 const root = info->GetFirstRankSpell()->Id;
++                return Area52HopliteRemaining::ShieldConsumer(root) || root == HopliteRules::LegacyShieldStrike;
++            });
+         owner->CastCustomSpell(HopliteRules::WindSlamDamage, SPELLVALUE_BASE_POINT1, shield ? -20 : 0, target, true, nullptr, effect);
+         owner->RemoveAurasDueToSpell(HopliteRules::WindSlamBuff, owner->GetGUID());
+     }
+@@ -181,7 +200,8 @@
+         auto const* spell = event.GetSpellInfo();
+         return spell && event.GetActor() == GetTarget() && event.GetDamageInfo() &&
+             event.GetDamageInfo()->GetDamage() && !(event.GetTypeMask() & PROC_FLAG_DONE_PERIODIC) &&
+-            Area52HopliteRemaining::DraconicConsumer(spell->GetFirstRankSpell()->Id) &&
++            HopliteInteractionMatches(GetTarget()->ToPlayer(), spell, [](SpellInfo const* info)
++                { return Area52HopliteRemaining::DraconicConsumer(info->GetFirstRankSpell()->Id); }) &&
+             !GetTarget()->HasAura(HopliteRules::WorldforgedCooldown) &&
+             roll_chance_i(sSpellMgr->GetSpellInfo(HopliteRules::DraconicProc)->ProcChance);
+     }
+--- a/src/server/coa/AscensionWhiteWalkerSupport.cpp
++++ b/src/server/coa/AscensionWhiteWalkerSupport.cpp
+@@ -188,7 +188,7 @@
+         }
+         uint32 const id = spell->GetSpellInfo()->Id;
+         uint32 const root = sSpellMgr->GetFirstSpellInChain(id);
+-        if (player->HasAura(TidesOfBattle) && root == SinisterStrike)
++        if (player->HasAura(TidesOfBattle) && player->MatchesSpellInteraction(id, SinisterStrike))
+         {
+             spell->SetScriptValue(TidesOfBattle, uint64(player->GetPower(POWER_ENERGY)) + 1);
+             spell->SetScriptValue(Ebb, player->GetMaxPower(POWER_ENERGY));
+@@ -372,8 +372,9 @@
+             !event.GetDamageInfo() || !event.GetDamageInfo()->GetDamage() ||
+             !(event.GetHitMask() & PROC_HIT_CRITICAL))
+             return false;
+-        uint32 const spellId = sSpellMgr->GetFirstSpellInChain(event.GetSpellInfo()->Id);
+-        return spellId == 1752 || spellId == 2098;
++        Player* player = GetTarget()->ToPlayer();
++        return player->MatchesSpellInteraction(event.GetSpellInfo()->Id, 1752) ||
++            player->MatchesSpellInteraction(event.GetSpellInfo()->Id, 2098);
+     }
+ 
+     void Proc(ProcEventInfo& event)
+@@ -671,9 +672,12 @@
+ {
+     PrepareSpellScript(spell_area52_demonic_leap);
+ 
++    static constexpr uint32 WingsVisual = 954543;
+     bool _reactivated = false;
+ 
+     bool Load() override { return Area52Enabled && GetCaster()->IsPlayer(); }
++
++    bool Validate(SpellInfo const*) override { return ValidateSpellInfo({ WingsVisual }); }
+ 
+     void Before()
+     {
+@@ -686,8 +690,14 @@
+             GetCaster()->ToPlayer()->RemoveSpellCooldown(AscensionWhiteWalkerSupport::DemonicLeap, true);
+     }
+ 
+-    void Register() override
+-    {
++    void Visual(SpellEffIndex)
++    {
++        GetCaster()->CastSpell(GetCaster(), WingsVisual, TRIGGERED_FULL_MASK);
++    }
++
++    void Register() override
++    {
++        OnEffectHitTarget += SpellEffectFn(spell_area52_demonic_leap::Visual, EFFECT_2, SPELL_EFFECT_DUMMY);
+         BeforeCast += SpellCastFn(spell_area52_demonic_leap::Before);
+         AfterCast += SpellCastFn(spell_area52_demonic_leap::After);
+     }
+@@ -938,7 +948,8 @@
+     bool CheckProc(ProcEventInfo& event)
+     {
+         return Area52Enabled && event.GetActor() == GetTarget() && event.GetSpellInfo() &&
+-            sSpellMgr->GetFirstSpellInChain(event.GetSpellInfo()->Id) == AscensionWhiteWalkerSupport::SinisterStrike &&
++            GetTarget()->ToPlayer() && GetTarget()->ToPlayer()->MatchesSpellInteraction(
++                event.GetSpellInfo()->Id, AscensionWhiteWalkerSupport::SinisterStrike) &&
+             !GetTarget()->HasAura(780999) && event.GetDamageInfo() && event.GetDamageInfo()->GetDamage();
+     }
+ 
+@@ -968,7 +979,8 @@
+     bool CheckProc(ProcEventInfo& event)
+     {
+         return Area52Enabled && event.GetActor() == GetTarget() && event.GetSpellInfo() &&
+-            sSpellMgr->GetFirstSpellInChain(event.GetSpellInfo()->Id) == AscensionWhiteWalkerSupport::SinisterStrike &&
++            GetTarget()->ToPlayer() && GetTarget()->ToPlayer()->MatchesSpellInteraction(
++                event.GetSpellInfo()->Id, AscensionWhiteWalkerSupport::SinisterStrike) &&
+             GetTarget()->ToPlayer() && event.GetProcSpell() &&
+             event.GetProcSpell()->GetScriptValue(AscensionWhiteWalkerSupport::TidesOfBattle) &&
+             !event.GetProcSpell()->GetScriptValue(AscensionWhiteWalkerSupport::Flow) &&
+--- a/src/server/game/Entities/Player/Player.cpp
++++ b/src/server/game/Entities/Player/Player.cpp
+@@ -10268,7 +10268,13 @@
+     if (mod->op == SPELLMOD_DURATION && spellInfo->GetDuration() == -1)
+         return false;
+ 
+-    return spellInfo->IsAffectedBySpellMod(mod);
++    if (spellInfo->IsAffectedBySpellMod(mod))
++        return true;
++    for (uint32 original : GetSpellInteractionOrigins(spellInfo->Id))
++        if (SpellInfo const* ancestor = sSpellMgr->GetSpellInfo(original))
++            if (ancestor->IsAffectedBySpellMod(mod))
++                return true;
++    return false;
+ }
+ 
+ template <class T>
+@@ -13889,6 +13895,36 @@
+         packet << previous << replacement;
+         GetSession()->SendPacket(&packet);
+     }
++}
++
++std::vector<uint32> Player::GetSpellInteractionOrigins(uint32 spellId) const
++{
++    std::vector<uint32> origins;
++    if (!AscensionFreePick::Applies(this) || !HasActiveSpell(spellId))
++        return origins;
++
++    std::vector<uint32> pending{spellId};
++    for (size_t index = 0; index < pending.size(); ++index)
++        for (auto const& [original, replacement] : m_temporarySpellReplacements)
++            if (replacement == pending[index] && original != replacement &&
++                HasActiveSpell(original) && HasActiveSpell(replacement) &&
++                std::find(pending.begin(), pending.end(), original) == pending.end())
++            {
++                pending.push_back(original);
++                origins.push_back(original);
++            }
++    return origins;
++}
++
++bool Player::MatchesSpellInteraction(uint32 spellId, uint32 original) const
++{
++    uint32 const root = sSpellMgr->GetFirstSpellInChain(original);
++    if (sSpellMgr->GetFirstSpellInChain(spellId) == root)
++        return true;
++    for (uint32 ancestor : GetSpellInteractionOrigins(spellId))
++        if (sSpellMgr->GetFirstSpellInChain(ancestor) == root)
++            return true;
++    return false;
+ }
+ 
+ uint32 Player::GetTemporarySpellReplacement(uint32 original) const
+--- a/src/server/game/Entities/Player/Player.h
++++ b/src/server/game/Entities/Player/Player.h
+@@ -1815,6 +1815,8 @@
+     // Transient action replacements; never written to character spell ownership.
+     void SetTemporarySpellReplacement(uint32 original, uint32 replacement);
+     [[nodiscard]] uint32 GetTemporarySpellReplacement(uint32 original) const;
++    [[nodiscard]] std::vector<uint32> GetSpellInteractionOrigins(uint32 spellId) const;
++    [[nodiscard]] bool MatchesSpellInteraction(uint32 spellId, uint32 original) const;
+     [[nodiscard]] bool CanUseTwoHandWithShield(ItemTemplate const* main, ItemTemplate const* off) const;
+     [[nodiscard]] float GetMeleeAbilityRangeBonus() const;
+ 
+--- a/src/server/game/Spells/SpellMgr.cpp
++++ b/src/server/game/Spells/SpellMgr.cpp
+@@ -940,7 +940,15 @@
+     if (eventInfo.GetTypeMask() & SPELL_PROC_FLAG_MASK)
+         if (SpellInfo const* eventSpellInfo = eventInfo.GetSpellInfo())
+             if (!eventSpellInfo->IsAffected(procEntry.SpellFamilyName, procEntry.SpellFamilyMask))
+-                return false;
++            {
++                bool inherited = false;
++                if (Player const* actor = eventInfo.GetActor() ? eventInfo.GetActor()->ToPlayer() : nullptr)
++                    for (uint32 original : actor->GetSpellInteractionOrigins(eventSpellInfo->Id))
++                        if (SpellInfo const* ancestor = GetSpellInfo(original))
++                            inherited |= ancestor->IsAffected(procEntry.SpellFamilyName, procEntry.SpellFamilyMask);
++                if (!inherited)
++                    return false;
++            }
+ 
+     // check spell type mask (if set)
+     if (eventInfo.GetTypeMask() & (SPELL_PROC_FLAG_MASK | PERIODIC_PROC_FLAG_MASK))
+@@ -1857,6 +1865,10 @@
+             LOG_ERROR("sql.sql", "SpellGroup id {} listed in `spell_group_stack_rules` does not exist.", group_id);
+             continue;
+         }
++
++        if (group_id == 1010 && stack_rule == SPELL_GROUP_STACK_RULE_EXCLUSIVE_FROM_SAME_CASTER &&
++            AscensionFreePick::Enabled())
++            stack_rule = SPELL_GROUP_STACK_RULE_DEFAULT;
+ 
+         mSpellGroupStack.emplace(SpellGroup(group_id), SpellGroupStackRule(stack_rule));
+ 
