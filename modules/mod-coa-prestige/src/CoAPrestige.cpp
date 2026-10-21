@@ -28,6 +28,7 @@
 #include "Battleground.h"
 #include "CoA.Prestige.API.h"
 #include "CoAPrestigeRules.h"
+#include "AscensionPrestigeReset.h"
 #include "CoASpellbook.h"
 #include "Chat.h"
 #include "Config.h"
@@ -490,9 +491,18 @@ namespace
         uint32 const requiredLevel = g_requiredLevel;
         bool const wildcard = AscensionWildcard::IsWildcardHero(player);
         bool const reborn = AscensionWarcraftReborn::IsRebornCharacter(player);
-        bool const freepick = AscensionFreepick::IsFreepickHero(player);
+        auto const* realmReset = AscensionPrestigeReset::Area52;
+        bool const area52 = realmReset && realmReset->Applies(player);
+        bool const freepick = !area52 && AscensionFreepick::IsFreepickHero(player);
+        AscensionPrestigeReset::Plan resetPlan;
+        std::string resetError;
+        if (area52 && !realmReset->Prepare(player, resetPlan, resetError))
+        {
+            ChatHandler(player->GetSession()).SendSysMessage(resetError);
+            return false;
+        }
         bool const customClass = IsAscensionCustomClassId(player->getClass());
-        uint32 const specialization = wildcard ? AscensionWildcard::ActiveSpec(player) + 1 :
+        uint32 const specialization = area52 ? resetPlan.Build + 1u : wildcard ? AscensionWildcard::ActiveSpec(player) + 1 :
             freepick ? AscensionFreepick::ActiveSpecialization(player) + 1u :
             customClass ? GetAscensionActiveSpecialization(player) : player->GetActiveSpec() + 1u;
 
@@ -523,23 +533,31 @@ namespace
             return false;
         }
 
+        AscensionPrestigeReset::Result resetResult;
+        if (area52 && !realmReset->Reset(player, resetPlan, resetResult, resetError))
+        {
+            chat.SendSysMessage(resetError);
+            return false;
+        }
+
         RememberActionBar(player);
         DismissPets(player);
         sLFGMgr->LeaveLfg(player->GetGUID());
         ResetQuests(player, requiredLevel);
 
-        uint32 talents = 0;
-        if (wildcard)
+        uint32 talents = resetResult.Abilities;
+        if (!area52 && wildcard)
             talents = AscensionWildcard::PrestigeSpecialization(player);
-        else if (freepick)
+        else if (!area52 && freepick)
             talents = AscensionFreepick::PrestigeSpecialization(player);
-        else if (reborn)
+        else if (!area52 && reborn)
             talents = AscensionWarcraftReborn::ResetActiveTalents(player);
-        else if (customClass)
+        else if (!area52 && customClass)
             talents = ForgetAscensionClassTalents(player);
-        else
+        else if (!area52)
             player->resetTalents(true);
-        uint32 const enchants = reborn ? AscensionMysticEnchant::ClearActivePreset(player) : 0;
+        uint32 const enchants = area52 ? resetResult.Enchants :
+            reborn ? AscensionMysticEnchant::ClearActivePreset(player) : 0;
         std::unordered_set<uint32> chains = ForgetRanksAbove(player, FirstLevel);
         if (reborn)
             chains.merge(AscensionWarcraftReborn::ForgetClassSpellsAbove(player, FirstLevel));

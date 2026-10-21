@@ -132,6 +132,11 @@ advancement build without charging unlearning costs, updates its saved active-sl
 Prestige specialization lock. Ordinary classes reset their active talents. Other saved builds are retained. The reset preserves Group 1 and ROW_RETAINED entries using upstream's
 existing reset-retention rule; it does not import Area 52's separate storage schema or reset policy.
 
+Area 52 uses an explicitly registered Prestige reset handler, ahead of the Dawnrise Free Pick path.
+Its scoped integration is in [integrations/area52](integrations/area52/README.md). It validates and
+resets only the active, unlocked build and enchant specializations, preserving other specializations
+and collections. The full Area 52 backend is deliberately not part of this change.
+
 The stock client's Prestige window has its own level-60 checks. Prepare its existing UI file with:
 
 ```sh
