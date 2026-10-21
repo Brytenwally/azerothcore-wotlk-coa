@@ -1,0 +1,140 @@
+--- a/src/server/coa/AscensionWhiteWalkerSupport.cpp
++++ b/src/server/coa/AscensionWhiteWalkerSupport.cpp
+@@ -6,6 +6,8 @@
+ #include "AllSpellScript.h"
+ #include "Player.h"
+ #include "PlayerScript.h"
++#include "MovementHandlerScript.h"
++#include "Opcodes.h"
+ #include "Random.h"
+ #include "ScriptMgr.h"
+ #include "SpellAuraEffects.h"
+@@ -668,6 +670,18 @@
+     }
+ };
+ 
++class movement_area52_demonic_leap : public MovementHandlerScript
++{
++public:
++    movement_area52_demonic_leap() : MovementHandlerScript("movement_area52_demonic_leap") { }
++
++    void OnPlayerMove(Player* player, MovementInfo, uint32 opcode) override
++    {
++        if (Area52Enabled && (opcode == MSG_MOVE_FALL_LAND || opcode == MSG_MOVE_START_SWIM))
++            player->RemoveAurasDueToSpell(954543);
++    }
++};
++
+ class spell_area52_demonic_leap : public SpellScript
+ {
+     PrepareSpellScript(spell_area52_demonic_leap);
+@@ -1050,6 +1064,7 @@
+     RegisterSpellScript(spell_area52_cold_blood_activation);
+     RegisterSpellScript(aura_area52_cold_blood_support);
+     RegisterSpellScript(spell_area52_demonic_leap);
++    new movement_area52_demonic_leap();
+     RegisterSpellScript(spell_area52_roll_the_bones);
+     RegisterSpellScript(aura_area52_freezing_blood_consumed);
+     RegisterSpellScript(aura_area52_freezing_blood_damage);
+--- a/src/server/coa/AscensionMysticEnchant.cpp
++++ b/src/server/coa/AscensionMysticEnchant.cpp
+@@ -120,6 +120,67 @@
+     return "core.freepick.mystic." + std::to_string(ActivePreset(player));
+ }
+ 
++constexpr char SpecPresetSetting[] = "core.area52.spec.preset";
++constexpr char SpecEquipmentSetting[] = "core.area52.spec.equipment";
++
++uint32 SpecLinkValue(Player const* player, char const* key, uint32 index)
++{
++    auto const* stored = player->FindPlayerSettings(key);
++    return stored && index < stored->size() ? (*stored)[index].value : 0;
++}
++
++void SendSpecLink(Player* player, uint32 spec, bool equipment)
++{
++    WorldPacket packet(equipment ? 0x738 : 0x737, 13);
++    uint32 const low = SpecLinkValue(player, equipment ? SpecEquipmentSetting : SpecPresetSetting,
++        equipment ? spec * 2 : spec);
++    uint32 const high = equipment ? SpecLinkValue(player, SpecEquipmentSetting, spec * 2 + 1) : 0;
++    bool const linked = low || high;
++    packet << uint32(spec) << uint8(linked);
++    if (linked)
++    {
++        packet << low;
++        if (equipment)
++            packet << high;
++    }
++    player->GetSession()->SendPacket(&packet);
++}
++
++void SendSpecLinks(Player* player)
++{
++    for (uint32 spec = 0; spec < AscensionFreePick::SpecializationSpells.size(); ++spec)
++    {
++        SendSpecLink(player, spec, false);
++        SendSpecLink(player, spec, true);
++    }
++}
++
++void HandleSpecLink(Player* player, WorldPacket& packet)
++{
++    if (packet.size() < 5)
++        return;
++    uint32 const spec = packet.read<uint32>(0);
++    uint8 const linked = packet.read<uint8>(4);
++    bool const equipment = packet.GetOpcode() == 0x73A;
++    if (spec >= AscensionFreePick::SpecializationSpells.size() || linked > 1 ||
++        packet.size() != (linked ? (equipment ? 13u : 9u) : 5u))
++        return;
++    uint32 const low = linked ? packet.read<uint32>(5) : 0;
++    uint32 const high = linked && equipment ? packet.read<uint32>(9) : 0;
++    bool const unlocked = spec == 0 || player->HasSpell(AscensionFreePick::SpecializationSpells[spec]);
++    if (!unlocked || (linked && (equipment ? !(low || high) : (!low || low > PresetCount(player)))))
++    {
++        SendSpecLink(player, spec, equipment);
++        return;
++    }
++    player->UpdatePlayerSetting(equipment ? SpecEquipmentSetting : SpecPresetSetting,
++        equipment ? spec * 2 : spec, low);
++    if (equipment)
++        player->UpdatePlayerSetting(SpecEquipmentSetting, spec * 2 + 1, high);
++    player->SaveToDB(false, false);
++    SendSpecLink(player, spec, equipment);
++}
++
+ Slots ReadSlots(Player const* player)
+ {
+     Slots slots{};
+@@ -376,6 +437,11 @@
+         return false;
+     WorldPacket packet(incoming);
+     auto const opcode = packet.GetOpcode();
++    if (opcode == 0x739 || opcode == 0x73A)
++    {
++        HandleSpecLink(player, packet);
++        return true;
++    }
+     if (opcode == 0x60C)
+     {
+         auto const* state = player->CustomData.Get<State>(StateKey);
+@@ -882,7 +948,10 @@
+     {
+         Load(player);
+         if (Applies(player))
++        {
+             SendScrollProgress(player);
++            SendSpecLinks(player);
++        }
+     }
+     void OnPlayerUpdate(Player* player, uint32) override { ProcessScrollRequests(player); }
+     void OnPlayerLogout(Player* player) override
+@@ -1304,6 +1373,8 @@
+     RegisterSpellScript(spell_area52_shared_might);
+     using namespace AscensionMysticEnchant;
+     AscensionCompatOpcodes::Claim(0x60C, Handle);
++    AscensionCompatOpcodes::Claim(0x739, Handle);
++    AscensionCompatOpcodes::Claim(0x73A, Handle);
+     AscensionCompatOpcodes::Claim(0x60F, Handle);
+     AscensionCompatOpcodes::Claim(0x617, Handle);
+     RegisterAscensionClientConfig(ClientConfig);

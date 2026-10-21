@@ -1,0 +1,12 @@
+{
+  "id": "area52-specialization-links-leap-20261021",
+  "binary_sha256": "0db534ecbdb1f3ac2159af65cd9f50e00d85ff83f6d566f5b8e0d0a9ad835a35",
+  "baseline": "55005ef8a8dccf6f17fdba80f5b04aaeb0b69645520a9442828aa80d24db2283",
+  "reports": {
+    "focused": "153aaca8fd78df0beec192f7561d1ff3940cdc1f68128ce47514bde87461f8b3",
+    "build": "11e1a4a277162ce81032a235c22a671a582fa12ee2ea697808c445a7efcce12a",
+    "source-final": "ef178cfffe0352837e04156ec71fe7a064b25a6db7f5ae7ec091f0f3303e51a0"
+  },
+  "patch_apply_reverse": "passed",
+  "limits": "Native extracted hook with engine adapters; no live gameplay or rendered-client tests."
+}
