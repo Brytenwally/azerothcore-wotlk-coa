@@ -1,12 +1,12 @@
 bool PreparePrestigeReset(Player* player, std::uint32_t& specialization, std::string& error)
 {
     auto const* state = player ? player->CustomData.Get<State>(StateKey) : nullptr;
-    if (!player || !CanChange(player, state) || player->GetActiveSpec() >= player->GetSpecsCount())
+    if (!player || !CanChange(player, state) || ActivePreset(player) >= PresetCount(player))
     {
         error = "Your active enchant specialization is not unlocked or ready for Prestige.";
         return false;
     }
-    specialization = player->GetActiveSpec();
+    specialization = ActivePreset(player);
     return true;
 }
 

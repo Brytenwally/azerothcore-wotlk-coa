@@ -5,7 +5,7 @@
   },
   "src/server/coa/Area52PrestigeEnchantReset.inc": {
     "before_normalized_sha256": null,
-    "after_normalized_sha256": "2b23b30bbb85ee3cb7ed499f369f116f72a934250b826c4b20641b487243dd40"
+    "after_normalized_sha256": "627b15017c27b66893374a3a7e268b2ee8a84c0d20adbf60b3a7e3d4960040ce"
   },
   "src/server/coa/Area52PrestigeReset.inc": {
     "before_normalized_sha256": null,
@@ -16,8 +16,8 @@
     "after_normalized_sha256": "c56b61d5636c4f148087ecbb90a7086bb8d68c81b70181e16fd3ffe6715a1a7b"
   },
   "src/server/coa/AscensionMysticEnchant.cpp": {
-    "before_normalized_sha256": "e69acbd89eed546e36a4e3a0bd3dc17068685c1b7245cdd2affc6396a4de8d59",
-    "after_normalized_sha256": "88588144195d23004086dd81f07377114a2fcceb53a5c50e9a41cd8c88256d58"
+    "before_normalized_sha256": "5c68cb49f81f75e9e0da33ad923a864977180acc75465b968f41936a496be1a1",
+    "after_normalized_sha256": "a91a5d3605dad304e2132fb4ec1395f7c8009a988f93438d2ea84e19891f3693"
   },
   "src/server/coa/AscensionMysticEnchant.h": {
     "before_normalized_sha256": "38bd0f8313ed7f2081e44127f9ed056bd105b66909b5014a96f5cdc0b2676969",

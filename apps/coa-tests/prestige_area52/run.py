@@ -14,18 +14,32 @@ def main():
         integration = ROOT / 'modules/mod-coa-prestige/integrations/area52'
         manifest = json.loads((integration / 'baseline.json').read_text())
         digest = lambda text: hashlib.sha256(text.encode()).hexdigest()
+        prerequisite = os.environ.get('AREA52_PRESTIGE_PREREQUISITE')
+        prerequisite_manifest = {}
+        if prerequisite:
+            prerequisite = Path(prerequisite)
+            prerequisite_manifest = json.loads((prerequisite / 'baseline.json').read_text())
+            for name, hashes in prerequisite_manifest.items():
+                assert hashes['after_normalized_sha256'] == manifest[name]['before_normalized_sha256'], name
         with tempfile.TemporaryDirectory() as directory:
             destination = Path(directory)
             for name, hashes in manifest.items():
                 path = Path(baseline) / name
                 if hashes['before_normalized_sha256'] is not None:
                     text = path.read_text()
-                    assert digest(text) == hashes['before_normalized_sha256'], name
+                    expected = prerequisite_manifest.get(name, hashes)['before_normalized_sha256']
+                    assert digest(text) == expected, name
                     target = destination / name
                     target.parent.mkdir(parents=True, exist_ok=True)
                     target.write_text(text)
                 else:
                     assert not path.exists(), name
+            if prerequisite:
+                subprocess.run(['git', 'apply', '--check', str(prerequisite / 'repair.patch')],
+                               cwd=destination, check=True)
+                subprocess.run(['git', 'apply', str(prerequisite / 'repair.patch')], cwd=destination, check=True)
+                for name, hashes in prerequisite_manifest.items():
+                    assert digest((destination / name).read_text()) == hashes['after_normalized_sha256'], name
             subprocess.run(['git', 'apply', '--check', str(integration / 'prestige.patch')],
                            cwd=destination, check=True)
             subprocess.run(['git', 'apply', str(integration / 'prestige.patch')], cwd=destination, check=True)
@@ -39,6 +53,11 @@ def main():
                     assert not path.exists(), name
                 else:
                     assert digest(path.read_text()) == hashes['before_normalized_sha256'], name
+            if prerequisite:
+                subprocess.run(['git', 'apply', '--reverse', str(prerequisite / 'repair.patch')],
+                               cwd=destination, check=True)
+                for name, hashes in prerequisite_manifest.items():
+                    assert digest((destination / name).read_text()) == hashes['before_normalized_sha256'], name
     code = r'''#include "AscensionPrestigeReset.h"
 #include <array>
 #include <cassert>
@@ -116,6 +135,8 @@ bool CanChange(Player* p, State const* s)
     return p->applies && p->world && p->alive && !p->combat && !p->battleground && !p->arena &&
         !p->casting && s && s->Loaded && !s->Busy;
 }
+unsigned ActivePreset(Player const* p) { return p->native; }
+unsigned PresetCount(Player const* p) { return p->specs; }
 std::string Setting(Player const* p) { return "core.freepick.mystic." + std::to_string(p->native); }
 std::array<unsigned, 17> ReadSlots(Player const* p)
 {
@@ -188,9 +209,12 @@ int main()
 {
     using namespace AscensionFreePick;
     for (unsigned build = 0; build < 20; ++build)
-        for (unsigned enchant = 0; enchant < 2; ++enchant)
+        for (unsigned enchant = 0; enchant < 20; ++enchant)
         {
             Player p = Make(build, enchant);
+            p.specs = 20;
+            for (unsigned i = 2; i < 20; ++i)
+                p.settings["core.freepick.mystic." + std::to_string(i)] = {{400+i}};
             auto const before = p.settings;
             auto const collection = p.collection;
             auto const unlocks = p.spells;
@@ -257,7 +281,7 @@ int main()
                         '-I' + str(ROOT / 'modules/mod-coa-prestige/integrations/area52'),
                         str(cpp), '-o', str(executable)], check=True)
         subprocess.run([str(executable)], check=True)
-    print('Area 52 Prestige: 40 build/enchant pairs, repeated resets and 13 rejection paths passed')
+    print('Area 52 Prestige: 400 build/enchant pairs, repeated resets and 13 rejection paths passed')
 
 
 if __name__ == '__main__':
