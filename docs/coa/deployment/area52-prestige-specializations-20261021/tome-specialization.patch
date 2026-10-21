@@ -1,0 +1,110 @@
+--- a/src/server/coa/AscensionMysticEnchant.cpp
++++ b/src/server/coa/AscensionMysticEnchant.cpp
+@@ -95,9 +95,29 @@
+     return Active && AscensionFreePick::Applies(player);
+ }
+ 
++constexpr char ActivePresetSetting[] = "core.area52.mystic.active";
++
++std::uint32_t PresetCount(Player const* player)
++{
++    std::uint32_t count = std::max<std::uint32_t>(1, player->GetSpecsCount());
++    for (std::uint32_t i = 0; i < AscensionFreePick::SpecializationSpells.size(); ++i)
++    {
++        if (!player->HasSpell(AscensionFreePick::SpecializationSpells[i]))
++            break;
++        count = std::max(count, i + 1);
++    }
++    return count;
++}
++
++std::uint32_t ActivePreset(Player const* player)
++{
++    auto const* stored = player->FindPlayerSettings(ActivePresetSetting);
++    return stored && !stored->empty() ? (*stored)[0].value : player->GetActiveSpec();
++}
++
+ std::string Setting(Player const* player)
+ {
+-    return "core.freepick.mystic." + std::to_string(player->GetActiveSpec());
++    return "core.freepick.mystic." + std::to_string(ActivePreset(player));
+ }
+ 
+ Slots ReadSlots(Player const* player)
+@@ -121,6 +141,24 @@
+     return false;
+ }
+ 
++void SendPresets(Player* player)
++{
++    auto const count = PresetCount(player);
++    WorldPacket presets(0x5FF, 4 + count * 72);
++    presets << count;
++    for (std::uint32_t index = 0; index < count; ++index)
++    {
++        auto const* stored = player->FindPlayerSettings("core.freepick.mystic." + std::to_string(index));
++        presets << std::uint32_t(17);
++        for (std::uint32_t slot = 0; slot < 17; ++slot)
++            presets << (stored && slot < stored->size() ? (*stored)[slot].value : std::uint32_t(0));
++    }
++    player->GetSession()->SendPacket(&presets);
++    WorldPacket active(0x600, 4);
++    active << ActivePreset(player);
++    player->GetSession()->SendPacket(&active);
++}
++
+ void SendSlots(Player* player)
+ {
+     WorldPacket packet(0x5FD, 72);
+@@ -128,6 +166,7 @@
+     for (auto spell : ReadSlots(player))
+         packet << spell;
+     player->GetSession()->SendPacket(&packet);
++    SendPresets(player);
+ }
+ 
+ void SendKnown(Player* player, State const& state)
+@@ -337,6 +376,25 @@
+         return false;
+     WorldPacket packet(incoming);
+     auto const opcode = packet.GetOpcode();
++    if (opcode == 0x60C)
++    {
++        auto const* state = player->CustomData.Get<State>(StateKey);
++        bool success = false;
++        if (packet.size() == 4 && CanChange(player, state))
++        {
++            auto const preset = packet.read<std::uint32_t>(0);
++            if (preset < PresetCount(player))
++            {
++                player->UpdatePlayerSetting(ActivePresetSetting, 0, preset);
++                Synchronize(player);
++                player->SaveToDB(false, false);
++                success = true;
++            }
++        }
++        SendSlots(player);
++        SendResult(player, 0x60D, success ? "RE_PRESET_SET_ACTIVE_OK" : "RE_PRESET_SET_ACTIVE_UNKNOWN");
++        return true;
++    }
+     if (opcode == 0x617)
+     {
+         bool success = false;
+@@ -811,6 +869,9 @@
+     {
+         if (spell == 33831)
+             Synchronize(player);
++        if (Applies(player) && std::find(AscensionFreePick::SpecializationSpells.begin(),
++            AscensionFreePick::SpecializationSpells.end(), spell) != AscensionFreePick::SpecializationSpells.end())
++            SendPresets(player);
+     }
+     void OnPlayerForgotSpell(Player* player, uint32 spell) override
+     {
+@@ -1240,6 +1301,7 @@
+     RegisterSpellScript(spell_area52_flame_throwing);
+     RegisterSpellScript(spell_area52_shared_might);
+     using namespace AscensionMysticEnchant;
++    AscensionCompatOpcodes::Claim(0x60C, Handle);
+     AscensionCompatOpcodes::Claim(0x60F, Handle);
+     AscensionCompatOpcodes::Claim(0x617, Handle);
+     RegisterAscensionClientConfig(ClientConfig);

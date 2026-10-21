@@ -1,0 +1,11 @@
+{
+  "package": "area52-prestige-specializations-20261021",
+  "binary_sha256": "591e25267f4f0200107914383213e5116a18138f3cf1c28f42d3456dbf8555f0",
+  "baseline_binary_sha256": "1835d899c021790126230bc814829d162dfeb49ca07e3267f668e63b96b8c494",
+  "reports": {
+    "combined": "fcb376bfc71c167bf4cb501f565c5a8400ce17954649ef7c22c20553b91a5154",
+    "reconciled": "d8b74acf894c0402c6b87c27cbd64a911381300d454176c96f12bd4b09154e97"
+  },
+  "status_changes": false,
+  "limits": "Native build/unit and extracted native regressions with engine/persistence adapters; no gameplay."
+}

@@ -1,0 +1,11 @@
+--- a/src/server/game/Entities/Player/Player.cpp
++++ b/src/server/game/Entities/Player/Player.cpp
+@@ -3657,7 +3657,7 @@
+     itr->second->specMask = (((uint8)itr->second->specMask) & ~removeSpecMask); // pussywizard: update specMask in map
+ 
+     // pussywizard: some more conditions needed for spells like pyroblast (shouldn't be fully removed when not available in any spec, should stay in db with specMask = 0)
+-    if (itr->second->specMask == 0 && (AscensionFreePick::IsTalentRank(this, spell_id) ||
++    if (itr->second->specMask == 0 && (AscensionFreePick::Applies(this) ||
+         (GetTalentSpellCost(firstRankSpellId) == 0 && !sSpellMgr->IsAdditionalTalentSpell(firstRankSpellId))))
+     {
+         if (itr->second->State == PLAYERSPELL_NEW || itr->second->State == PLAYERSPELL_TEMPORARY)
