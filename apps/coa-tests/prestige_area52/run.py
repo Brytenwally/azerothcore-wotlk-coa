@@ -94,7 +94,7 @@ public:
     Custom CustomData;
     bool applies = true, world = true, alive = true, combat = false, battleground = false;
     bool arena = false, teleport = false, buildReady = true, casting = false, applyFailure = false;
-    unsigned native = 0, specs = 2, notifications = 0, sync = 0;
+    unsigned native = 0, specs = 2, preset = 0, unlockedPresets = 2, notifications = 0, sync = 0;
     std::map<std::string, std::vector<Field>> settings;
     std::set<unsigned> spells, collection{111, 222, 333};
     std::map<unsigned, Learned> history{{500, {0, 0}}, {501, {0, 0}}, {502, {2, 0}}, {503, {0, 0}}};
@@ -135,9 +135,9 @@ bool CanChange(Player* p, State const* s)
     return p->applies && p->world && p->alive && !p->combat && !p->battleground && !p->arena &&
         !p->casting && s && s->Loaded && !s->Busy;
 }
-unsigned ActivePreset(Player const* p) { return p->native; }
-unsigned PresetCount(Player const* p) { return p->specs; }
-std::string Setting(Player const* p) { return "core.freepick.mystic." + std::to_string(p->native); }
+unsigned ActivePreset(Player const* p) { return p->preset; }
+unsigned PresetCount(Player const* p) { return p->unlockedPresets; }
+std::string Setting(Player const* p) { return "core.freepick.mystic." + std::to_string(p->preset); }
 std::array<unsigned, 17> ReadSlots(Player const* p)
 {
     std::array<unsigned, 17> slots{};
@@ -190,7 +190,8 @@ void SendArea52Specialization(Player* p) { ++p->notifications; }
 Player Make(unsigned build, unsigned enchant)
 {
     Player p;
-    p.native = enchant;
+    p.native = (enchant + 1) % 2;
+    p.preset = enchant;
     p.settings["core.area52.spec.active"] = {{build}};
     p.settings["selected"] = {{1}, {2}, {3}};
     p.settings["core.area52.active_build"] = {{700}, {0}, {1}, {1}};
@@ -212,7 +213,7 @@ int main()
         for (unsigned enchant = 0; enchant < 20; ++enchant)
         {
             Player p = Make(build, enchant);
-            p.specs = 20;
+            p.unlockedPresets = 20;
             for (unsigned i = 2; i < 20; ++i)
                 p.settings["core.freepick.mystic." + std::to_string(i)] = {{400+i}};
             auto const before = p.settings;
@@ -251,13 +252,13 @@ int main()
         {
             case 0: p.applies = false; break;
             case 1: p.spells.erase(103); break;
-            case 2: p.specs = 1; break;
+            case 2: p.unlockedPresets = 1; break;
             case 3: p.CustomData.state.Busy = true; break;
             case 4: p.CustomData.state.Loaded = false; break;
             case 5: p.buildReady = false; break;
             case 6: p.combat = true; break;
             case 7: p.casting = true; break;
-            case 8: p.native = 0; break;
+            case 8: p.preset = 0; break;
             case 9: p.settings[ActiveSlotSetting][0].value = 4; break;
             case 10: p.settings[ActiveSlotSetting][0].value = 99; break;
             case 11: p.applyFailure = true; break;
