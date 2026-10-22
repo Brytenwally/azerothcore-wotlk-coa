@@ -1,0 +1,6 @@
+{
+  "package": "area52-warchest-five-rewards-20261022",
+  "offline_report_sha256": "c3d2ba3973df30d068e456543981cb7395d925f70c465ba9fe3e988433e50b9c",
+  "scope": "Remove one reward row; five remaining rows preserved; actual isolated MySQL apply/rollback/drift checks; no gameplay",
+  "binary_unchanged": "8495672b783caafcfee25dc2f980af2cd4e8a28ca3c06454ef0833ada322febf"
+}
