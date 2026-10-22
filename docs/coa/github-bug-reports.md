@@ -109,6 +109,34 @@ destination, assignees, labels or issue-management actions. The service neutrali
 `@` mentions before publishing. Both HTTP clients refuse redirects. The intake key
 is sent only to Railway; only Railway sends the GitHub credential to GitHub.
 
+## Delivering straight to your own repository
+
+`apps/coa-bugreport/github_relay.py` sends the same spool to GitHub's issue API with your own token
+instead of the Railway service. It reuses `relay.py`'s journal, lock, status files and retry rules, so
+everything in "Delivery and recovery" below applies to it unchanged. The target defaults to
+`Brytenwally/azerothcore-wotlk-coa`; `--repository owner/name` or `COA_BUGREPORT_REPOSITORY` picks
+another.
+
+1. Enable Issues on the target repository (Settings → General → Features). Forks start with Issues off,
+   and GitHub then answers 410, which the relay records as `blocked`.
+2. Create a fine-grained personal access token limited to that one repository with **Issues: Read and
+   write** and nothing else. Issues are opened in the token owner's name.
+3. Configure the server as in steps 1-3 of the activation above. Railway (step 4) is not needed.
+4. Start the worker from the repository root with the token in the environment of the service account
+   only, never in a config file, the client or this repository:
+
+   ```powershell
+   $env:COA_BUGREPORT_GITHUB_TOKEN = "<token>"
+   python -B "apps/coa-bugreport/github_relay.py" --spool "<absolute-spool-directory>" --send
+   ```
+
+   Without `--send` it only validates the current `.report` files. Run either this worker or
+   `relay.py` against a spool, never both: they share the same lock.
+
+`@` mentions in titles and bodies are neutralized before posting. The worker sends only title and body:
+no labels, assignees or other issue actions. GitHub's own rate limits (`Retry-After`,
+`X-RateLimit-Remaining`) pause delivery like Railway's.
+
 ## Delivery and recovery
 
 The local relay uses a SQLite journal with committed intent before each POST, atomic
