@@ -142,7 +142,8 @@ class necromancer_casts : public AllSpellScript
             result = SPELL_FAILED_CASTER_AURASTATE;
         if (Cost(player, id) && int32(Capacity(player)) - Used(player) < Cost(player, id))
             result = SPELL_FAILED_ALREADY_HAVE_SUMMON;
-        if (Command(info) && (player->HasAura(500983) || Minions(player).empty()))
+        if (Command(info) && (player->HasAura(500983) ||
+            (!Named(info, 504868) && Minions(player).empty())))
             result = SPELL_FAILED_CANT_DO_THAT_RIGHT_NOW;
         if ((id == 500443 || id == 801938) && !player->HasAura(803782) && !Diseases(player, target))
             result = SPELL_FAILED_TARGET_AURASTATE;
@@ -263,8 +264,9 @@ class necromancer_casts : public AllSpellScript
                 for (auto const& [known, value] : player->GetSpellMap())
                     if (value->State != PLAYERSPELL_REMOVED)
                         if (SpellInfo const* summon = sSpellMgr->GetSpellInfo(known))
-                            if (summon->SpellFamilyName == 29 && summon->HasEffect(SPELL_EFFECT_SUMMON) &&
-                                !Raised(summon))
+                            if (summon->SpellFamilyName == 29 &&
+                                ((summon->HasEffect(SPELL_EFFECT_SUMMON) && !Raised(summon)) ||
+                                 Named(summon, 805040) || Named(summon, 504315)))
                                 animates.push_back(known);
                 for (uint32 animate : animates)
                     player->ModifySpellCooldown(animate, -std::abs(Amount(302910, 1)));
@@ -438,19 +440,29 @@ class spell_ascension_necromancer_ability : public SpellScript
     }
 };
 
-class spell_ascension_necromancer_transfer_life : public SpellScript
+class aura_ascension_necromancer_transfer_life : public AuraScript
 {
-    PrepareSpellScript(spell_ascension_necromancer_transfer_life);
-    void Filter(std::list<WorldObject*>& targets)
+    PrepareAuraScript(aura_ascension_necromancer_transfer_life);
+
+    bool Check(Unit* target)
     {
         Player* player = Owner(GetCaster());
-        targets.remove_if([player](WorldObject* object)
-                          { return !player || !object->ToUnit() || !IsMinion(player, object->ToUnit(), true); });
+        if (!player || !target || !target->IsAlive())
+            return false;
+        if (target == player)
+            return true;
+        if (!IsMinion(player, target, true))
+            return false;
+        auto count = GetAura()->GetApplicationMap().size();
+        if (GetAura()->GetApplicationOfTarget(player->GetGUID()))
+            --count;
+        return GetAura()->GetApplicationOfTarget(target->GetGUID()) ||
+            !GetSpellInfo()->MaxAffectedTargets || count < GetSpellInfo()->MaxAffectedTargets;
     }
+
     void Register() override
     {
-        OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_ascension_necromancer_transfer_life::Filter,
-                                                                  EFFECT_ALL, TARGET_UNIT_SRC_AREA_ALLY);
+        DoCheckAreaTarget += AuraCheckAreaTargetFn(aura_ascension_necromancer_transfer_life::Check);
     }
 };
 }
@@ -458,5 +470,5 @@ void AddAscensionNecromancerAbilityScripts()
 {
     new necromancer_casts();
     RegisterSpellScript(spell_ascension_necromancer_ability);
-    RegisterSpellScript(spell_ascension_necromancer_transfer_life);
+    RegisterSpellScript(aura_ascension_necromancer_transfer_life);
 }

@@ -31,7 +31,7 @@ bool Stationary(uint32 entry)
 }
 bool Ranged(uint32 entry)
 {
-    return entry == 50076 || entry == 50075;
+    return entry == 50076 || entry == 50075 || entry == 50323 || entry == 50177;
 }
 bool Follows(uint32 entry)
 {
@@ -82,6 +82,8 @@ uint32 ChampionAura(uint32 entry)
     {
     case 500482:
         return 805050;
+    case 500483:
+        return 808017;
     case 500484:
         return 807812;
     default:
@@ -100,9 +102,8 @@ uint32 AttackSpell(uint32 entry)
         return 801513;
     case 50076:
         return 801516;
-    case 50177:
-        return 801513;
-    case 500483:
+    case 50323:
+        return 822074;
     case 500484:
         return 801513;
     default:
@@ -317,6 +318,9 @@ void Order(Player* player, Unit* target, uint32 spell)
         target = ObjectAccessor::GetUnit(*player, player->GetTarget());
     if (!target || !player->IsValidAttackTarget(target) || player->HasAura(500983))
         return;
+    if (Creature* creature = target->ToCreature())
+        if (!creature->IsDamageEnoughForLootingAndReward())
+            creature->LowerPlayerDamageReq(creature->GetHealth(), true, player->GetLevel());
     State(player).focus = target->GetGUID();
     for (Creature* minion : Minions(player))
     {
@@ -473,7 +477,8 @@ class npc_ascension_necromancer : public ScriptedAI
             return;
         if (_command == 504316)
         {
-            target->GetMotionMaster()->MoveJump(me->GetPosition(), 24.0f, 8.0f);
+            if (!target->IsImmuneToForcedMovement())
+                target->GetMotionMaster()->MoveJump(me->GetPosition(), 24.0f, 8.0f);
             Cast(me, target, 800043);
             return;
         }
