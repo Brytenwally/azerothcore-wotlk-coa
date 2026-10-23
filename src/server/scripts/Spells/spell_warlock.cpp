@@ -16,6 +16,8 @@
  */
 
 #include "AreaDefines.h"
+#include "../../coa/AscensionFreePick.h"
+#include "../../coa/Area52LifeTap.h"
 #include "Pet.h"
 #include "PetDefines.h"
 #include "Player.h"
@@ -820,7 +822,8 @@ class spell_warl_life_tap : public SpellScript
 
     bool Validate(SpellInfo const* /*spell*/) override
     {
-        return ValidateSpellInfo({ SPELL_WARLOCK_LIFE_TAP_ENERGIZE, SPELL_WARLOCK_LIFE_TAP_ENERGIZE_2 });
+        return ValidateSpellInfo({ SPELL_WARLOCK_LIFE_TAP_ENERGIZE, SPELL_WARLOCK_LIFE_TAP_ENERGIZE_2 }) &&
+            (!AscensionFreePick::Enabled() || ValidateSpellInfo({ 85059 }));
     }
 
     void HandleDummy(SpellEffIndex /*effIndex*/)
@@ -828,8 +831,11 @@ class spell_warl_life_tap : public SpellScript
         Player* caster = GetCaster()->ToPlayer();
         if (Unit* target = GetHitUnit())
         {
-            int32 spellEffect = GetEffectValue();
-            int32 mana = int32(spellEffect + (caster->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_SHADOW) * 0.5f));
+            bool const area52 = GetSpellInfo()->Id == 1454 && AscensionFreePick::Applies(caster);
+            int32 spellEffect = area52 ? Area52LifeTap::Cost(caster->GetMaxHealth(), caster->GetMaxPower(POWER_MANA)) : GetEffectValue();
+            if (area52 && !Area52LifeTap::CanPay(caster->GetHealth(), spellEffect))
+                return;
+            int32 mana = area52 ? spellEffect : int32(spellEffect + (caster->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_SHADOW) * 0.5f));
 
             // Shouldn't Appear in Combat Log
             target->ModifyHealth(-spellEffect);
@@ -838,7 +844,9 @@ class spell_warl_life_tap : public SpellScript
             if (AuraEffect const* aurEff = caster->GetDummyAuraEffect(SPELLFAMILY_WARLOCK, WARLOCK_ICON_ID_IMPROVED_LIFE_TAP, 0))
                 AddPct(mana, aurEff->GetAmount());
 
-            caster->CastCustomSpell(target, SPELL_WARLOCK_LIFE_TAP_ENERGIZE, &mana, nullptr, nullptr, false);
+            caster->CastCustomSpell(target, SPELL_WARLOCK_LIFE_TAP_ENERGIZE, &mana, nullptr, nullptr, area52);
+            if (area52)
+                caster->CastSpell(caster, 85059, true);
 
             // Mana Feed
             int32 manaFeedVal = 0;
@@ -847,7 +855,10 @@ class spell_warl_life_tap : public SpellScript
 
             if (manaFeedVal > 0)
             {
-                ApplyPct(manaFeedVal, mana);
+                if (area52)
+                    manaFeedVal = CalculatePct(mana, manaFeedVal);
+                else
+                    ApplyPct(manaFeedVal, mana);
                 caster->CastCustomSpell(caster, SPELL_WARLOCK_LIFE_TAP_ENERGIZE_2, &manaFeedVal, nullptr, nullptr, true, nullptr);
             }
         }
@@ -855,6 +866,10 @@ class spell_warl_life_tap : public SpellScript
 
     SpellCastResult CheckCast()
     {
+        if (GetSpellInfo()->Id == 1454 && AscensionFreePick::Applies(GetCaster()->ToPlayer()))
+            return Area52LifeTap::CanPay(GetCaster()->GetHealth(),
+                Area52LifeTap::Cost(GetCaster()->GetMaxHealth(), GetCaster()->GetMaxPower(POWER_MANA)))
+                ? SPELL_CAST_OK : SPELL_FAILED_FIZZLE;
         if ((int32(GetCaster()->GetHealth()) > int32(GetSpellInfo()->Effects[EFFECT_0].CalcValue())))
             return SPELL_CAST_OK;
         return SPELL_FAILED_FIZZLE;

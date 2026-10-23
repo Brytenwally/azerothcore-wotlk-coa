@@ -16,6 +16,7 @@
  */
 
 #include "Cell.h"
+#include "../../coa/AscensionFreePick.h"
 #include "CellImpl.h"
 #include "GridNotifiers.h"
 #include "Pet.h"
@@ -146,9 +147,18 @@ class spell_hun_wyvern_sting : public AuraScript
             caster->CastSpell(GetTarget(), sSpellMgr->GetSpellWithRank(SPELL_HUNTER_WYVERN_STING_DOT, GetSpellInfo()->GetRank()), true);
     }
 
+    void HandleArea52Expire(AuraEffect const* aurEff, AuraEffectHandleModes /*mode*/)
+    {
+        Unit* caster = GetCaster();
+        if (GetId() == 19386 && caster && AscensionFreePick::Applies(caster->ToPlayer()) &&
+            GetTargetApplication()->GetRemoveMode() == AURA_REMOVE_BY_EXPIRE)
+            caster->CastSpell(GetTarget(), 24131, true, nullptr, aurEff);
+    }
+
     void Register() override
     {
         AfterEffectRemove += AuraEffectRemoveFn(spell_hun_wyvern_sting::HandleEffectRemove, EFFECT_0, SPELL_AURA_MOD_STUN, AURA_EFFECT_HANDLE_REAL);
+        AfterEffectRemove += AuraEffectRemoveFn(spell_hun_wyvern_sting::HandleArea52Expire, EFFECT_0, SPELL_AURA_MOD_DAMAGE_PERCENT_DONE, AURA_EFFECT_HANDLE_REAL);
     }
 };
 

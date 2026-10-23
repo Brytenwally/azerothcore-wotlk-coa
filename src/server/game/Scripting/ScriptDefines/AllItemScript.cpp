@@ -106,6 +106,15 @@ bool ScriptMgr::OnCastItemCombatSpell(Player* player, Unit* victim, SpellInfo co
     ASSERT(spellInfo);
     ASSERT(item);
 
+    bool allowed = true;
+    ExecuteScript<AllItemScript>([&](AllItemScript* script)
+    {
+        if (!script->OnItemCombatSpell(player, victim, spellInfo, item))
+            allowed = false;
+    });
+    if (!allowed)
+        return false;
+
     auto tempScript = ScriptRegistry<ItemScript>::GetScriptById(item->GetScriptId());
     return tempScript ? tempScript->OnCastItemCombatSpell(player, victim, spellInfo, item) : true;
 }

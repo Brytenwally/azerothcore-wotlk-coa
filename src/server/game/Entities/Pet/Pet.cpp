@@ -16,6 +16,9 @@
  */
 
 #include "Pet.h"
+#include "../../../coa/AscensionFreePick.h"
+#include "../../../coa/AscensionPetOwnership.h"
+#include "../../../coa/AscensionTamingData.h"
 #include "AreaDefines.h"
 #include "ArenaSpectator.h"
 #include "CharmInfo.h"
@@ -213,6 +216,31 @@ std::pair<PetStable::PetInfo const*, PetSaveMode> Pet::GetLoadPetInfo(PetStable 
     return { nullptr, PET_SAVE_AS_DELETED };
 }
 
+namespace
+{
+bool CanRestoreArea52Pet(Player const* owner, PetStable::PetInfo const& pet)
+{
+    if (!AscensionFreePick::Applies(owner))
+        return true;
+
+    if (pet.Type == SUMMON_PET)
+        return AscensionPetOwnership::IsOwned(owner, pet.CreatedBySpellId);
+
+    if (pet.Type != HUNTER_PET)
+        return true;
+
+    CreatureTemplate const* creature = sObjectMgr->GetCreatureTemplate(pet.CreatureId);
+    if (!creature)
+        return false;
+
+    for (AscensionTaming::FamilyCall const& call : AscensionTaming::FAMILY_CALLS)
+        if (call.Kind == creature->type && owner->HasActiveSpell(call.SpellId))
+            return true;
+
+    return false;
+}
+}
+
 bool Pet::LoadPetFromDB(Player* owner, uint32 petEntry, uint32 petnumber, bool current, uint32 healthPct /*= 0*/, bool fullMana /*= false*/)
 {
     m_loading = true;
@@ -224,6 +252,12 @@ bool Pet::LoadPetFromDB(Player* owner, uint32 petEntry, uint32 petnumber, bool c
     PetStable::PetInfo const* petInfo = info.first;
     PetSaveMode slot = info.second;
     if (!petInfo)
+    {
+        m_loading = false;
+        return false;
+    }
+
+    if (!CanRestoreArea52Pet(owner, *petInfo))
     {
         m_loading = false;
         return false;
@@ -555,6 +589,7 @@ void Pet::SavePetToDB(PetSaveMode mode)
             stmt->SetData(0, ownerLowGUID);
             stmt->SetData(1, uint8(PET_SAVE_AS_CURRENT));
             stmt->SetData(2, uint8(PET_SAVE_LAST_STABLE_SLOT));
+            stmt->SetData(3, uint8(HUNTER_PET));
             trans->Append(stmt);
         }
 
@@ -1885,9 +1920,14 @@ bool Pet::learnSpell(uint32 spell_id)
 
     if (!m_loading)
     {
-        WorldPackets::Pet::PetLearnedSpell packet;
-        packet.SpellID = spell_id;
-        m_owner->SendDirectMessage(packet.Write());
+        // Ascension's pet families teach their scaling and passive auras as levelup spells; announce abilities only.
+        SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(spell_id);
+        if (!spellInfo || !spellInfo->IsPassive())
+        {
+            WorldPackets::Pet::PetLearnedSpell packet;
+            packet.SpellID = spell_id;
+            m_owner->SendDirectMessage(packet.Write());
+        }
         m_owner->PetSpellInitialize();
     }
 
@@ -2466,7 +2506,7 @@ Player* Pet::GetOwner() const
 
 float Pet::GetNativeObjectScale() const
 {
-    uint8 ctFamily = GetCreatureTemplate()->family;
+    uint32 ctFamily = GetCreatureTemplate()->family;
 
     CreatureFamilyEntry const* creatureFamily = sCreatureFamilyStore.LookupEntry(ctFamily);
     if (creatureFamily && creatureFamily->minScale > 0.0f && getPetType() & HUNTER_PET)

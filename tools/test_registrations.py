@@ -11,6 +11,26 @@ class RegistrationTests(unittest.TestCase):
             'Example.cpp': 'void AddSC_Example()\n{\n    new ExampleScript();\n}\n',
         }
 
+    def test_area52_entry_points_obey_the_same_constraints(self):
+        sources = {path: text.replace('AddSC_Example', 'AddArea52ExampleScripts')
+                   for path, text in self.sources.items()}
+        self.assertEqual(inspect(sources)['status'], 'passed')
+        for mutation in ('missing_call', 'missing_definition', 'duplicate_call', 'duplicate_definition'):
+            with self.subTest(mutation=mutation):
+                changed = dict(sources)
+                if mutation == 'missing_call':
+                    changed['CoAScriptLoader.cpp'] = changed['CoAScriptLoader.cpp'].replace(
+                        '    AddArea52ExampleScripts();', '')
+                elif mutation == 'missing_definition':
+                    del changed['Example.cpp']
+                elif mutation == 'duplicate_call':
+                    changed['CoAScriptLoader.cpp'] = changed['CoAScriptLoader.cpp'].replace(
+                        '    AddArea52ExampleScripts();',
+                        '    AddArea52ExampleScripts(); AddArea52ExampleScripts();')
+                else:
+                    changed['Duplicate.cpp'] = changed['Example.cpp']
+                self.assertEqual(inspect(changed)['status'], 'failed')
+
     def test_valid_flat_loader(self):
         self.assertEqual(inspect(self.sources)['status'], 'passed')
 

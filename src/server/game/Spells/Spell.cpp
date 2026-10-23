@@ -15,7 +15,11 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "../../coa/AscensionFreePick.h"
+#include "../../coa/AscensionPowerSurge.h"
 #include "Spell.h"
+#include "../../coa/AscensionWhiteWalkerSupportRules.h"
+#include "DungeonHealth.h"
 #include "ArenaSpectator.h"
 #include "AscensionPooledVitality.h"
 #include "BattlefieldMgr.h"
@@ -2863,6 +2867,10 @@ void Spell::DoAllEffectOnTarget(TargetInfo* target)
             else
                 caster->CalculateSpellDamageTaken(&damageInfo, m_damage, m_spellInfo, m_attackType,  target->crit);
 
+            damageInfo.damage = AscensionWhiteWalkerSupport::MaelstromPvpDamage(damageInfo.damage,
+                uint32(GetScriptValue(AscensionWhiteWalkerSupport::MaelstromWeapon)),
+                unitTarget->IsCharmedOwnedByPlayerOrPlayer());
+
             // xinef: override miss info after absorb / block calculations
             if (missInfo == SPELL_MISS_NONE && damageInfo.damage == 0)
             {
@@ -4093,16 +4101,21 @@ void Spell::_cast(bool skipCheck)
 
         if (resetAttackTimers)
         {
-            m_caster->resetAttackTimer(BASE_ATTACK);
-
-            if (m_caster->HasOffhandWeaponForAttack())
+            if (!m_caster->HasAura(812577))
             {
-                m_caster->resetAttackTimer(OFF_ATTACK);
+                m_caster->resetAttackTimer(BASE_ATTACK);
+
+                if (m_caster->HasOffhandWeaponForAttack())
+                    m_caster->resetAttackTimer(OFF_ATTACK);
             }
 
             m_caster->resetAttackTimer(RANGED_ATTACK);
         }
     }
+
+    if (Player* player = m_caster->ToPlayer(); AscensionFreePick::Applies(player) &&
+        player->MatchesSpellInteraction(m_spellInfo->Id, 12472))
+        player->CastSpell(player, 854748, true);
 
     CallScriptAfterCastHandlers();
 
@@ -4319,7 +4332,10 @@ void Spell::_handle_finish_phase()
     // Take for real after all targets are processed
     if (m_needComboPoints)
     {
-        m_caster->ClearComboPoints();
+        if (m_caster->HasPlayerComboPoints() && m_spellInfo->GetFirstRankSpell()->Id == 7384)
+            m_caster->ClearTargetComboPoints();
+        else
+            m_caster->ClearComboPoints();
     }
 
     // Real add combo points from effects
@@ -4534,6 +4550,7 @@ void Spell::finish(bool ok)
 
     if (m_spellState == SPELL_STATE_FINISHED)
         return;
+    AscensionPowerSurge::Finish(m_caster, m_spellInfo->Id, ok);
     m_spellState = SPELL_STATE_FINISHED;
 
     // FindMap() check: pending spell events are destroyed after the caster has left the map,
@@ -5010,7 +5027,7 @@ void Spell::WriteAmmoToPacket(WorldPacket* data)
                         ammoInventoryType = pProto->InventoryType;
                     }
                 }
-                else if (m_caster->HasAura(46699) || (IsAscensionClass(m_caster->getClass()) &&
+                else if (m_caster->HasAura(46699) || (!UsesProjectileAmmo(m_caster->getClass()) &&
                     (pItem->GetTemplate()->SubClass == ITEM_SUBCLASS_WEAPON_BOW ||
                      pItem->GetTemplate()->SubClass == ITEM_SUBCLASS_WEAPON_GUN ||
                      pItem->GetTemplate()->SubClass == ITEM_SUBCLASS_WEAPON_CROSSBOW))) // Requires No Ammo
@@ -5449,7 +5466,7 @@ void Spell::TakePower()
 
 void Spell::TakeAmmo()
 {
-    if (m_caster->IsPlayer() && IsAscensionClass(m_caster->getClass()))
+    if (m_caster->IsPlayer() && !UsesProjectileAmmo(m_caster->getClass()))
         return;
 
     if (m_attackType == RANGED_ATTACK && m_caster->IsPlayer() && !m_spellInfo->HasAttribute(SPELL_ATTR6_DO_NOT_CONSUME_RESOURCES))
@@ -5977,7 +5994,14 @@ SpellCastResult Spell::CheckCast(bool strict, uint32* /*param1*/, uint32* /*para
         {
             // Must be behind the target
             if (m_spellInfo->HasAttribute(SPELL_ATTR0_CU_REQ_CASTER_BEHIND_TARGET) && target->HasInArc(static_cast<float>(M_PI), m_caster))
-                return SPELL_FAILED_NOT_BEHIND;
+            {
+                uint32 const firstRank = m_spellInfo->GetFirstRankSpell()->Id;
+                bool const area52PvePositioning = (firstRank == 53 || firstRank == 703) &&
+                    AscensionFreePick::Applies(m_caster->ToPlayer()) &&
+                    !target->GetCharmerOrOwnerPlayerOrPlayerItself();
+                if (!area52PvePositioning)
+                    return SPELL_FAILED_NOT_BEHIND;
+            }
 
             // Target must be facing you
             if (m_spellInfo->HasAttribute(SPELL_ATTR0_CU_REQ_TARGET_FACING_CASTER) && !target->HasInArc(static_cast<float>(M_PI), m_caster))
@@ -6785,7 +6809,9 @@ SpellCastResult Spell::CheckCast(bool strict, uint32* /*param1*/, uint32* /*para
                     InstanceTemplate const* it = sObjectMgr->GetInstanceTemplate(m_caster->GetMapId());
                     if (it)
                         allowMount = it->AllowMount;
-                    if (m_caster->IsPlayer() && !allowMount && !m_spellInfo->AreaGroupId)
+                    // Mechsuit is a combat form; its mount helper carries the suit's model and form.
+                    bool tinkerMechsuit = m_spellInfo->Id == 803451 && m_caster->getClass() == CLASS_TINKER;
+                    if (m_caster->IsPlayer() && !allowMount && !m_spellInfo->AreaGroupId && !tinkerMechsuit)
                         return SPELL_FAILED_NO_MOUNTS_ALLOWED;
 
                     if (m_caster->IsInDisallowedMountForm())
@@ -6905,7 +6931,9 @@ SpellCastResult Spell::CheckCast(bool strict, uint32* /*param1*/, uint32* /*para
     {
         if (m_spellInfo->NeedsExplicitUnitTarget())
         {
-            if (!m_caster->GetComboPoints(m_targets.GetUnitTarget()))
+            if (!(m_caster->HasPlayerComboPoints() && m_spellInfo->GetFirstRankSpell()->Id == 7384 ?
+                m_caster->GetTargetComboPoints(m_targets.GetUnitTarget()) :
+                m_caster->GetComboPoints(m_targets.GetUnitTarget())))
             {
                 return SPELL_FAILED_NO_COMBO_POINTS;
             }
@@ -7275,6 +7303,13 @@ SpellCastResult Spell::CheckPower()
     // item cast not used power
     if (m_CastItem)
         return SPELL_CAST_OK;
+
+    // CoA: dungeon creatures on Heroic/Mythic never run out of power (Heroic/Mythic templates often have no mana pool,
+    // e.g. Incendius and Magmus failed every spell with SPELL_FAILED_NO_POWER)
+    if (Creature const* creature = m_caster->ToCreature())
+        if (!creature->IsCharmedOwnedByPlayerOrPlayer() && DungeonHealth::IsVanillaDungeon(creature->GetMapId())
+            && creature->GetMap()->GetDifficulty() != DUNGEON_DIFFICULTY_NORMAL)
+            return SPELL_CAST_OK;
 
     //While .cheat power is enabled dont check if we need power to cast the spell
     if (m_caster->IsPlayer())
@@ -7797,8 +7832,8 @@ SpellCastResult Spell::CheckItems(uint32* param1, uint32* param2)
                         return SPELL_FAILED_EQUIPPED_ITEM;
 
                     // Keep the real ranged-weapon/broken-item checks above.
-                    // Custom classes do not require or consume projectile stacks.
-                    if (IsAscensionClass(m_caster->getClass()))
+                    // Custom classes and Hero do not require or consume projectile stacks.
+                    if (!UsesProjectileAmmo(m_caster->getClass()))
                         break;
 
                     switch (pItem->GetTemplate()->SubClass)
@@ -7921,8 +7956,8 @@ SpellCastResult Spell::CheckItems(uint32* param1, uint32* param2)
 
 SpellCastResult Spell::CheckSpellFocus()
 {
-    // check spell focus object
-    if (m_spellInfo->RequiresSpellFocus)
+    // check spell focus object, unless a script answers the focus itself
+    if (m_spellInfo->RequiresSpellFocus && !sScriptMgr->OnSpellFocusAnswered(this))
     {
         CellCoord p(Acore::ComputeCellCoord(m_caster->GetPositionX(), m_caster->GetPositionY()));
         Cell cell(p);

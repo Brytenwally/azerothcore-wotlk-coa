@@ -855,6 +855,31 @@ class spell_rog_stealth_buff_tracker : public AuraScript
     }
 };
 
+class spell_rog_remorseless_attacks : public AuraScript
+{
+    PrepareAuraScript(spell_rog_remorseless_attacks);
+
+    void AfterKill(AuraEffect const*, ProcEventInfo&)
+    {
+        if (GetId() != 14148)
+            return;
+        Unit* owner = GetTarget();
+        if (AuraEffect const* snd = owner->GetAuraEffect(SPELL_AURA_MOD_MELEE_HASTE, SPELLFAMILY_ROGUE,
+            0x40000, 0, 0, owner->GetGUID()))
+        {
+            Aura* aura = snd->GetBase();
+            aura->SetDuration(snd->GetSpellInfo()->GetMaxDuration(), true);
+            aura->SetMaxDuration(aura->GetDuration());
+        }
+    }
+
+    void Register() override
+    {
+        AfterEffectProc += AuraEffectProcFn(spell_rog_remorseless_attacks::AfterKill,
+            EFFECT_0, SPELL_AURA_PROC_TRIGGER_SPELL);
+    }
+};
+
 // -51664 - Cut to the Chase
 class spell_rog_cut_to_the_chase : public AuraScript
 {
@@ -1187,6 +1212,7 @@ void AddSC_rogue_spell_scripts()
     RegisterSpellScriptWithArgs(spell_rog_stealth_buff_tracker<SPELL_ROGUE_MASTER_OF_SUBTLETY_DAMAGE>, "spell_rog_master_of_subtlety");
     RegisterSpellScriptWithArgs(spell_rog_stealth_buff_tracker<SPELL_ROGUE_OVERKILL_TRIGGERED>, "spell_rog_overkill");
     RegisterSpellScript(spell_rog_cut_to_the_chase);
+    RegisterSpellScript(spell_rog_remorseless_attacks);
     RegisterSpellScript(spell_rog_deadly_brew);
     RegisterSpellScript(spell_rog_quick_recovery);
     RegisterSpellScript(spell_rog_setup);

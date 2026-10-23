@@ -16,23 +16,118 @@
  */
 
 #include "Trainer.h"
+#include "../../../coa/AscensionFreePick.h"
 #include "Creature.h"
+#include "DBCStores.h"
 #include "NPCPackets.h"
+#include "ObjectMgr.h"
 #include "Player.h"
+#include "ScriptMgr.h"
 #include "SpellInfo.h"
 #include "SpellMgr.h"
 #include "WorldSession.h"
 
+#include <limits>
+#include <optional>
+
 namespace
 {
-    bool RaisesProfessionAboveStep(SpellInfo const* spellInfo, uint16 maxStep)
+    // A Hero playing Wildcard (the game mode bit of AscensionWildcard::GAME_MODE_WILDCARD).
+    bool IsWildcardHero(Player const* player)
+    {
+        if (player->getClass() != CLASS_HERO)
+            return false;
+        std::optional<uint32> const mask = sScriptMgr->OnPlayerGetGameModeMask(player);
+        return mask && (*mask & 0x40);
+    }
+
+    // A Wildcard Hero's trainer: its rows are already the next rank of each ability it rolled, so neither its
+    // class nor the core's rank chains (which miss Ascension's added ranks) decide what it may learn.
+    constexpr uint32 WILDCARD_RANK_TRAINER_ID = std::numeric_limits<uint32>::max();
+    Trainer::WildcardRankRows WildcardRankRowsOf = nullptr;
+    Trainer::RankTrainerHero RankTrainerHeroOf = nullptr;
+
+    bool IsRankTrainerHero(Player const* player)
+    {
+        return AscensionFreePick::Applies(player) ||
+            (RankTrainerHeroOf ? RankTrainerHeroOf(player) : IsWildcardHero(player));
+    }
+
+    uint8 ProfessionExpansion(uint32 skill)
+    {
+        switch (skill)
+        {
+            case SKILL_JEWELCRAFTING:
+                return EXPANSION_THE_BURNING_CRUSADE;
+            case SKILL_INSCRIPTION:
+                return EXPANSION_WRATH_OF_THE_LICH_KING;
+            default:
+                return EXPANSION_CLASSIC;
+        }
+    }
+
+    bool TeachesProfessionBeyondExpansion(SpellInfo const* spellInfo, uint8 expansion)
     {
         for (SpellEffectInfo const& spellEffectInfo : spellInfo->GetEffects())
             if ((spellEffectInfo.IsEffect(SPELL_EFFECT_SKILL_STEP) || spellEffectInfo.IsEffect(SPELL_EFFECT_SKILL))
-                && IsProfessionSkill(spellEffectInfo.MiscValue) && spellEffectInfo.CalcValue() > maxStep)
+                && IsProfessionSkill(spellEffectInfo.MiscValue)
+                && (spellEffectInfo.CalcValue() > GetMaxProfessionSkillStep(expansion)
+                    || ProfessionExpansion(spellEffectInfo.MiscValue) > expansion))
                 return true;
 
         return false;
+    }
+
+    bool TeachesOneProfession(Trainer::Trainer const& trainer)
+    {
+        uint32 profession = 0;
+        for (Trainer::Spell const& spell : trainer.GetSpells())
+        {
+            if (!spell.ReqSkillLine)
+                continue;
+
+            if (profession && profession != spell.ReqSkillLine)
+                return false;
+
+            profession = spell.ReqSkillLine;
+        }
+
+        return profession != 0;
+    }
+
+    // A recipe belongs to the earliest expansion whose map holds a profession trainer that teaches it: Fel Iron
+    // patterns are taught in Outland and Northrend only, Thorium ones in Kalimdor and the Eastern Kingdoms too.
+    // Trainers teaching several professions (the Books of Artisans) are not evidence of anything.
+    // ponytail: built once from the spawns at first use, a `.reload` of trainers or creatures does not rebuild it
+    uint8 RecipeExpansion(uint32 spellId)
+    {
+        static std::unordered_map<uint32, uint8> const expansions = []
+        {
+            std::unordered_map<uint32, uint8> result;
+            for (auto const& [spawnId, data] : sObjectMgr->GetAllCreatureData())
+            {
+                Trainer::Trainer const* trainer = sObjectMgr->GetTrainer(data.id);
+                MapEntry const* map = sMapStore.LookupEntry(data.mapid);
+                if (!trainer || !map || !TeachesOneProfession(*trainer))
+                    continue;
+
+                uint8 const expansion = uint8(map->Expansion());
+                for (Trainer::Spell const& spell : trainer->GetSpells())
+                {
+                    if (!spell.ReqSkillLine)
+                        continue;
+
+                    auto [itr, inserted] = result.try_emplace(spell.SpellId, expansion);
+                    if (!inserted)
+                        itr->second = std::min(itr->second, expansion);
+                }
+            }
+
+            return result;
+        }();
+
+        auto itr = expansions.find(spellId);
+        return itr != expansions.end() ? itr->second : EXPANSION_CLASSIC;
     }
 }
 
@@ -59,14 +154,16 @@ namespace Trainer
         trainerList.Spells.reserve(_spells.size());
         for (Spell const& trainerSpell : _spells)
         {
-            if (!player->IsSpellFitByClassAndRace(trainerSpell.SpellId))
+            if (_trainerId != WILDCARD_RANK_TRAINER_ID &&
+                !player->IsSpellFitByClassAndRace(trainerSpell.SpellId))
                 continue;
 
             // The state is asked once and then decides both whether the row is written at all and what
             // the row reads: the same call that gates the purchase gates the window, so a trainer can
             // never leave out a spell it would have sold, or offer a row it would have refused.
             SpellState spellState = GetSpellState(player, &trainerSpell);
-            if (onlyTrainable && spellState == SpellState::Unavailable)
+            if (onlyTrainable && (_trainerId != WILDCARD_RANK_TRAINER_ID || !AscensionFreePick::Applies(player)) &&
+                spellState == SpellState::Unavailable)
                 continue;
 
             SpellInfo const* trainerSpellInfo = sSpellMgr->AssertSpellInfo(trainerSpell.SpellId);
@@ -116,6 +213,21 @@ namespace Trainer
             return;
         }
 
+        bool const companionLesson = AscensionFreePick::CanTrainCompanion(player, spellId);
+        if (_trainerId == WILDCARD_RANK_TRAINER_ID && AscensionFreePick::Applies(player) && !companionLesson)
+        {
+            if (!AscensionFreePick::LearnRankUpgrade(player, spellId))
+            {
+                SendTeachFailure(npc, player, spellId, FailReason::Unavailable);
+                return;
+            }
+            npc->SendPlaySpellVisual(179);
+            npc->SendPlaySpellImpact(player->GetGUID(), 362);
+            SendTeachSucceeded(npc, player, spellId);
+            sScriptMgr->OnPlayerLearnTrainerSpell(player, npc, spellId);
+            return;
+        }
+
         float reputationDiscount = player->GetReputationPriceDiscount(npc);
         int32 moneyCost = int32(trainerSpell->MoneyCost * reputationDiscount);
         if (!player->HasEnoughMoney(moneyCost))
@@ -130,12 +242,23 @@ namespace Trainer
         npc->SendPlaySpellImpact(player->GetGUID(), 362); // 113 EmoteSalute
 
         // learn explicitly or cast explicitly
-        if (trainerSpell->IsCastable())
+        if (companionLesson)
+        {
+            if (!AscensionFreePick::LearnCompanion(player, spellId))
+            {
+                player->ModifyMoney(moneyCost);
+                SendTeachFailure(npc, player, spellId, FailReason::Unavailable);
+                return;
+            }
+            player->SaveToDB(false, false);
+        }
+        else if (trainerSpell->IsCastable())
             player->CastSpell(player, trainerSpell->SpellId, true);
         else
             player->learnSpell(trainerSpell->SpellId, false);
 
         SendTeachSucceeded(npc, player, spellId);
+        sScriptMgr->OnPlayerLearnTrainerSpell(player, npc, spellId);
     }
 
     Spell const* Trainer::GetSpell(uint32 spellId) const
@@ -178,7 +301,8 @@ namespace Trainer
             return SpellState::Known;
 
         // check race/class requirement
-        if (!player->IsSpellFitByClassAndRace(trainerSpell->SpellId))
+        bool const wildcardRanks = _trainerId == WILDCARD_RANK_TRAINER_ID;
+        if (!wildcardRanks && !player->IsSpellFitByClassAndRace(trainerSpell->SpellId))
             return SpellState::Unavailable;
 
         // check skill requirement
@@ -193,10 +317,14 @@ namespace Trainer
         if (player->GetLevel() < trainerSpell->ReqLevel)
             return SpellState::Unavailable;
 
-        // check expansion requirement of profession ranks
-        uint16 maxProfessionStep = GetMaxProfessionSkillStep(player->GetSession()->Expansion());
+        // check expansion requirement of professions, their ranks and their recipes
+        uint8 const expansion = player->GetSession()->Expansion();
+        if (ProfessionExpansion(trainerSpell->ReqSkillLine) > expansion
+            || RecipeExpansion(trainerSpell->SpellId) > expansion)
+            return SpellState::Unavailable;
+
         SpellInfo const* trainerSpellInfo = sSpellMgr->AssertSpellInfo(trainerSpell->SpellId);
-        if (RaisesProfessionAboveStep(trainerSpellInfo, maxProfessionStep))
+        if (TeachesProfessionBeyondExpansion(trainerSpellInfo, expansion))
             return SpellState::Unavailable;
 
         // check ranks
@@ -208,7 +336,7 @@ namespace Trainer
                 continue;
 
             if (SpellInfo const* learnedSpellInfo = sSpellMgr->GetSpellInfo(spellEffectInfo.TriggerSpell))
-                if (RaisesProfessionAboveStep(learnedSpellInfo, maxProfessionStep))
+                if (TeachesProfessionBeyondExpansion(learnedSpellInfo, expansion))
                     return SpellState::Unavailable;
 
             hasLearnSpellEffect = true;
@@ -216,14 +344,14 @@ namespace Trainer
                 knowsAllLearnedSpells = false;
 
             if (uint32 previousRankSpellId = sSpellMgr->GetPrevSpellInChain(spellEffectInfo.TriggerSpell))
-                if (!player->HasSpell(previousRankSpellId))
+                if (!wildcardRanks && !player->HasSpell(previousRankSpellId))
                     return SpellState::Unavailable;
         }
 
         if (!hasLearnSpellEffect)
         {
             if (uint32 previousRankSpellId = sSpellMgr->GetPrevSpellInChain(trainerSpell->SpellId))
-                if (!player->HasSpell(previousRankSpellId))
+                if (!wildcardRanks && !player->HasSpell(previousRankSpellId))
                     return SpellState::Unavailable;
         }
         else if (knowsAllLearnedSpells)
@@ -245,8 +373,9 @@ namespace Trainer
         switch (GetTrainerType())
         {
             case Type::Class:
+                // check class for class trainers; a Wildcard Hero trains its ranks at any of them
+                return player->getClass() == GetTrainerRequirement() || IsRankTrainerHero(player);
             case Type::Pet:
-                // check class for class trainers
                 return player->getClass() == GetTrainerRequirement();
             case Type::Mount:
                 // check race for mount trainers
@@ -289,5 +418,55 @@ namespace Trainer
     void Trainer::AddGreetingLocale(LocaleConstant locale, std::string greeting)
     {
         _greeting[locale] = std::move(greeting);
+    }
+
+    bool Trainer::RepublishesAfterPurchase() const
+    {
+        return _trainerId == WILDCARD_RANK_TRAINER_ID;
+    }
+
+    void SetRankTrainerHero(RankTrainerHero heroes)
+    {
+        RankTrainerHeroOf = heroes;
+    }
+
+    void SetWildcardRankRows(WildcardRankRows rows)
+    {
+        WildcardRankRowsOf = rows;
+    }
+
+    Trainer* GetTrainerFor(Creature const* npc, Player const* player)
+    {
+        Trainer* trainer = sObjectMgr->GetTrainer(npc->GetEntry());
+        bool const classTrainerUnit = trainer ? trainer->GetTrainerType() == Type::Class
+                                              : npc->HasNpcFlag(UNIT_NPC_FLAG_TRAINER_CLASS);
+        bool const freepick = AscensionFreePick::Applies(player);
+        if (!classTrainerUnit || (!WildcardRankRowsOf && !freepick) || !IsRankTrainerHero(player))
+            return trainer;
+
+        std::vector<Spell> rows;
+        if (freepick)
+        {
+            if (trainer)
+                for (auto const& spell : trainer->GetSpells())
+                    if (AscensionFreePick::CanTrainCompanion(player, spell.SpellId))
+                        rows.push_back(spell);
+            for (auto const& rank : AscensionFreePick::RankUpgrades(player))
+            {
+                if (npc->GetEntry() == 75118 && rank.Level >= 10)
+                    continue;
+                Spell row;
+                row.SpellId = rank.Spell;
+                row.ReqLevel = uint8(std::min(rank.Level, 255u));
+                row.ReqAbility[0] = rank.Previous;
+                rows.push_back(row);
+            }
+        }
+        else
+            rows = WildcardRankRowsOf(player);
+        thread_local std::optional<Trainer> wildcardRanks;
+        wildcardRanks.emplace(WILDCARD_RANK_TRAINER_ID, Type::Class, 0,
+            "Train higher ranks of your learned abilities.", std::move(rows));
+        return &*wildcardRanks;
     }
 }

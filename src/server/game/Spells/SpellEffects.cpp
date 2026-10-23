@@ -16,6 +16,9 @@
  */
 
 #include "Battleground.h"
+#include "../../coa/AscensionWhiteWalkerSupportRules.h"
+#include "../../coa/AscensionFreePick.h"
+#include "Config.h"
 #include "BattlegroundIC.h"
 #include "BattlegroundMgr.h"
 #include "BattlegroundSA.h"
@@ -49,6 +52,7 @@
 #include "SkillExtraItems.h"
 #include "SocialMgr.h"
 #include "Spell.h"
+#include "DungeonHealth.h"
 #include "SpellAuraEffects.h"
 #include "SpellAuras.h"
 #include "SpellMgr.h"
@@ -237,13 +241,13 @@ pEffect SpellEffects[TOTAL_SPELL_EFFECTS] =
     &Spell::EffectAscensionModifyCooldown,                  //165 SPELL_EFFECT_ASCENSION_MODIFY_COOLDOWN
     &Spell::EffectAscensionRestoreBaseManaPct,              //166 SPELL_EFFECT_ASCENSION_RESTORE_BASE_MANA_PCT
     &Spell::EffectNULL,                                     //167 unknown Ascension effect
-    &Spell::EffectNULL,                                     //168 unknown Ascension effect
+    &Spell::EffectAscensionPlaySpellVisualKit,              //168 SPELL_EFFECT_ASCENSION_PLAY_SPELL_VISUAL_KIT
     &Spell::EffectNULL,                                     //169 SPELL_EFFECT_ASCENSION_SPREAD_AURA
     &Spell::EffectNULL,                                     //170 SPELL_EFFECT_ASCENSION_SPREAD_AURA_2
     &Spell::EffectNULL,                                     //171 unknown Ascension effect
     &Spell::EffectNULL,                                     //172 unknown Ascension effect
     &Spell::EffectAscensionRefreshAura,                     //173 SPELL_EFFECT_ASCENSION_REFRESH_AURA
-    &Spell::EffectNULL,                                     //174 unknown Ascension effect
+    &Spell::EffectAscensionPctDamage,                       //174 Ascension percent damage (target max health / caster melee)
     &Spell::EffectAscensionModifyAuraStacks,                //175 SPELL_EFFECT_ASCENSION_MODIFY_AURA_STACKS
     &Spell::EffectAscensionModifyAuraStacksBySpell,         //176 SPELL_EFFECT_ASCENSION_MODIFY_AURA_STACKS_2
     &Spell::EffectAscensionModifyAuraDuration,              //177 SPELL_EFFECT_ASCENSION_MODIFY_AURA_DURATION
@@ -381,6 +385,15 @@ void Spell::EffectAscensionModifyCooldown(SpellEffIndex effIndex)
     ModifyAscensionCooldown(player, effect.MiscValue, damage, effect.MiscValueB != 0);
 }
 
+void Spell::EffectAscensionPlaySpellVisualKit(SpellEffIndex effIndex)
+{
+    if (effectHandleMode != SPELL_EFFECT_HANDLE_HIT_TARGET || !unitTarget)
+        return;
+
+    if (uint32 kit = uint32(m_spellInfo->Effects[effIndex].MiscValue))
+        unitTarget->SendPlaySpellVisual(kit);
+}
+
 void Spell::EffectAscensionRestoreBaseManaPct(SpellEffIndex /*effIndex*/)
 {
     if (effectHandleMode != SPELL_EFFECT_HANDLE_HIT_TARGET)
@@ -479,6 +492,33 @@ void Spell::EffectAscensionModifyAuraDuration(SpellEffIndex effIndex)
         else
             aura->SetDuration(duration);
     }
+}
+
+// Ascension effect 174: damage as a percentage. MiscValue 1 = of the caster's melee damage ("X% of melee damage"),
+// otherwise of the target's maximum health ("X% maximum health damage", e.g. Gizrul's Vicious Bite). Resistances and
+// damage taken modifiers apply, spell power does not.
+void Spell::EffectAscensionPctDamage(SpellEffIndex effIndex)
+{
+    Creature const* creature = m_caster->ToCreature();
+    if (!creature || creature->IsCharmedOwnedByPlayerOrPlayer() ||
+        !DungeonHealth::IsVanillaDungeon(creature->GetMapId()))
+        return;
+
+    if (effectHandleMode != SPELL_EFFECT_HANDLE_LAUNCH_TARGET)
+        return;
+
+    if (!unitTarget || !unitTarget->IsAlive() || damage <= 0)
+        return;
+
+    uint32 amount;
+    if (m_spellInfo->Effects[effIndex].MiscValue == 1)
+        amount = CalculatePct(m_caster->CalculateDamage(BASE_ATTACK, false, true), damage);
+    else
+        amount = unitTarget->CountPctFromMaxHealth(damage);
+
+    if (m_originalCaster)
+        amount = unitTarget->SpellDamageBonusTaken(m_originalCaster, m_spellInfo, amount, SPELL_DIRECT_DAMAGE);
+    m_damage += int32(amount);
 }
 
 void Spell::EffectAscensionRestoreBaseHealthPct(SpellEffIndex effIndex)
@@ -673,7 +713,18 @@ void Spell::EffectSchoolDMG(SpellEffIndex effIndex)
                     }
                     // Victory Rush
                     else if (m_spellInfo->SpellFamilyFlags[1] & 0x100)
-                        ApplyPct(damage, m_caster->GetTotalAttackPowerValue(BASE_ATTACK));
+                    {
+                        bool const area52VictoryRush = m_spellInfo->Id == 34428 && m_caster->ToPlayer() &&
+                            sConfigMgr->GetOption<bool>("CoA.Enable", true) &&
+                            sConfigMgr->GetOption<std::string>("CoA.ClassModel", "coa") == "hero" &&
+                            sConfigMgr->GetOption<std::string>("CoA.RealmType", "live") == "live" &&
+                            (sConfigMgr->GetOption<uint32>("CoA.GameModeMask", 0) & ~0x400u) == 0;
+                        // The Area 52 client specifies 45% AP + 45% SP, supplied once by spell_bonus_data.
+                        if (area52VictoryRush)
+                            damage = 0;
+                        else
+                            ApplyPct(damage, m_caster->GetTotalAttackPowerValue(BASE_ATTACK));
+                    }
                     // Shockwave
                     else if (m_spellInfo->Id == 46968)
                     {
@@ -861,7 +912,12 @@ void Spell::EffectSchoolDMG(SpellEffIndex effIndex)
                             if (uint32 combo = m_caster->ToPlayer()->GetComboPoints())
                             {
                                 float ap = m_caster->GetTotalAttackPowerValue(BASE_ATTACK);
-                                damage += int32(ap * combo * 0.07f);
+                                static bool const area52 = sConfigMgr->GetOption<bool>("CoA.Enable", true) &&
+                                    sConfigMgr->GetOption<std::string>("CoA.ClassModel", "coa") == "hero" &&
+                                    sConfigMgr->GetOption<std::string>("CoA.RealmType", "live") == "live" &&
+                                    !(sConfigMgr->GetOption<uint32>("CoA.GameModeMask", 0) & ~uint32(0x400));
+                                damage += AscensionWhiteWalkerSupport::EviscerateScalingBonus(area52, ap,
+                                    m_caster->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_MAGIC), combo);
 
                                 // Eviscerate and Envenom Bonus Damage (item set effect)
                                 if (m_caster->HasAura(37169))
@@ -1457,7 +1513,7 @@ void Spell::EffectJumpDest(SpellEffIndex effIndex)
     {
         player->SetCanTeleport(true);
     }
-    m_caster->GetMotionMaster()->MoveJump(x, y, z, speedXY, speedZ);
+    m_caster->GetMotionMaster()->MoveJump(x, y, z, speedXY, speedZ, 0, nullptr, m_jumpFinalOrientation);
 
     if (m_caster->IsPlayer())
     {
@@ -1866,7 +1922,8 @@ void Spell::EffectHeal(SpellEffIndex effIndex)
             addhealth += tickheal * tickcount;
 
             // Glyph of Swiftmend
-            if (!caster->HasAura(54824))
+            if (!caster->HasAura(54824) && !(m_spellInfo->Id == 18562 && caster->ToPlayer() &&
+                AscensionFreePick::Applies(caster->ToPlayer()) && caster->HasAura(415012) && caster->HasAura(415014)))
                 unitTarget->RemoveAura(targetAura->GetId(), targetAura->GetCasterGUID());
 
             //addhealth += tickheal * tickcount;
@@ -2942,7 +2999,7 @@ void Spell::EffectDispel(SpellEffIndex effIndex)
     // Ok if exist some buffs for dispel try dispel it
     uint32 failCount = 0;
     DispelChargesList success_list;
-    WorldPacket dataFail(SMSG_DISPEL_FAILED, 8 + 8 + 4 + 4 + dispelCount * 4);
+    WorldPacket dataFail(SMSG_DISPEL_FAILED, 8 + 8 + 4 + 4 + std::max(dispelCount, 0) * 4);
     // dispel N = damage buffs (or while exist buffs for dispel)
     for (int32 count = 0; count < dispelCount && !dispel_list.empty();)
     {
@@ -3760,7 +3817,7 @@ void Spell::EffectWeaponDmg(SpellEffIndex effIndex)
         case SPELLFAMILY_WARRIOR:
             {
                 // Devastate (player ones)
-                if (m_spellInfo->SpellFamilyFlags[1] & 0x40)
+                if ((m_spellInfo->SpellFamilyFlags[1] & 0x40) && m_spellInfo->Id != 965865)
                 {
                     m_caster->CastSpell(unitTarget, 58567, true);
 
@@ -3786,11 +3843,17 @@ void Spell::EffectWeaponDmg(SpellEffIndex effIndex)
                     {
                         AddComboPointGain(unitTarget, 1);
                     }
-                    // 50% more damage with daggers
+                    // Ghostly Strike uses its authored dagger and two-handed weapon modifiers.
                     if (m_caster->IsPlayer())
+                    {
                         if (Item* item = m_caster->ToPlayer()->GetWeaponForAttack(m_attackType, true))
+                        {
                             if (item->GetTemplate()->SubClass == ITEM_SUBCLASS_WEAPON_DAGGER)
-                                AddPct(totalDamagePercentMod, 50.0f);
+                                AddPct(totalDamagePercentMod, m_spellInfo->Id == 14278 ? 44.0f : 50.0f);
+                            else if (m_spellInfo->Id == 14278 && item->GetTemplate()->InventoryType == INVTYPE_2HWEAPON)
+                                AddPct(totalDamagePercentMod, -20.0f);
+                        }
+                    }
                 }
                 // Mutilate (for each hand)
                 else if (m_spellInfo->SpellFamilyFlags[1] & 0x6)
@@ -3826,6 +3889,12 @@ void Spell::EffectWeaponDmg(SpellEffIndex effIndex)
                         spell_bonus += int32(0.08f * m_caster->GetTotalAttackPowerValue(BASE_ATTACK));
                         spell_bonus += int32(0.13f * m_caster->SpellBaseDamageBonusDone(m_spellInfo->GetSchoolMask()));
                         break;
+                    case 54762:
+                    case 54763:
+                    case 54764:
+                    case 54765:
+                    case 54766:
+                    case 54767:
                     case 53385:  // Divine Storm deals normalized damage
                         normalized = true;
                         break;
@@ -6002,7 +6071,7 @@ void Spell::EffectStealBeneficialBuff(SpellEffIndex effIndex)
     // Ok if exist some buffs for dispel try dispel it
     uint32 failCount = 0;
     DispelList success_list;
-    WorldPacket dataFail(SMSG_DISPEL_FAILED, 8 + 8 + 4 + 4 + damage * 4);
+    WorldPacket dataFail(SMSG_DISPEL_FAILED, 8 + 8 + 4 + 4 + std::max(damage, 0) * 4);
     // dispel N = damage buffs (or while exist buffs for dispel)
     for (int32 count = 0; count < damage && !steal_list.empty();)
     {
@@ -6048,7 +6117,7 @@ void Spell::EffectStealBeneficialBuff(SpellEffIndex effIndex)
     if (success_list.empty())
         return;
 
-    WorldPacket dataSuccess(SMSG_SPELLSTEALLOG, 8 + 8 + 4 + 1 + 4 + damage * 5);
+    WorldPacket dataSuccess(SMSG_SPELLSTEALLOG, 8 + 8 + 4 + 1 + 4 + std::max(damage, 0) * 5);
     dataSuccess << unitTarget->GetPackGUID();       // Victim GUID
     dataSuccess << m_caster->GetPackGUID();         // Caster GUID
     dataSuccess << uint32(m_spellInfo->Id);         // dispel spell id

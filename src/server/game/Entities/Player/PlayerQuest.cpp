@@ -16,6 +16,7 @@
  */
 
 #include "CreatureAI.h"
+#include "../../../coa/AscensionFreePick.h"
 #include "DisableMgr.h"
 #include "GameEventMgr.h"
 #include "GameObjectAI.h"
@@ -260,6 +261,9 @@ Quest const* Player::GetNextQuest(ObjectGuid guid, Quest const* quest)
 
 bool Player::CanSeeStartQuest(Quest const* quest)
 {
+    if (!sScriptMgr->OnPlayerCanTakeQuest(this, quest))
+        return false;
+
     if (!sDisableMgr->IsDisabledFor(DISABLE_TYPE_QUEST, quest->GetQuestId(), this) && SatisfyQuestClass(quest, false) && SatisfyQuestRace(quest, false) &&
         SatisfyQuestSkill(quest, false) && SatisfyQuestExclusiveGroup(quest, false) && SatisfyQuestReputation(quest, false) &&
         SatisfyQuestPreviousQuest(quest, false) && SatisfyQuestNextChain(quest, false) &&
@@ -274,7 +278,8 @@ bool Player::CanSeeStartQuest(Quest const* quest)
 
 bool Player::CanTakeQuest(Quest const* quest, bool msg)
 {
-    return !sDisableMgr->IsDisabledFor(DISABLE_TYPE_QUEST, quest->GetQuestId(), this)
+    return sScriptMgr->OnPlayerCanTakeQuest(this, quest)
+           && !sDisableMgr->IsDisabledFor(DISABLE_TYPE_QUEST, quest->GetQuestId(), this)
            && SatisfyQuestStatus(quest, msg) && SatisfyQuestExclusiveGroup(quest, msg)
            && SatisfyQuestClass(quest, msg) && SatisfyQuestRace(quest, msg) && SatisfyQuestLevel(quest, msg)
            && SatisfyQuestSkill(quest, msg) && SatisfyQuestReputation(quest, msg)
@@ -409,6 +414,9 @@ bool Player::CanCompleteRepeatableQuest(Quest const* quest)
 
 bool Player::CanRewardQuest(Quest const* quest, bool msg)
 {
+    if (!sScriptMgr->OnPlayerCanRewardQuest(this, quest))
+        return false;
+
     // not auto complete quest and not completed quest (only cheating case, then ignore without message)
     if (!quest->IsDFQuest() && !quest->IsAutoComplete() && quest->GetQuestMethod() && GetQuestStatus(quest->GetQuestId()) != QUEST_STATUS_COMPLETE)
         return false;
@@ -1154,7 +1162,7 @@ bool Player::SatisfyQuestClass(Quest const* qInfo, bool msg) const
 {
     uint32 reqClass = qInfo->GetRequiredClasses();
 
-    if (reqClass == 0)
+    if (reqClass == 0 || AscensionFreePick::Applies(this))
         return true;
 
     if ((reqClass & getClassMask()) == 0)
@@ -1508,12 +1516,16 @@ uint32 Player::CalculateQuestRewardXP(Quest const* quest)
     // apply world quest rate
     uint32 xp = uint32(quest->XPValue(level, LocalLevelScaling::QuestScalingEnabled(this)) * GetQuestRate(quest->IsDFQuest(), quest->GetQuestLevel()));
 
-    // handle SPELL_AURA_MOD_XP_QUEST_PCT auras
+    // handle SPELL_AURA_MOD_XP_QUEST_PCT auras; a NO_BONUS_EXPERIENCE challenge drops
+    // the positive bonuses but keeps penalties.
     bool const recruitAFriend = GetsRecruitAFriendBonus(true);
-    xp *= GetTotalAuraMultiplier(SPELL_AURA_MOD_XP_QUEST_PCT, [recruitAFriend](AuraEffect const* effect)
+    bool const noBonusExperience = sScriptMgr->OnPlayerHasNoBonusExperience(this);
+    xp *= GetTotalAuraMultiplier(SPELL_AURA_MOD_XP_QUEST_PCT, [recruitAFriend, noBonusExperience](AuraEffect const* effect)
     {
         // CoA's party Aura of Experience explicitly excludes the recruit-a-friend bonus.
-        return effect->GetId() != 818059 || !recruitAFriend;
+        if (effect->GetId() == 818059 && recruitAFriend)
+            return false;
+        return !noBonusExperience || effect->GetAmount() <= 0;
     });
 
     return xp;

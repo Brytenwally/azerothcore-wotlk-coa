@@ -29,6 +29,8 @@ target_link_libraries(
         game
         gtest_main
         gmock_main
+        coa
+        game
         coa-interface
 )
 
@@ -56,5 +58,5 @@ add_test(
         NAME
         unit
         COMMAND
-        ${CMAKE_BINARY_DIR}/src/test/unit_tests
+        unit_tests
 )

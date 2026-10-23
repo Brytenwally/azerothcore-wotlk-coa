@@ -28,6 +28,7 @@
 #include "ScriptMgr.h"
 #include "Spell.h"
 #include "SpellAuraEffects.h"
+#include "../../../coa/AscensionFreePick.h"
 #include "SpellMgr.h"
 #include "SpellScript.h"
 #include "Unit.h"
@@ -2206,7 +2207,10 @@ uint8 Aura::GetProcEffectMask(AuraApplication* aurApp, ProcEventInfo& eventInfo,
 
     // check if spell was affected by this aura's spellmod (used by Arcane Potency and similar effects)
     // only applies when consuming charges or stacks
-    if ((procEntry->AttributesMask & PROC_ATTR_REQ_SPELLMOD) && (IsUsingCharges() || (procEntry->AttributesMask & PROC_ATTR_USE_STACKS_FOR_CHARGES)))
+    bool const area52Clearcasting = GetId() == 12536 &&
+        AscensionFreePick::Applies(GetCaster() ? GetCaster()->ToPlayer() : nullptr);
+    if (!area52Clearcasting && (procEntry->AttributesMask & PROC_ATTR_REQ_SPELLMOD) &&
+        (IsUsingCharges() || (procEntry->AttributesMask & PROC_ATTR_USE_STACKS_FOR_CHARGES)))
     {
         Spell const* procSpell = eventInfo.GetProcSpell();
         if (!procSpell || procSpell->m_appliedMods.find(const_cast<Aura*>(this)) == procSpell->m_appliedMods.end())

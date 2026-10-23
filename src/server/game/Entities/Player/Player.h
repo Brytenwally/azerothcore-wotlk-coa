@@ -891,6 +891,7 @@ enum PlayerLoginQueryIndex
     PLAYER_LOGIN_QUERY_LOAD_CHARACTER_SETTINGS           = 36,
     PLAYER_LOGIN_QUERY_LOAD_PET_SLOTS                    = 37,
     PLAYER_LOGIN_QUERY_LOAD_OFFLINE_ACHIEVEMENTS_UPDATES = 38,
+    PLAYER_LOGIN_QUERY_LOAD_FREEPICK_MYSTIC_COLLECTION = 39,
     MAX_PLAYER_LOGIN_QUERY
 };
 
@@ -1814,6 +1815,8 @@ public:
     // Transient action replacements; never written to character spell ownership.
     void SetTemporarySpellReplacement(uint32 original, uint32 replacement);
     [[nodiscard]] uint32 GetTemporarySpellReplacement(uint32 original) const;
+    [[nodiscard]] std::vector<uint32> GetSpellInteractionOrigins(uint32 spellId) const;
+    [[nodiscard]] bool MatchesSpellInteraction(uint32 spellId, uint32 original) const;
     [[nodiscard]] bool CanUseTwoHandWithShield(ItemTemplate const* main, ItemTemplate const* off) const;
     [[nodiscard]] float GetMeleeAbilityRangeBonus() const;
 
@@ -1824,6 +1827,9 @@ public:
     SkillStatusMap& GetSkillStatusMap() { return mSkillStatus; }
 
     void AddSpellMod(SpellModifier* mod, bool apply);
+    [[nodiscard]] bool UsesAscensionSpellModifierLayout() const;
+    [[nodiscard]] uint32 GetClientSpellModCount() const;
+    void SendSpellModifier(uint16 opcode, uint8 eff, uint8 op, int32 value, uint32 spellFamily) const;
     bool IsAffectedBySpellmod(SpellInfo const* spellInfo, SpellModifier* mod, Spell* spell = nullptr);
     bool HasSpellMod(SpellModifier* mod, Spell* spell);
     template <class T>
@@ -2277,6 +2283,7 @@ public:
     [[nodiscard]] bool CanBlock() const { return m_canBlock; }
     void SetCanBlock(bool value);
     [[nodiscard]] bool HasBurningCommander() const;
+    [[nodiscard]] bool HasValkyrGrip() const;
     [[nodiscard]] bool CanTitanGrip(ItemTemplate const* weapon = nullptr) const;
     void SetCanTitanGrip(bool value);
     [[nodiscard]] bool CanTameExoticPets() const { return IsGameMaster() || HasAuraType(SPELL_AURA_ALLOW_TAME_PET_TYPE); }
@@ -2527,12 +2534,15 @@ public:
     void SetTemporaryUnsummonedPetNumber(uint32 petnumber) { m_temporaryUnsummonedPetNumber = petnumber; }
     void UnsummonPetTemporaryIfAny();
     void ResummonPetTemporaryUnSummonedIfAny();
+    [[nodiscard]] bool IsInTinkerMechsuit() const
+    {
+        return getClass() == CLASS_TINKER && !IsInFlight() &&
+            HasAura(801384, GetGUID()) && HasAura(803451, GetGUID());
+    }
     [[nodiscard]] bool IsPetNeedBeTemporaryUnsummoned() const
     {
-        bool mechsuit = getClass() == CLASS_TINKER && !IsInFlight() &&
-            HasAura(801384, GetGUID()) && HasAura(803451, GetGUID());
         return GetSession()->PlayerLogout() || !IsInWorld() || !IsAlive() ||
-            (IsMounted() && !mechsuit) || GetVehicle() || IsBeingTeleported();
+            (IsMounted() && !IsInTinkerMechsuit()) || GetVehicle() || IsBeingTeleported();
     }
     bool CanResummonPet(uint32 spellid);
 

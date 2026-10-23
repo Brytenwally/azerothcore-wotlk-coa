@@ -121,3 +121,11 @@ repository. Fetching upstream is separate from reviewing, merging, building or d
 
 Keep only stable conventions and essential routing here. Update guidance when requested or when a durable
 correction is needed; do not automatically offer lesson capture, install skills, or append task histories.
+
+## Owner policy: accepted packages integrate into our main — October 23, 2026
+
+This section supersedes earlier blanket instructions to keep gameplay/status changes off main. Once the owner confirms that an activated package passes its intended in-game acceptance tests, that confirmation authorizes integrating its final deployed source changes into CWO4PapaBear/azerothcore-wotlk-coa main without another merge-permission question. Reconcile exact deployed hashes and publication receipts; preserve unrelated pending/unactivated work; review conflicts and run applicable offline checks before a non-forced, reviewed integration PR/merge. A frozen patch file alone is not source integration. Record the package, acceptance confirmation, integration commit and PR. If testing fails or scope is ambiguous, retain the feature branch and resolve the specific issue rather than merging unfinished work.
+
+Jealous Sound upstream PRs remain separate, feature-scoped and based on upstream main. This policy does not authorize merging upstream PRs or pushing directly to upstream main. Activation, live SQL, restarts, client/DLL installation and distribution retain their separate permission boundaries. In-game package acceptance does not automatically change ability/talent/enchant Certified labels; tester records remain authoritative.
+
+For the current reconciliation, the owner explicitly authorized beginning integration of the active server into our main and preserving old branch tips as annotated archive tags. Reconstruct reproducible source and ordered migrations, exclude secrets/binaries/private data, and validate before merging. Preserve open PR branches and unresolved local/pending work. Archive old redundant branches only after verifying the tag resolves to the exact current tip and their unique work is preserved. Never force-push or delete a branch whose tip changed since review.

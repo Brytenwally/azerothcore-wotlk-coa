@@ -1014,11 +1014,16 @@ public:
     void AddExtraAttacks(uint32 count);
 
     // Combot points system
-    [[nodiscard]] uint8 GetComboPoints(Unit const* who = nullptr) const { return (who && m_comboTarget != who) ? 0 : m_comboPoints; }
-    [[nodiscard]] uint8 GetComboPoints(ObjectGuid const& guid) const { return (m_comboTarget && m_comboTarget->GetGUID() == guid) ? m_comboPoints : 0; }
+    [[nodiscard]] bool HasPlayerComboPoints() const;
+    void SetPlayerComboPoints(uint8 points);
+    [[nodiscard]] uint8 GetTargetComboPoints(Unit const* who = nullptr) const { return (who && m_comboTarget != who) ? 0 : m_comboPoints; }
+    [[nodiscard]] uint8 GetComboPoints(Unit const* who = nullptr) const { return HasPlayerComboPoints() ? m_playerComboPoints : GetTargetComboPoints(who); }
+    [[nodiscard]] uint8 GetComboPoints(ObjectGuid const& guid) const { return HasPlayerComboPoints() ? m_playerComboPoints : (m_comboTarget && m_comboTarget->GetGUID() == guid) ? m_comboPoints : 0; }
     [[nodiscard]] Unit* GetComboTarget() const { return m_comboTarget; }
     [[nodiscard]] ObjectGuid const GetComboTargetGUID() const { return m_comboTarget ? m_comboTarget->GetGUID() : ObjectGuid::Empty; }
 
+    void AddTargetComboPoints(Unit* target, int8 count);
+    void ClearTargetComboPoints();
     void AddComboPoints(Unit* target, int8 count);
     void AddComboPoints(int8 count) { AddComboPoints(nullptr, count); }
     void ClearComboPoints();
@@ -2271,6 +2276,7 @@ private:
 
     Unit* m_comboTarget;
     int8 m_comboPoints;
+    uint8 m_playerComboPoints = 0;
     std::unordered_set<Unit*> m_ComboPointHolders;
 
     bool m_cleanupDone; // lock made to not add stuff after cleanup before delete

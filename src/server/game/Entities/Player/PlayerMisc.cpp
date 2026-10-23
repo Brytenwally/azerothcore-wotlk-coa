@@ -16,6 +16,7 @@
  */
 
 #include "AccountMgr.h"
+#include "DungeonHealth.h"
 #include "GameTime.h"
 #include "InstancePackets.h"
 #include "MapMgr.h"
@@ -197,15 +198,19 @@ void Player::ResetInstances(ObjectGuid guid, uint8 method, bool isRaid)
         case INSTANCE_RESET_ALL:
         {
             Player* p = ObjectAccessor::FindConnectedPlayer(guid);
-            if (!p || p->GetDifficulty(false) != DUNGEON_DIFFICULTY_NORMAL)
+            if (!p)
                 break;
+            // CoA: Heroic and Mythic 5-man dungeons are resettable like Normal ones; permanent binds still block
             std::vector<InstanceSave*> toUnbind;
-            BoundInstancesMap const& m_boundInstances = sInstanceSaveMgr->PlayerGetBoundInstances(p->GetGUID(), Difficulty(DUNGEON_DIFFICULTY_NORMAL));
+            for (uint8 difficulty = DUNGEON_DIFFICULTY_NORMAL; difficulty < MAX_DUNGEON_DIFFICULTY; ++difficulty)
+            {
+            BoundInstancesMap const& m_boundInstances = sInstanceSaveMgr->PlayerGetBoundInstances(p->GetGUID(), Difficulty(difficulty));
             for (BoundInstancesMap::const_iterator itr = m_boundInstances.begin(); itr != m_boundInstances.end(); ++itr)
             {
                 InstanceSave* instanceSave = itr->second.save;
                 MapEntry const* entry = sMapStore.LookupEntry(itr->first);
-                if (!entry || entry->IsRaid() || !instanceSave->CanReset())
+                if (!entry || entry->IsRaid() || !instanceSave->CanReset() ||
+                    (difficulty != DUNGEON_DIFFICULTY_NORMAL && !DungeonHealth::IsVanillaDungeon(instanceSave->GetMapId())))
                 {
                     continue;
                 }
@@ -222,6 +227,7 @@ void Player::ResetInstances(ObjectGuid guid, uint8 method, bool isRaid)
                 }
 
                 sInstanceSaveMgr->DeleteInstanceSavedData(instanceSave->GetInstanceId());
+            }
             }
             for (std::vector<InstanceSave*>::const_iterator itr = toUnbind.begin(); itr != toUnbind.end(); ++itr)
             {

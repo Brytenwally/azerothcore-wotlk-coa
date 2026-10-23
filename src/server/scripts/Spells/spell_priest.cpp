@@ -15,9 +15,11 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "Config.h"
 #include "GridNotifiers.h"
 #include "Player.h"
 #include "SpellAuraEffects.h"
+#include "ScriptMgr.h"
 #include "SpellMgr.h"
 #include "SpellScript.h"
 #include "SpellScriptLoader.h"
@@ -631,16 +633,36 @@ class spell_pri_penance : public SpellScript
 };
 
 // -17 - Power Word: Shield
+static bool Area52ShieldEnabled = false;
+
+class Area52PowerWordShieldConfig final : public WorldScript
+{
+public:
+    Area52PowerWordShieldConfig() : WorldScript("Area52PowerWordShieldConfig") { }
+
+    void OnAfterConfigLoad(bool /*reload*/) override
+    {
+        Area52ShieldEnabled = sConfigMgr->GetOption<bool>("CoA.Enable", true) &&
+            sConfigMgr->GetOption<std::string>("CoA.ClassModel", "coa") == "hero" &&
+            sConfigMgr->GetOption<std::string>("CoA.RealmType", "live") == "live" &&
+            (sConfigMgr->GetOption<uint32>("CoA.GameModeMask", 0) & ~0x400u) == 0;
+    }
+};
+
 static int32 CalculateSpellAmount(Unit* caster, int32 amount, SpellInfo const* spellInfo, AuraEffect const* aurEff)
 {
-    // +80.68% from sp bonus
-    float bonus = 0.8068f;
+    bool const area52Shield = Area52ShieldEnabled && caster->ToPlayer() && spellInfo->GetFirstRankSpell()->Id == 17;
+    // Area 52's client specifies 21% SP; Borrowed Time explicitly adds healing-power scaling.
+    float bonus = area52Shield ? 0.21f * caster->SpellBaseDamageBonusDone(spellInfo->GetSchoolMask()) :
+        0.8068f;
 
     // Borrowed Time
     if (AuraEffect const* borrowedTime = caster->GetDummyAuraEffect(SPELLFAMILY_PRIEST, PRIEST_ICON_ID_BORROWED_TIME, EFFECT_1))
-        bonus += CalculatePct(1.0f, borrowedTime->GetAmount());
+        bonus += CalculatePct(area52Shield ? float(caster->SpellBaseHealingBonusDone(spellInfo->GetSchoolMask())) :
+            1.0f, borrowedTime->GetAmount());
 
-    bonus *= caster->SpellBaseHealingBonusDone(spellInfo->GetSchoolMask());
+    if (!area52Shield)
+        bonus *= caster->SpellBaseHealingBonusDone(spellInfo->GetSchoolMask());
 
     // Improved PW: Shield: its weird having a SPELLMOD_ALL_EFFECTS here but its blizzards doing :)
     // Improved PW: Shield is only applied at the spell healing bonus because it was already applied to the base value in CalculateSpellDamage
@@ -1405,8 +1427,46 @@ class spell_pri_blessed_recovery : public AuraScript
     }
 };
 
+class Area52PowerWordShieldContract final : public GlobalScript
+{
+public:
+    Area52PowerWordShieldContract() : GlobalScript("Area52PowerWordShieldContract") { }
+
+    void OnLoadSpellCustomAttr(SpellInfo* info) override
+    {
+        if (!Area52ShieldEnabled)
+            return;
+
+        int32 basePoints;
+        switch (info->Id)
+        {
+            case 17: basePoints = 43; break;
+            case 592: basePoints = 87; break;
+            case 600: basePoints = 157; break;
+            case 3747: basePoints = 233; break;
+            case 6065: basePoints = 300; break;
+            case 6066: basePoints = 380; break;
+            case 10898: basePoints = 483; break;
+            case 10899: basePoints = 604; break;
+            case 10900: basePoints = 762; break;
+            case 10901: basePoints = 941; break;
+            case 25217: basePoints = 1124; break;
+            case 25218: basePoints = 1264; break;
+            case 48065: basePoints = 1919; break;
+            case 48066: basePoints = 2229; break;
+            default: return;
+        }
+
+        info->Effects[EFFECT_0].BasePoints = basePoints;
+        info->DurationEntry = sSpellDurationStore.LookupEntry(9);
+        info->ManaCostPercentage = 23;
+    }
+};
+
 void AddSC_priest_spell_scripts()
 {
+    new Area52PowerWordShieldConfig();
+    new Area52PowerWordShieldContract();
     RegisterSpellScript(spell_pri_shadowfiend_scaling);
     RegisterSpellScript(spell_pri_circle_of_healing);
     RegisterSpellScript(spell_pri_divine_aegis);

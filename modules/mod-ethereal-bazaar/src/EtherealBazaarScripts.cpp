@@ -17,6 +17,17 @@
 
 namespace
 {
+    bool Area52HeirloomShop(Player const* player)
+    {
+        if (!sConfigMgr->GetOption<bool>("Area52.GuardianHeirlooms.Enable", false) ||
+            sConfigMgr->GetOption<std::string>("CoA.ClassModel", "coa") != "hero" ||
+            sConfigMgr->GetOption<std::string>("CoA.RealmType", "live") != "live" ||
+            !player || player->getClass() != CLASS_HERO)
+            return false;
+        auto const mask = sScriptMgr->OnPlayerGetGameModeMask(player);
+        return !mask || !(*mask & ~uint32(0x400));
+    }
+
     enum BazaarGossip : uint32
     {
         GOSSIP_SENDER = 0,
@@ -56,8 +67,9 @@ public:
                          GOSSIP_SENDER, GOSSIP_LOST_CACHES);
         AddGossipItemFor(player, GOSSIP_ICON_VENDOR, "I want to browse Stones of Retreat.",
                          GOSSIP_SENDER, GOSSIP_STONES);
-        AddGossipItemFor(player, GOSSIP_ICON_VENDOR, "I want to browse Heirlooms.",
-                         GOSSIP_SENDER, GOSSIP_HEIRLOOMS);
+        if (!Area52HeirloomShop(player))
+            AddGossipItemFor(player, GOSSIP_ICON_VENDOR, "I want to browse Heirlooms.",
+                GOSSIP_SENDER, GOSSIP_HEIRLOOMS);
         SendGossipMenuFor(player, GOSSIP_TEXT_ID, creature);
         return true;
     }
@@ -85,6 +97,11 @@ public:
                 player->GetSession()->SendListInventory(creature->GetGUID(), BAZAAR_VENDOR_STONES);
                 break;
             case GOSSIP_HEIRLOOMS:
+                if (Area52HeirloomShop(player))
+                {
+                    CloseGossipMenuFor(player);
+                    return true;
+                }
                 player->GetSession()->SendListInventory(creature->GetGUID(), BAZAAR_VENDOR_HEIRLOOMS);
                 break;
             default:

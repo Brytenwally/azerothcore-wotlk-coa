@@ -409,7 +409,9 @@ def backtick_check(file: io, file_path: str) -> None:
                                     "BEGIN", "COMMIT", "ROLLBACK", "SAVEPOINT", "LOCK", "UNLOCK",
                                     "WITH", "RECURSIVE", "COLUMN", "ENGINE", "CHARSET", "COLLATE",
                                     "IF", "ELSEIF", "LOOP", "WHILE", "DO", "HANDLER", "LEAVE",
-                                    "ITERATE", "DECLARE", "CURSOR", "FETCH", "OPEN", "CLOSE"}:
+                                    "ITERATE", "DECLARE", "CURSOR", "FETCH", "OPEN", "CLOSE",
+                                    "FOR", "HEX", "CAST", "JSON_OBJECT", "CHAR", "CHARACTER",
+                                    "CONVERT", "USING", "UTF8MB4", "COUNT"}:
                     continue
 
                 # Make sure the word is enclosed in backticks

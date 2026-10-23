@@ -16,6 +16,7 @@
  */
 
 #include "Creature.h"
+#include "DungeonHealth.h"
 #include "BattlegroundMgr.h"
 #include "CellImpl.h"
 #include "Common.h"
@@ -57,6 +58,38 @@
 //  there is probably some underlying problem with imports which should properly addressed
 //  see: https://github.com/azerothcore/azerothcore-wotlk/issues/9766
 #include "GridNotifiersImpl.h"
+
+namespace
+{
+    DungeonHealth::Values dungeonHealthOverrides;
+}
+
+void Creature::LoadDungeonHealthOverrides()
+{
+    dungeonHealthOverrides.clear();
+    auto* statement = WorldDatabase.GetPreparedStatement(WORLD_SEL_COA_DUNGEON_HEALTH);
+    if (PreparedQueryResult result = WorldDatabase.Query(statement))
+    {
+        do
+        {
+            Field* fields = result->Fetch();
+            uint32 const map = fields[0].Get<uint16>();
+            uint8 const difficulty = fields[1].Get<uint8>();
+            uint32 const entry = fields[2].Get<uint32>();
+            uint32 const health = fields[3].Get<uint32>();
+            if (!DungeonHealth::IsVanillaDungeon(map) || (difficulty != 1 && difficulty != 2)
+                || !sObjectMgr->GetCreatureTemplate(entry) || !health)
+            {
+                LOG_ERROR("sql.sql", "Invalid dungeon health override: map {}, mode {}, entry {}, HP {}",
+                    map, difficulty, entry, health);
+                continue;
+            }
+            dungeonHealthOverrides[{map, difficulty, entry}] = health;
+        } while (result->NextRow());
+    }
+    LOG_INFO("server.loading", ">> Loaded {} reconstructed dungeon health targets; fallback values are provisional",
+        dungeonHealthOverrides.size());
+}
 
 CreatureMovementData::CreatureMovementData() : Ground(CreatureGroundMovementType::Run), Flight(CreatureFlightMovementType::None),
                                                Swim(true), Rooted(false), Chase(CreatureChaseMovementType::Run),
@@ -1297,7 +1330,8 @@ bool Creature::CanResetTalents(Player* player) const
     if (!trainer)
         return false;
 
-    return player->GetLevel() >= 10 && trainer->IsTrainerValidForPlayer(player);
+    // A Wildcard Hero trains its ranks at any class trainer, but its talents are its rolls.
+    return player->GetLevel() >= 10 && trainer->IsTrainerValidForPlayer(player) && player->getClass() != CLASS_HERO;
 }
 
 Player* Creature::GetLootRecipient() const
@@ -1515,6 +1549,13 @@ void Creature::SelectLevel(bool changelevel)
 
     sScriptMgr->OnBeforeCreatureSelectLevel(cInfo, this, level);
 
+    // Vanilla dungeons on Heroic/Mythic are level 60 content. A creature without its own difficulty
+    // template would keep its Normal level there (Defias Miner: 17), and a level-17 creature is then
+    // scaled up again by per-character views on top of the health from coa_dungeon_health.
+    if (!IsPet() && !IsCharmedOwnedByPlayerOrPlayer() && cInfo->Entry == GetEntry() && DungeonHealth::IsVanillaDungeon(GetMapId())
+        && (GetMap()->GetSpawnMode() == 1 || GetMap()->GetSpawnMode() == 2))
+        level = std::max<uint8>(level, rank == CREATURE_ELITE_WORLDBOSS ? 62 : 60);
+
     if (changelevel)
         SetLevel(level);
 
@@ -1525,6 +1566,21 @@ void Creature::SelectLevel(bool changelevel)
 
     uint32 basehp = std::max<uint32>(1, stats->GenerateHealth(cInfo));
     uint32 health = uint32(basehp * healthmod);
+    uint32 heroicHealth = health;
+    if (!IsPet() && !IsCharmedOwnedByPlayerOrPlayer() && GetMap()->GetSpawnMode() == 2 && DungeonHealth::IsVanillaDungeon(GetMapId()))
+    {
+        CreatureTemplate const* normalInfo = sObjectMgr->GetCreatureTemplate(GetEntry());
+        if (normalInfo && normalInfo->DifficultyEntry[0])
+            if (CreatureTemplate const* heroicInfo = sObjectMgr->GetCreatureTemplate(normalInfo->DifficultyEntry[0]))
+            {
+                CreatureBaseStats const* heroicStats = sObjectMgr->GetCreatureBaseStats(level, heroicInfo->unit_class);
+                heroicHealth = uint32(std::max<uint32>(1, heroicStats->GenerateHealth(heroicInfo))
+                    * _GetHealthMod(heroicInfo->rank));
+            }
+    }
+    health = DungeonHealth::Resolve(dungeonHealthOverrides, GetMapId(), uint8(GetMap()->GetSpawnMode()),
+        GetEntry(), health, heroicHealth, cInfo->Entry != GetEntry(), IsPet() || IsCharmedOwnedByPlayerOrPlayer(),
+        cInfo->rank == CREATURE_ELITE_WORLDBOSS);
 
     SetCreateHealth(health);
     SetMaxHealth(health);
@@ -1563,45 +1619,6 @@ void Creature::SelectLevel(bool changelevel)
     SetStatFlatModifier(UNIT_MOD_ATTACK_POWER_RANGED, BASE_VALUE, stats->RangedAttackPower);
 
     sScriptMgr->OnCreatureSelectLevel(cInfo, this);
-}
-
-void Creature::RefreshLevelDependantStats()
-{
-    CreatureTemplate const* cInfo = GetCreatureTemplate();
-    if (!cInfo)
-        return;
-
-    uint32 const previousHealth = GetHealth();
-    uint32 const previousMaxHealth = GetMaxHealth();
-
-    // The level itself comes from OnBeforeCreatureSelectLevel, which is where the scaling features
-    // answer with the level they want this creature to be.
-    SelectLevel(true);
-
-    // Everything the level derives from. UpdateEntry does exactly this after SelectLevel, and calls
-    // UpdateAllStats for the fields SelectLevel does not write: attack power (melee and ranged), the
-    // damage range the client draws from it, armour and the resistances. Skipping it is invisible on
-    // the health bar and very visible in a fight.
-    SetMeleeDamageSchool(SpellSchools(cInfo->dmgschool));
-    CreatureBaseStats const* stats = sObjectMgr->GetCreatureBaseStats(GetLevel(), cInfo->unit_class);
-    SetStatFlatModifier(UNIT_MOD_ARMOR,             BASE_VALUE, stats->GenerateArmor(cInfo));
-    SetStatFlatModifier(UNIT_MOD_RESISTANCE_HOLY,   BASE_VALUE, float(cInfo->resistance[SPELL_SCHOOL_HOLY]));
-    SetStatFlatModifier(UNIT_MOD_RESISTANCE_FIRE,   BASE_VALUE, float(cInfo->resistance[SPELL_SCHOOL_FIRE]));
-    SetStatFlatModifier(UNIT_MOD_RESISTANCE_NATURE, BASE_VALUE, float(cInfo->resistance[SPELL_SCHOOL_NATURE]));
-    SetStatFlatModifier(UNIT_MOD_RESISTANCE_FROST,  BASE_VALUE, float(cInfo->resistance[SPELL_SCHOOL_FROST]));
-    SetStatFlatModifier(UNIT_MOD_RESISTANCE_SHADOW, BASE_VALUE, float(cInfo->resistance[SPELL_SCHOOL_SHADOW]));
-    SetStatFlatModifier(UNIT_MOD_RESISTANCE_ARCANE, BASE_VALUE, float(cInfo->resistance[SPELL_SCHOOL_ARCANE]));
-
-    SetCanModifyStats(true);
-    UpdateAllStats();
-
-    // A creature re-levelled here is one nobody is fighting: its health is carried over as a share
-    // rather than as the old absolute number, which at a much higher level would leave it looking
-    // nearly dead while it is in fact untouched (and a creature at full health simply stays full).
-    uint32 const newMaxHealth = GetMaxHealth();
-    SetHealth(previousMaxHealth && previousHealth
-        ? std::max<uint32>(1, uint32(uint64(previousHealth) * newMaxHealth / previousMaxHealth))
-        : newMaxHealth);
 }
 
 float Creature::_GetHealthMod(int32 Rank)
@@ -1801,7 +1818,14 @@ bool Creature::LoadCreatureFromDB(ObjectGuid::LowType spawnId, Map* map, bool ad
 
     uint32 curhealth;
 
-    if (!m_regenHealth)
+    // CoA: a fixed spawn health is the vanilla value; on Heroic/Mythic the creature has far more health
+    // (coa_dungeon_health), so it started fights at 5-20% (Zul'Farrak stair event). Full health there instead.
+    if (!m_regenHealth && GetMap() && DungeonHealth::IsVanillaDungeon(GetMapId()) && GetMap()->GetSpawnMode() != 0)
+    {
+        curhealth = GetMaxHealth();
+        SetPower(POWER_MANA, GetMaxPower(POWER_MANA));
+    }
+    else if (!m_regenHealth)
     {
         curhealth = data->curhealth;
         if (curhealth)
@@ -2005,6 +2029,9 @@ bool Creature::CanStartAttack(Unit const* who, bool force) const
 void Creature::setDeathState(DeathState state, bool despawn)
 {
     Unit::setDeathState(state, despawn);
+
+    if (IsInWorld() && !IsAlive())
+        GetMap()->AddObjectToPendingUpdateList(this);
 
     if (state == DeathState::JustDied)
     {
@@ -2373,7 +2400,9 @@ bool Creature::IsImmunedToSpellEffect(SpellInfo const* spellInfo, uint32 index, 
     if (spellInfo->Effects[index].Mechanic > MECHANIC_NONE && HasMechanicTemplateImmunity(1ULL << spellInfo->Effects[index].Mechanic))
         return true;
 
-    if (GetCreatureTemplate()->type == CREATURE_TYPE_MECHANICAL && spellInfo->Effects[index].Effect == SPELL_EFFECT_HEAL)
+    // Tinker heals are designed to repair player-owned mechanical pets and devices
+    if (GetCreatureTemplate()->type == CREATURE_TYPE_MECHANICAL && spellInfo->Effects[index].Effect == SPELL_EFFECT_HEAL &&
+        !(spellInfo->SpellFamilyName == 34 && GetOwnerGUID().IsPlayer()))
         return true;
 
     return Unit::IsImmunedToSpellEffect(spellInfo, index, caster);
@@ -4018,6 +4047,9 @@ std::string Creature::GetDebugInfo() const
 // Note: This is called in a tight (heavy) loop, is it critical that all checks are FAST and are hopefully only simple conditionals.
 bool Creature::IsUpdateNeeded()
 {
+    if (!IsAlive())
+        return true;
+
     if (WorldObject::IsUpdateNeeded())
         return true;
 

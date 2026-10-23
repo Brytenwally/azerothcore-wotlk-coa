@@ -321,6 +321,7 @@ struct Loot
     std::vector<LootItem> quest_items;
     uint32 gold;
     uint8 unlootedCount{0};
+    uint8 dungeonDifficulty{0};
     ObjectGuid roundRobinPlayer;        // GUID of the player having the Round-Robin ownership for the loot. If 0, round robin owner has released.
     ObjectGuid lootOwnerGUID;
     LootType loot_type{LOOT_NONE};      // required for achievement system
@@ -362,6 +363,7 @@ struct Loot
         roundRobinPlayer.Clear();
         i_LootValidatorRefMgr.clearReferences();
         loot_type = LOOT_NONE;
+        dungeonDifficulty = 0;
     }
 
     [[nodiscard]] bool empty() const { return items.empty() && gold == 0; }
@@ -440,8 +442,11 @@ void LoadLootTemplates_Reference();
 
 void LoadLootTemplates_Player();
 
+void LoadDungeonLootVariants();
+
 inline void LoadLootTables()
 {
+    LoadDungeonLootVariants();
     LoadLootTemplates_Creature();
     LoadLootTemplates_Fishing();
     LoadLootTemplates_Gameobject();

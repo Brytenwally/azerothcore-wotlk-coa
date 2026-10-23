@@ -38,6 +38,8 @@
 #include "Creature.h"
 #include "GossipDef.h"
 #include "Player.h"
+#include "ObjectAccessor.h"
+#include "AllCreatureScript.h"
 #include "ScriptMgr.h"
 #include "ScriptedGossip.h"
 #include "SpellMgr.h"
@@ -52,7 +54,10 @@
 // The progression tables this module serves live with the compat layer that generated them.
 // They are plain generated data headers, so they are read rather than copied.
 #include "AscensionCoATalentData.h"
+#include "AscensionFreePick.h"
+#include "Area52ActiveBuild.h"
 #include "AscensionCustomClassData.h"
+#include "AscensionGuardianCompletion.h"
 #include "AscensionSpellProgressionData.h"
 #include "SpellbookCostData.h"
 #include "SpellbookOfferData.h"
@@ -139,6 +144,41 @@ namespace
         return creature && creature->GetScriptName() == BOOK_SCRIPT;
     }
 
+    uint32 LearnFreePickBookRanks(Player* player, Creature* book)
+    {
+        if (!IsBook(book))
+            return 0;
+        uint32 learned = Area52Build::Train(player, book, book->GetEntry() == BEGINNERS_BOOK ? 9 : 80);
+        if (book->GetEntry() != BEGINNERS_BOOK)
+            learned += AscensionFreePick::LearnAvailableRanks(player);
+        else
+        {
+            for (auto const& rank : AscensionFreePick::RankUpgrades(player))
+                if (rank.Level < 10)
+                    learned += AscensionFreePick::LearnRankUpgrade(player, rank.Spell, false) ? 1 : 0;
+            if (learned)
+                player->SaveToDB(false, false);
+        }
+        if (learned)
+        {
+            ObjectGuid const playerGuid = player->GetGUID();
+            ObjectGuid const bookGuid = book->GetGUID();
+            player->m_Events.AddEventAtOffset([playerGuid, bookGuid]()
+            {
+                Player* recipient = ObjectAccessor::FindPlayer(playerGuid);
+                if (!recipient || !recipient->IsInWorld() || !recipient->IsAlive())
+                    return;
+                Creature* trainer = ObjectAccessor::GetCreature(*recipient, bookGuid);
+                if (!IsBook(trainer) || !trainer->IsAlive() || !recipient->HaveAtClient(trainer))
+                    return;
+                trainer->SendPlaySpellVisual(179);
+                trainer->SendPlaySpellImpact(recipient->GetGUID(), 362);
+                trainer->SendPlaySpellImpact(trainer->GetGUID(), 362);
+            }, Milliseconds(250));
+        }
+        return learned;
+    }
+
     /// The skill line a spell is filed under, which is what the client groups the window by.
     /// It is a label only: nothing here gates on skill values, because these spells are not
     /// in the DBC tables the core's skill checks consult.
@@ -217,13 +257,33 @@ namespace
         if (!player)
             return rows;
 
+        if (AscensionFreePick::Applies(player))
+        {
+            for (auto const& rank : AscensionFreePick::RankUpgrades(player))
+            {
+                Row row;
+                row.SpellId = rank.Spell;
+                row.RequiredAbility = rank.Previous;
+                row.RequiredLevel = uint8(std::min(rank.Level, 255u));
+                row.SkillLine = SkillLineForSpell(rank.Spell);
+                row.State = HasRankOrBetter(player, rank.Spell) ? RowState::Known :
+                    player->GetLevel() >= rank.Level && player->HasSpell(rank.Previous) ?
+                    RowState::Available : RowState::Unavailable;
+                rows.push_back(row);
+            }
+            return rows;
+        }
+
         uint8 const classId = uint8(player->getClass());
         uint32 const spec = ActiveSpec(player);
 
-        auto add = [&rows, classId, windowView](uint32 spellId, uint8 requiredLevel,
+        auto add = [&rows, classId, windowView, player, spec](uint32 spellId, uint8 requiredLevel,
                                                 uint32 requiredAbility)
         {
             if (!spellId || !sSpellMgr->GetSpellInfo(spellId))
+                return;
+            if (windowView && classId == CLASS_GUARDIAN && AscensionGuardian::Ballad(spellId) &&
+                (spec != 20 || !player->HasAura(505344)))
                 return;
 
             // A spell the talent trees grant is the tree's to hand out, whatever source
@@ -475,6 +535,14 @@ namespace
         if (!player || !book)
             return false;
 
+        if (AscensionFreePick::Applies(player))
+        {
+            LearnFreePickBookRanks(player, book);
+            CloseGossipMenuFor(player);
+            player->GetSession()->SendTrainerList(book);
+            return true;
+        }
+
         std::vector<Row> const rows = BuildRows(player);
         if (rows.empty())
             return false;
@@ -488,9 +556,11 @@ namespace
     /// Learns everything the window currently offers as available. This is the book's
     /// "catch me up" action, so a character who fell behind does not have to click through
     /// eighty rows after a fix or a level cap change.
-    uint32 LearnEverythingAvailable(Player *player)
+    uint32 LearnEverythingAvailable(Player *player, Creature *book)
     {
         uint32 learned = 0;
+        if (AscensionFreePick::Applies(player))
+            return LearnFreePickBookRanks(player, book);
         for (Row const &row : BuildRows(player))
         {
             if (row.State != RowState::Available)
@@ -501,6 +571,8 @@ namespace
             SpellbookNotify::Push(player, row.SpellId);
 
             player->learnSpell(row.SpellId, false);
+            if (player->HasSpell(row.SpellId))
+                sScriptMgr->OnPlayerLearnTrainerSpell(player, book, row.SpellId);
             ++learned;
         }
 
@@ -529,7 +601,10 @@ namespace
     /// or not the ability was granted.
     bool HandlePurchase(Player *player, WorldPacket const &packet)
     {
-        if (!player || !IsAscensionClass(player->getClass()))
+        if (!player || (!IsAscensionClass(player->getClass()) && !AscensionFreePick::Applies(player)))
+            return false;
+
+        if (AscensionFreePick::Applies(player))
             return false;
 
         // A packed guid followed by the spell id; read a copy so the dispatcher's buffer is
@@ -557,7 +632,8 @@ namespace
         if (found == rows.end())
         {
             if (IsTreeSpell(uint32(player->getClass()), wanted) ||
-                HasRankOrBetter(player, wanted))
+                HasRankOrBetter(player, wanted) ||
+                (player->getClass() == CLASS_GUARDIAN && AscensionGuardian::Ballad(wanted)))
             {
                 WorldPacket failed(SMSG_TRAINER_BUY_FAILED);
                 failed << book->GetGUID() << uint32(wanted)
@@ -569,7 +645,8 @@ namespace
             return false;
         }
 
-        if (found->State != RowState::Available)
+        if (found->State != RowState::Available ||
+            (AscensionFreePick::Applies(player) && book->GetEntry() == BEGINNERS_BOOK && found->RequiredLevel >= 10))
         {
             WorldPacket failed(SMSG_TRAINER_BUY_FAILED);
             failed << book->GetGUID() << uint32(wanted)
@@ -611,11 +688,22 @@ namespace
         // not supersede anything, and answers an upgrade with SMSG_SUPERCEDED_SPELL, which the
         // client announces itself. Adding a learned-spell packet on top of that cue announced
         // every rank-up twice.
-        player->learnSpell(wanted, false);
+        if (AscensionFreePick::Applies(player))
+        {
+            if (!AscensionFreePick::LearnRankUpgrade(player, wanted))
+            {
+                SendTrainerWindow(player, book, BuildRows(player));
+                return true;
+            }
+        }
+        else
+            player->learnSpell(wanted, false);
 
         WorldPacket succeeded(SMSG_TRAINER_BUY_SUCCEEDED);
         succeeded << book->GetGUID() << uint32(wanted);
         player->SendDirectMessage(&succeeded);
+        if (player->HasSpell(wanted))
+            sScriptMgr->OnPlayerLearnTrainerSpell(player, book, wanted);
 
         // The row set belongs to the server, so the window on screen is stale the moment this is
         // learned: the rank just bought has to turn "used" and the rank above it has to turn
@@ -641,7 +729,7 @@ namespace
     /// this, a book flagged as a trainer could answer nothing at all.
     bool HandleTrainerListRequest(Player *player, WorldPacket const &packet)
     {
-        if (!player || !IsAscensionClass(player->getClass()))
+        if (!player || (!IsAscensionClass(player->getClass()) && !AscensionFreePick::Applies(player)))
             return false;
 
         WorldPacket copy(packet);
@@ -665,7 +753,7 @@ namespace
         bool OnGossipHello(Player *player, Creature *book) override
         {
             ClearGossipMenuFor(player);
-            if (!Enabled() || !IsAscensionClass(player->getClass()))
+            if (!Enabled() || (!IsAscensionClass(player->getClass()) && !AscensionFreePick::Applies(player)))
                 return true;
 
             // Right-clicking a book is a request for the trainer window: no gossip page in
@@ -684,10 +772,10 @@ namespace
             ClearGossipMenuFor(player);
             CloseGossipMenuFor(player);
             if (sender != GOSSIP_SENDER_MAIN || action != GOSSIP_ACTION_INFO_DEF ||
-                !Enabled() || !IsAscensionClass(player->getClass()))
+                !Enabled() || (!IsAscensionClass(player->getClass()) && !AscensionFreePick::Applies(player)))
                 return true;
 
-            uint32 const learned = LearnEverythingAvailable(player);
+            uint32 const learned = LearnEverythingAvailable(player, book);
             if (learned)
             {
                 ChatHandler(player->GetSession())
@@ -739,7 +827,8 @@ class spellbook_metric_provider final : public WorldScript
 public:
     spellbook_metric_provider() : WorldScript("spellbook_metric_provider")
     {
-        CoASpellbook::SetProvider({Spellbook::RowCount, Spellbook::OffersSpell, Spellbook::CoversSpell});
+        CoASpellbook::SetProvider({Spellbook::RowCount, Spellbook::OffersSpell, Spellbook::CoversSpell,
+            Spellbook::UpgradeRanksAbove});
     }
 
     ~spellbook_metric_provider() override
@@ -748,8 +837,41 @@ public:
     }
 };
 
+class freepick_book_summon_training : public AllCreatureScript
+{
+public:
+    freepick_book_summon_training() : AllCreatureScript("freepick_book_summon_training") { }
+
+    void OnCreatureAddWorld(Creature* book) override
+    {
+        if (!Enabled() || !IsBook(book) || book->GetOwnerGUID().IsEmpty())
+            return;
+        if (Player* owner = ObjectAccessor::GetPlayer(*book, book->GetOwnerGUID()))
+            if (AscensionFreePick::Applies(owner))
+                LearnFreePickBookRanks(owner, book);
+    }
+};
+
+class freepick_book_level_training : public PlayerScript
+{
+public:
+    freepick_book_level_training() : PlayerScript("freepick_book_level_training", {PLAYERHOOK_ON_LEVEL_CHANGED}) { }
+
+    void OnPlayerLevelChanged(Player* player, uint8 oldLevel) override
+    {
+        if (!Enabled() || !AscensionFreePick::Applies(player) || player->GetLevel() <= oldLevel)
+            return;
+        Creature* book = ObjectAccessor::GetCreature(*player, player->GetCritterGUID());
+        if (!IsBook(book) || !book->IsAlive() || book->GetOwnerGUID() != player->GetGUID())
+            return;
+        LearnFreePickBookRanks(player, book);
+    }
+};
+
 void AddSpellbookScripts()
 {
+    new freepick_book_summon_training();
+    new freepick_book_level_training();
     new spellbook_metric_provider();
     new SpellbookBookScript();
     new SpellbookServerScript();
@@ -782,5 +904,18 @@ namespace Spellbook
         // The window drops what the character already holds, so membership alone would report
         // a bought spell as missing. Entitlement is the union of the two.
         return OffersSpell(player, spellId) || HasRankOrBetter(player, spellId);
+    }
+
+    std::vector<uint32> UpgradeRanksAbove(Player *player, uint8 level)
+    {
+        std::vector<uint32> spells;
+        if (!player)
+            return spells;
+
+        for (SpellbookRankData::Rank const &rank : SpellbookRankData::Ranks)
+            if (rank.ClassId == player->getClass() && rank.RequiredLevel > level)
+                spells.push_back(rank.SpellId);
+
+        return spells;
     }
 }

@@ -4,12 +4,53 @@
 #include "SpellInfo.h"
 #include "SpellDefines.h"
 #include "AscensionConditionalCombatData.h"
+#include "AscensionWhiteWalkerSupportRules.h"
 
 namespace
 {
 constexpr uint32 SPELL_EVIL_DOERS_BEWARE = 681328;
 constexpr uint32 SPELL_REAPER_HEMORRHAGE = 705432;
 constexpr uint32 SPELL_REAPER_THE_TIME_HAS_COME = 572879;
+
+void ApplyFrozenPowerDamageContract(SpellInfo* spellInfo)
+{
+    if (!spellInfo || (spellInfo->Id != 63373 && spellInfo->Id != 63374 &&
+        spellInfo->Id != 263374 && spellInfo->Id != 414600))
+        return;
+
+    SpellEffectInfo& effect = spellInfo->Effects[EFFECT_0];
+    if (effect.Effect != SPELL_EFFECT_APPLY_AURA ||
+        effect.ApplyAuraName != SPELL_AURA_ADD_FLAT_MODIFIER || effect.MiscValue != 23 ||
+        effect.SpellClassMask != flag96(16777216, 0, 0) || effect.TargetA.GetTarget() != TARGET_UNIT_CASTER ||
+        effect.TargetB.GetTarget())
+        return;
+
+    if (spellInfo->Id == 63373) effect.BasePoints = AscensionWhiteWalkerSupport::FrozenPowerTalentPercent(0) - 1;
+    else if (spellInfo->Id == 63374) effect.BasePoints = AscensionWhiteWalkerSupport::FrozenPowerTalentPercent(1) - 1;
+    else if (spellInfo->Id == 263374) effect.BasePoints = AscensionWhiteWalkerSupport::FrozenPowerTalentPercent(2) - 1;
+    else effect.BasePoints = AscensionWhiteWalkerSupport::FrozenPowerMysticPercent(1) - 1;
+    effect.DieSides = 1;
+    effect.ApplyAuraName = SPELL_AURA_MOD_DAMAGE_DONE_VERSUS_AURASTATE;
+    effect.MiscValue = ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE;
+    effect.MiscValueB = ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE;
+}
+
+void ApplyArea52TargetDamageContracts(SpellInfo* spellInfo)
+{
+    if (!spellInfo || !((spellInfo->Id == 979053 && spellInfo->SpellFamilyName == 3) ||
+        ((spellInfo->Id == 979011 || spellInfo->Id == 530921) && spellInfo->SpellFamilyName == 8)))
+        return;
+    for (uint8 index = 0; index < (spellInfo->Id == 979053 ? 1 : 2); ++index)
+    {
+        auto& effect = spellInfo->Effects[index];
+        if (effect.Effect != SPELL_EFFECT_APPLY_AURA || effect.ApplyAuraName != SPELL_AURA_ADD_PCT_MODIFIER ||
+            (effect.MiscValue != 36 && effect.MiscValue != 38) ||
+            effect.TargetA.GetTarget() != TARGET_UNIT_CASTER || effect.TargetB.GetTarget())
+            continue;
+        effect.MiscValueB = effect.MiscValue == 36 ? ASCENSION_CLASSMASK_PLAYER_DAMAGE : ASCENSION_CLASSMASK_NPC_DAMAGE;
+        effect.ApplyAuraName = SPELL_AURA_MOD_DAMAGE_DONE_VERSUS_AURASTATE;
+    }
+}
 
 bool HasExpectedEvilDoersLegacy(SpellInfo const* spellInfo)
 {
@@ -96,4 +137,6 @@ void ApplyAscensionConditionalCombatContracts(SpellInfo* spellInfo)
 
     ApplyReaperHemorrhageDamageContract(spellInfo);
     ApplyReaperTheTimeHasComeDamageContract(spellInfo);
+    ApplyFrozenPowerDamageContract(spellInfo);
+    ApplyArea52TargetDamageContracts(spellInfo);
 }

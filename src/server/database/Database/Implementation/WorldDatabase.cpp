@@ -114,6 +114,13 @@ void WorldDatabaseConnection::DoPrepareStatements()
     PrepareStatement(WORLD_SEL_REQ_XP, "SELECT Experience FROM player_xp_for_level WHERE Level = ?", CONNECTION_SYNCH);
     PrepareStatement(WORLD_UPD_VERSION, "UPDATE version SET core_version = ?, core_revision = ?", CONNECTION_ASYNC);
     PrepareStatement(WORLD_DEL_SPAWNGROUP_MEMBER, "DELETE FROM spawn_group WHERE spawnType = ? AND spawnId = ?", CONNECTION_ASYNC);
+    PrepareStatement(WORLD_SEL_COA_DUNGEON_LOOT_VARIANT, "SELECT base_item, heroic_item, mythic_item FROM coa_dungeon_loot_variant", CONNECTION_SYNCH);
+    PrepareStatement(WORLD_SEL_COA_DUNGEON_HEALTH, "SELECT map_id, difficulty, creature_entry, max_health FROM coa_dungeon_health", CONNECTION_SYNCH);
+    PrepareStatement(WORLD_SEL_XP_HOTSPOTS, "SELECT id, payload FROM xp_hotspot_location", CONNECTION_SYNCH);
+    PrepareStatement(WORLD_REP_XP_HOTSPOT, "REPLACE INTO xp_hotspot_location (id, payload) VALUES (?, ?)", CONNECTION_BOTH);
+    PrepareStatement(WORLD_DEL_XP_HOTSPOT, "DELETE FROM xp_hotspot_location WHERE id = ?", CONNECTION_BOTH);
+    PrepareStatement(WORLD_SEL_XP_HOTSPOT_SETTING, "SELECT id, value FROM xp_hotspot_setting", CONNECTION_SYNCH);
+    PrepareStatement(WORLD_UPD_XP_HOTSPOT_SETTING, "REPLACE INTO xp_hotspot_setting (id, value) VALUES (?, ?)", CONNECTION_BOTH);
 }
 
 WorldDatabaseConnection::WorldDatabaseConnection(MySQLConnectionInfo& connInfo) : MySQLConnection(connInfo)

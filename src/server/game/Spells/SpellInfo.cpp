@@ -15,7 +15,9 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "../../coa/AscensionMageTalentTargets.h"
 #include "SpellInfo.h"
+#include "../../coa/AscensionMysticEnchant.h"
 #include "Chat.h"
 #include "ConditionMgr.h"
 #include "Corpse.h"
@@ -849,7 +851,7 @@ std::array<SpellEffectInfo::StaticData, TOTAL_SPELL_EFFECTS> SpellEffectInfo::_d
     {EFFECT_IMPLICIT_TARGET_EXPLICIT, TARGET_OBJECT_TYPE_UNIT}, // 165 SPELL_EFFECT_ASCENSION_MODIFY_COOLDOWN
     {EFFECT_IMPLICIT_TARGET_EXPLICIT, TARGET_OBJECT_TYPE_UNIT}, // 166 SPELL_EFFECT_ASCENSION_RESTORE_BASE_MANA_PCT
     {EFFECT_IMPLICIT_TARGET_NONE,     TARGET_OBJECT_TYPE_NONE}, // 167 unknown Ascension effect
-    {EFFECT_IMPLICIT_TARGET_NONE,     TARGET_OBJECT_TYPE_NONE}, // 168 unknown Ascension effect
+    {EFFECT_IMPLICIT_TARGET_CASTER,   TARGET_OBJECT_TYPE_UNIT}, // 168 SPELL_EFFECT_ASCENSION_PLAY_SPELL_VISUAL_KIT
     {EFFECT_IMPLICIT_TARGET_NONE,     TARGET_OBJECT_TYPE_NONE}, // 169 SPELL_EFFECT_ASCENSION_SPREAD_AURA
     {EFFECT_IMPLICIT_TARGET_NONE,     TARGET_OBJECT_TYPE_NONE}, // 170 SPELL_EFFECT_ASCENSION_SPREAD_AURA_2
     {EFFECT_IMPLICIT_TARGET_NONE,     TARGET_OBJECT_TYPE_NONE}, // 171 unknown Ascension effect
@@ -1502,6 +1504,9 @@ bool SpellInfo::IsAffectedBySpellMod(SpellModifier const* mod) const
 
     if (mod->targetSpellId && mod->targetSpellId != Id)
         return false;
+
+    if (auto const target = AscensionMageTalentTarget(mod->spellId, Id))
+        return *target;
 
     if (SpellFamilyName == 31 && affectSpell->SpellFamilyName == 31)
     {
@@ -2969,7 +2974,8 @@ uint32 SpellInfo::CalcCastTime(Unit* caster, Spell* spell) const
         return 0;
 
     int32 castTime = serpent ? 1000 : CastTimeEntry->CastTime;
-    if (HasAttribute(SPELL_ATTR0_USES_RANGED_SLOT) && (!IsAutoRepeatRangedSpell()))
+    // Ascension channels ranged-slot spells without a base cast time, such as Tinker's Gatling Gun, at once.
+    if (HasAttribute(SPELL_ATTR0_USES_RANGED_SLOT) && (!IsAutoRepeatRangedSpell()) && (castTime || !IsChanneled()))
         castTime += 500;
 
     if (caster)
@@ -3105,6 +3111,7 @@ int32 SpellInfo::CalcPowerCost(Unit const* caster, SpellSchoolMask schoolMask, S
     // intrinsically instant, non-channeled mana spells; ranged animation delay
     // and temporary cast-time spellmods do not change that classification.
     float powerCostMultiplier = caster->GetFloatValue(static_cast<uint16>(UNIT_FIELD_POWER_COST_MULTIPLIER) + school);
+    powerCostMultiplier += AscensionMysticEnchant::NonstackingCostCorrection(caster, uint32(1) << school);
     if (PowerType == POWER_MANA && !IsChanneled() && (!CastTimeEntry || CastTimeEntry->CastTime == 0))
         powerCostMultiplier -= float(caster->GetTotalAuraModifier(SPELL_AURA_ASCENSION_MOD_INSTANT_MANA_COST_PCT)) / 100.0f;
 

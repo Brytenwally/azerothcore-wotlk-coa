@@ -16,6 +16,7 @@
  */
 
 #include "AccountMgr.h"
+#include "../../../coa/AscensionFreePick.h"
 #include "AchievementMgr.h"
 #include "ArenaTeam.h"
 #include "ArenaTeamMgr.h"
@@ -2401,7 +2402,9 @@ InventoryResult Player::CanUseItem(ItemTemplate const* proto) const
         return EQUIP_ERR_YOU_CAN_NEVER_USE_THAT_ITEM;
     }
 
-    if ((proto->AllowableClass & getClassMask()) == 0 || (proto->AllowableRace & getRaceMask()) == 0)
+    if (((proto->AllowableClass & getClassMask()) == 0 &&
+        !(proto->InventoryType == INVTYPE_RELIC && AscensionFreePick::Applies(this))) ||
+        (proto->AllowableRace & getRaceMask()) == 0)
     {
         return EQUIP_ERR_YOU_CAN_NEVER_USE_THAT_ITEM;
     }
@@ -2471,7 +2474,9 @@ InventoryResult Player::CanRollForItemInLFG(ItemTemplate const* proto, WorldObje
     if (proto->HasFlag2(ITEM_FLAG2_EVERYONE_CAN_ROLL_NEED))
         return EQUIP_ERR_OK;
 
-    if ((proto->AllowableClass & getClassMask()) == 0 || (proto->AllowableRace & getRaceMask()) == 0)
+    if (((proto->AllowableClass & getClassMask()) == 0 &&
+        !(proto->InventoryType == INVTYPE_RELIC && AscensionFreePick::Applies(this))) ||
+        (proto->AllowableRace & getRaceMask()) == 0)
         return EQUIP_ERR_YOU_CAN_NEVER_USE_THAT_ITEM;
 
     if (proto->RequiredSpell != 0 && !HasSpell(proto->RequiredSpell))
@@ -5019,6 +5024,8 @@ bool Player::isBeingLoaded() const
     return GetSession()->PlayerLoading();
 }
 
+void RestoreArea52MysticSpellsForLogin(Player* player, PreparedQueryResult result);
+
 bool Player::LoadFromDB(ObjectGuid playerGuid, CharacterDatabaseQueryHolder const& holder)
 {
     ////                                                     0     1        2     3     4        5      6    7      8     9    10    11         12         13           14         15         16
@@ -5545,6 +5552,10 @@ bool Player::LoadFromDB(ObjectGuid playerGuid, CharacterDatabaseQueryHolder cons
     m_specsCount = fields[64].Get<uint8>();
     m_activeSpec = fields[65].Get<uint8>();
 
+    bool const earlyFreePickSettings = AscensionFreePick::Enabled() && getClass() == CLASS_HERO;
+    if (earlyFreePickSettings)
+        _LoadCharacterSettings(holder.GetPreparedResult(PLAYER_LOGIN_QUERY_LOAD_CHARACTER_SETTINGS));
+
     LearnDefaultSkills();
     LearnCustomSpells();
 
@@ -5584,6 +5595,9 @@ bool Player::LoadFromDB(ObjectGuid playerGuid, CharacterDatabaseQueryHolder cons
 
     // xinef: load mails before inventory, so problematic items can be added to already loaded mails
     _LoadMail(holder.GetPreparedResult(PLAYER_LOGIN_QUERY_LOAD_MAILS), holder.GetPreparedResult(PLAYER_LOGIN_QUERY_LOAD_MAIL_ITEMS));
+
+    if (earlyFreePickSettings)
+        RestoreArea52MysticSpellsForLogin(this, holder.GetPreparedResult(PLAYER_LOGIN_QUERY_LOAD_FREEPICK_MYSTIC_COLLECTION));
 
     _LoadInventory(holder.GetPreparedResult(PLAYER_LOGIN_QUERY_LOAD_INVENTORY), time_diff);
 
@@ -5706,7 +5720,8 @@ bool Player::LoadFromDB(ObjectGuid playerGuid, CharacterDatabaseQueryHolder cons
 
     _LoadBrewOfTheMonth(holder.GetPreparedResult(PLAYER_LOGIN_QUERY_LOAD_BREW_OF_THE_MONTH));
 
-    _LoadCharacterSettings(holder.GetPreparedResult(PLAYER_LOGIN_QUERY_LOAD_CHARACTER_SETTINGS));
+    if (!earlyFreePickSettings)
+        _LoadCharacterSettings(holder.GetPreparedResult(PLAYER_LOGIN_QUERY_LOAD_CHARACTER_SETTINGS));
 
     // Players are immune to taunt
     ApplySpellImmune(0, IMMUNITY_STATE, SPELL_AURA_MOD_TAUNT, true);
@@ -6650,6 +6665,8 @@ void Player::_LoadSpells(PreparedQueryResult result)
 
             // CoA allows any race with any class and its classes share spells across class skill lines, so
             // SkillRaceClassInfo.dbc cannot decide which spells a character may keep.
+            std::set<std::uint32_t> const restoredSpells = {spellId};
+            AscensionFreePick::SpellLearningScope restore(this, restoredSpells);
             addSpell(spellId, specMask, true);
         } while (result->NextRow());
     }

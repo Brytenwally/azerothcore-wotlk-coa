@@ -23,6 +23,7 @@
 #include "SpellMgr.h"
 #include "SpellScript.h"
 #include "SpellScriptLoader.h"
+#include "../../coa/AscensionFreePick.h"
 /*
  * Scripts for spells with SPELLFAMILY_DRUID and SPELLFAMILY_GENERIC spells used by druid players.
  * Ordered alphabetically using scriptname.
@@ -255,6 +256,9 @@ class spell_dru_omen_of_clarity : public AuraScript
         // Reject energize spells (e.g. Furor) - they are not real casts
         if (spellInfo->HasEffect(SPELL_EFFECT_ENERGIZE))
             return false;
+
+        if (AscensionFreePick::Applies(GetTarget()->ToPlayer()))
+            return eventInfo.GetDamageInfo() || eventInfo.GetHealInfo();
 
         if (eventInfo.GetTypeMask() & PROC_FLAG_DONE_SPELL_MELEE_DMG_CLASS)
             return spellInfo->HasAttribute(SPELL_ATTR0_ON_NEXT_SWING) || spellInfo->HasAttribute(SPELL_ATTR0_ON_NEXT_SWING_NO_DAMAGE);

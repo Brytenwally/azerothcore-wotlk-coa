@@ -797,6 +797,7 @@ public:
     void LoadSpellGroups();
     void LoadSpellGroupStackRules();
     void LoadSpellProcs();
+    void RefreshArea52DanceOfDeathProc();
     void LoadSpellBonuses();
     void LoadSpellThreats();
     void LoadSpellMixology();

@@ -16,6 +16,8 @@
  */
 
 #include "Player.h"
+#include "../../coa/AscensionFreePick.h"
+#include "../../coa/Area52HopliteSupportRules.h"
 #include "SpellAuraEffects.h"
 #include "SpellInfo.h"
 #include "SpellMgr.h"
@@ -71,6 +73,10 @@ enum WarriorSpells
     SPELL_WARRIOR_SLAM_GCD_REDUCED                  = 71072,
     SPELL_WARRIOR_EXECUTE_GCD_REDUCED               = 71069,
     SPELL_WARRIOR_WARRIORS_WRATH                    = 21887,
+    SPELL_WARRIOR_SWORD_AND_BOARD_PROC              = 50227,
+    SPELL_WARRIOR_SHIELD_SLAM_DISPEL                = 823922,
+    SPELL_WARRIOR_SWORD_AND_THUNDER                 = 979777,
+    SPELL_WARRIOR_THUNDER_CLAP                      = 6343,
 };
 
 enum WarriorSpellIcons
@@ -116,7 +122,11 @@ class spell_warr_victory_rush : public SpellScript
     void HandleCast()
     {
         if (Unit* caster = GetCaster())
+        {
             caster->RemoveAurasDueToSpell(SPELL_VICTORIOUS);
+            if (AscensionFreePick::Applies(caster->ToPlayer()))
+                caster->RemoveAurasDueToSpell(965664);
+        }
     }
 
     void Register() override
@@ -270,7 +280,8 @@ class spell_warr_deep_wounds : public SpellScript
             // include target dependant auras
             damage = target->MeleeDamageBonusTaken(caster, damage, BASE_ATTACK, GetSpellInfo());
             // apply percent damage mods
-            ApplyPct(damage, 16.0f * GetSpellInfo()->GetRank() / 6.0f);
+            ApplyPct(damage, Area52HopliteSupport::DeepWoundsTickPercent(
+                AscensionFreePick::Applies(caster->ToPlayer()), GetSpellInfo()->GetRank()));
             target->CastDelayedSpellWithPeriodicAmount(caster, SPELL_WARRIOR_DEEP_WOUNDS_RANK_PERIODIC, SPELL_AURA_PERIODIC_DAMAGE, damage, EFFECT_0);
 
             //caster->CastCustomSpell(target, SPELL_WARRIOR_DEEP_WOUNDS_RANK_PERIODIC, &damage, nullptr, nullptr, true);
@@ -407,7 +418,9 @@ class spell_warr_execute : public SpellScript
         if (Unit* target = GetHitUnit())
         {
             SpellInfo const* spellInfo = GetSpellInfo();
-            int32 rageUsed = std::min<int32>(300 - spellInfo->CalcPowerCost(caster, SpellSchoolMask(spellInfo->SchoolMask)), caster->GetPower(POWER_RAGE));
+            bool const freePick = AscensionFreePick::Applies(caster->ToPlayer());
+            int32 rageUsed = Area52HopliteSupport::ExecuteExtraRage(freePick,
+                spellInfo->CalcPowerCost(caster, SpellSchoolMask(spellInfo->SchoolMask)), caster->GetPower(POWER_RAGE));
             int32 newRage = std::max<int32>(0, caster->GetPower(POWER_RAGE) - rageUsed);
 
             // Sudden Death rage save
@@ -422,7 +435,8 @@ class spell_warr_execute : public SpellScript
             if (AuraEffect* aurEff = caster->GetAuraEffect(SPELL_WARRIOR_GLYPH_OF_EXECUTION, EFFECT_0))
                 rageUsed += aurEff->GetAmount() * 10;
 
-            int32 bp = GetEffectValue() + int32(rageUsed * spellInfo->Effects[effIndex].DamageMultiplier + caster->GetTotalAttackPowerValue(BASE_ATTACK) * 0.2f);
+            int32 bp = GetEffectValue() + int32(rageUsed * spellInfo->Effects[effIndex].DamageMultiplier +
+                Area52HopliteSupport::ExecuteAttackPower(freePick, caster->GetTotalAttackPowerValue(BASE_ATTACK)));
             caster->CastCustomSpell(target, SPELL_WARRIOR_EXECUTE, &bp, nullptr, nullptr, true, nullptr, nullptr, GetOriginalCaster()->GetGUID());
         }
     }
@@ -1027,6 +1041,11 @@ class spell_warr_second_wind : public AuraScript
         if (!procSpell)
             return false;
 
+        if (GetSpellInfo()->Effects[EFFECT_0].ApplyAuraName == SPELL_AURA_PROC_TRIGGER_SPELL)
+            return eventInfo.GetActor() == GetTarget() && GetTarget()->HealthBelowPct(35) &&
+                (eventInfo.GetTypeMask() & PROC_FLAG_DONE_SPELL_MELEE_DMG_CLASS) &&
+                eventInfo.GetDamageInfo() && eventInfo.GetDamageInfo()->GetDamage() > 0;
+
         // Must be from stun or root mechanic
         if (!(procSpell->GetAllEffectsMechanicMask() & ((1ULL << MECHANIC_ROOT) | (1ULL << MECHANIC_STUN))))
             return false;
@@ -1058,7 +1077,9 @@ class spell_warr_second_wind : public AuraScript
     void Register() override
     {
         DoCheckProc += AuraCheckProcFn(spell_warr_second_wind::CheckProc);
-        OnEffectProc += AuraEffectProcFn(spell_warr_second_wind::HandleProc, EFFECT_0, SPELL_AURA_DUMMY);
+        SpellInfo const* info = sSpellMgr->GetSpellInfo(m_scriptSpellId);
+        if (info && info->Effects[EFFECT_0].ApplyAuraName == SPELL_AURA_DUMMY)
+            OnEffectProc += AuraEffectProcFn(spell_warr_second_wind::HandleProc, EFFECT_0, SPELL_AURA_DUMMY);
     }
 };
 
@@ -1150,6 +1171,95 @@ class spell_warr_extra_proc : public AuraScript
     }
 };
 
+class spell_warr_shield_slam_dispel_gate : public SpellScript
+{
+    PrepareSpellScript(spell_warr_shield_slam_dispel_gate);
+
+    void HandleDispelTrigger(SpellEffIndex effIndex)
+    {
+        if (GetSpellInfo()->Effects[effIndex].TriggerSpell == SPELL_WARRIOR_SHIELD_SLAM_DISPEL
+            && (!GetCaster()->HasAura(SPELL_WARRIOR_SWORD_AND_BOARD_PROC)
+                || GetCaster()->HasAura(SPELL_WARRIOR_SWORD_AND_THUNDER)))
+            PreventHitDefaultEffect(effIndex);
+    }
+
+    void Register() override
+    {
+        OnEffectLaunchTarget += SpellEffectFn(spell_warr_shield_slam_dispel_gate::HandleDispelTrigger,
+            EFFECT_0, SPELL_EFFECT_TRIGGER_SPELL);
+    }
+};
+
+class spell_warr_sword_and_thunder_modifiers : public AuraScript
+{
+    PrepareAuraScript(spell_warr_sword_and_thunder_modifiers);
+
+    void CalculateModifier(AuraEffect const* effect, SpellModifier*& modifier)
+    {
+        if (!modifier || !GetUnitOwner()->HasAura(SPELL_WARRIOR_SWORD_AND_THUNDER))
+            return;
+
+        modifier->mask = effect->GetEffIndex() == EFFECT_2 ? flag96(0, 0, 0) : flag96(0x80, 0, 0);
+        if (effect->GetEffIndex() == EFFECT_0)
+            modifier->value = -100;
+        else if (effect->GetEffIndex() == EFFECT_2)
+            modifier->value = 0;
+    }
+
+    void Register() override
+    {
+        DoEffectCalcSpellMod += AuraEffectCalcSpellModFn(spell_warr_sword_and_thunder_modifiers::CalculateModifier,
+            EFFECT_ALL, SPELL_AURA_ADD_PCT_MODIFIER);
+    }
+};
+
+class spell_warr_sword_and_thunder_dispel : public SpellScript
+{
+    PrepareSpellScript(spell_warr_sword_and_thunder_dispel);
+
+    bool _empowered = false;
+    ObjectGuid _selectedTarget;
+
+    void CaptureProc()
+    {
+        _empowered = GetCaster()->HasAura(SPELL_WARRIOR_SWORD_AND_THUNDER)
+            && GetCaster()->HasAura(SPELL_WARRIOR_SWORD_AND_BOARD_PROC);
+        if (Player* player = GetCaster()->ToPlayer())
+            _selectedTarget = player->GetTarget();
+    }
+
+    void DispelTarget(SpellEffIndex)
+    {
+        if (_empowered && GetHitUnit() && GetHitUnit()->GetGUID() == _selectedTarget)
+            GetCaster()->CastSpell(GetHitUnit(), SPELL_WARRIOR_SHIELD_SLAM_DISPEL, true);
+    }
+
+    void Register() override
+    {
+        BeforeCast += SpellCastFn(spell_warr_sword_and_thunder_dispel::CaptureProc);
+        OnEffectHitTarget += SpellEffectFn(spell_warr_sword_and_thunder_dispel::DispelTarget,
+            EFFECT_0, SPELL_EFFECT_SCHOOL_DAMAGE);
+    }
+};
+
+class spell_warr_sword_and_thunder_cleanup : public AuraScript
+{
+    PrepareAuraScript(spell_warr_sword_and_thunder_cleanup);
+
+    void ClearProc(AuraEffect const*, AuraEffectHandleModes)
+    {
+        GetTarget()->RemoveAurasDueToSpell(SPELL_WARRIOR_SWORD_AND_BOARD_PROC);
+    }
+
+    void Register() override
+    {
+        AfterEffectApply += AuraEffectApplyFn(spell_warr_sword_and_thunder_cleanup::ClearProc,
+            EFFECT_0, SPELL_AURA_ADD_FLAT_MODIFIER, AURA_EFFECT_HANDLE_REAL);
+        AfterEffectRemove += AuraEffectRemoveFn(spell_warr_sword_and_thunder_cleanup::ClearProc,
+            EFFECT_0, SPELL_AURA_ADD_FLAT_MODIFIER, AURA_EFFECT_HANDLE_REAL);
+    }
+};
+
 // Sword and Board proc - remove Shield Slam cooldown
 class spell_warr_sword_and_board : public AuraScript
 {
@@ -1158,7 +1268,12 @@ class spell_warr_sword_and_board : public AuraScript
     void HandleProc(AuraEffect const* /*aurEff*/, ProcEventInfo& /*eventInfo*/)
     {
         Unit* caster = GetTarget();
-        if (caster->IsPlayer())
+        if (caster->IsPlayer() && caster->HasAura(SPELL_WARRIOR_SWORD_AND_THUNDER))
+        {
+            if (SpellInfo const* thunderClap = sSpellMgr->GetSpellInfo(SPELL_WARRIOR_THUNDER_CLAP))
+                caster->ToPlayer()->RemoveCategoryCooldown(thunderClap->GetCategory());
+        }
+        else if (caster->IsPlayer())
             caster->ToPlayer()->RemoveCategoryCooldown(1209); // Shield Slam category
     }
 
@@ -1270,6 +1385,10 @@ void AddSC_warrior_spell_scripts()
     RegisterSpellScript(spell_warr_deep_wounds_aura);
     RegisterSpellScript(spell_warr_extra_proc);
     RegisterSpellScript(spell_warr_sword_and_board);
+    RegisterSpellScript(spell_warr_shield_slam_dispel_gate);
+    RegisterSpellScript(spell_warr_sword_and_thunder_modifiers);
+    RegisterSpellScript(spell_warr_sword_and_thunder_dispel);
+    RegisterSpellScript(spell_warr_sword_and_thunder_cleanup);
     RegisterSpellScript(spell_warr_glyph_of_blocking);
     RegisterSpellScript(spell_warr_item_t10_prot_4p_bonus);
 }

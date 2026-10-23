@@ -16,6 +16,11 @@
  */
 
 #include "Unit.h"
+#include "../../../coa/AscensionFreePick.h"
+#include "../../../coa/Area52FollowupProcRules.h"
+#include "../../../coa/Area52WyvernSleep.h"
+#include "../../../coa/Area52HopliteRemainingRules.h"
+#include "../../../coa/Area52BulwarkRules.h"
 #include "AbstractFollower.h"
 #include "AreaDefines.h"
 #include "ArenaSpectator.h"
@@ -76,8 +81,18 @@
 #include "World.h"
 #include "WorldPacket.h"
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <limits>
+
+namespace AscensionPlayerComboPoints
+{
+bool Applies(Unit const* unit);
+}
+
+// Ascension's caster state for "only usable after the target dodges" (its Overpower and the Chaser strikes),
+// which it uses instead of the warrior's combo point.
+constexpr AuraStateType ASCENSION_AURA_STATE_TARGET_DODGED = AuraStateType(24);
 
 float baseMoveSpeed[MAX_MOVE_TYPE] =
 {
@@ -117,6 +132,43 @@ static float ClassicCreatureAvoidanceChance(Unit const* creature, AuraType aura)
     if (creature->IsTotem())
         return 0.0f;
     return std::max(0.0f, ClassicPlusCombat::CreatureBaseAvoidance + creature->GetTotalAuraModifier(aura));
+}
+
+static bool Area52TankDefense(Unit const* defender)
+{
+    return AscensionFreePick::Applies(defender->ToPlayer()) &&
+        std::any_of(Area52Bulwark::TankStances.begin(), Area52Bulwark::TankStances.end(),
+            [defender](uint32 id) { return defender->HasAura(id); });
+}
+
+static bool Area52BlockDuringCast(Unit const* defender)
+{
+    return Area52TankDefense(defender) ||
+        (AscensionFreePick::Applies(defender->ToPlayer()) && defender->HasAura(922565));
+}
+
+static uint32 Area52CriticalBlockBonus(Unit const* defender, Unit const* attacker, uint32 damage, uint32 block)
+{
+    using namespace Area52HopliteRemaining;
+    if (!AscensionFreePick::Applies(defender->ToPlayer()) || !attacker)
+        return 0;
+    int32 percent = 0;
+    if (!attacker->IsCharmedOwnedByPlayerOrPlayer() && !defender->HasAura(TouchedRank1) &&
+        !defender->HasAura(TouchedRank2) && !defender->HasAura(TouchedRank3))
+        for (uint32 id : {CriticalBlockRank3, CriticalBlockRank2, CriticalBlockRank1})
+            if (AuraEffect const* talent = defender->GetAuraEffect(id, EFFECT_2))
+            {
+                percent += talent->GetAmount();
+                if (AuraEffect const* enchant = defender->GetAuraEffect(CriticalBlockEnchant, EFFECT_0))
+                    percent += enchant->GetAmount();
+                if (AuraEffect const* finesse = defender->GetAuraEffect(986126, EFFECT_0))
+                    percent += finesse->GetAmount();
+                break;
+            }
+    if (defender->HasAura(922565))
+        if (AuraEffect const* bulwark = defender->GetAuraEffect(923927, EFFECT_0))
+            percent += bulwark->GetAmount();
+    return Area52HopliteRemaining::AdditionalBlock(damage, block, percent);
 }
 
 DamageInfo::DamageInfo(Unit* _attacker, Unit* _victim, uint32 _damage, SpellInfo const* _spellInfo, SpellSchoolMask _schoolMask, DamageEffectType _damageType, uint32 cleanDamage)
@@ -526,8 +578,11 @@ Unit::~Unit()
     HandleSafeUnitPointersOnDelete(this);
 }
 
+#include "../../coa/AscensionPowerSurge.inc"
+
 void Unit::Update(uint32 p_time)
 {
+    AscensionPowerSurge::Update(this, p_time);
     sScriptMgr->OnUnitUpdate(this, p_time);
 
     // WARNING! Order of execution here is important, do not change.
@@ -657,6 +712,7 @@ void Unit::Update(uint32 p_time)
     ModifyAuraState(AURA_STATE_HEALTHLESS_20_PERCENT, IsAlive() ? HealthBelowPct(20) : false);
     ModifyAuraState(AURA_STATE_HEALTHLESS_35_PERCENT, IsAlive() ? HealthBelowPct(35) : false);
     ModifyAuraState(AURA_STATE_HEALTH_ABOVE_75_PERCENT, IsAlive() ? HealthAbovePct(75) : false);
+    ModifyAuraState(AuraStateType(ASCENSION_TARGET_HEALTH_ABOVE_80_PERCENT), IsAlive() ? HealthAbovePct(80) : false);
 
     UpdateSplineMovement(p_time);
     GetMotionMaster()->UpdateMotion(p_time);
@@ -1051,6 +1107,9 @@ uint32 Unit::DealDamage(Unit* attacker, Unit* victim, uint32 damage, CleanDamage
         }
     }
 
+    AscensionPowerSurge::Damage(victim, attacker, damage, cleanDamage ? cleanDamage->absorbed_damage : 0,
+        damagetype == DIRECT_DAMAGE && cleanDamage && cleanDamage->attackType != RANGED_ATTACK);
+
     // Signal the pet it was attacked so the AI can respond if needed
     if (victim->IsCreature() && attacker != victim && victim->IsPet() && victim->IsAlive())
         victim->ToPet()->AI()->AttackedBy(attacker);
@@ -1397,12 +1456,38 @@ void Unit::CastStop(uint32 except_spellid, bool withInstant)
             InterruptSpell(CurrentSpellTypes(i), false, withInstant);
 }
 
+// A spell triggered by a spell or a proc is cast inside the cast that triggered it. Abilities of different
+// classes put together (Wildcard) can close a trigger loop, one that may branch for every target it hits: past
+// these limits a cast is refused instead of overflowing the stack or stalling the map.
+static constexpr uint32 MAX_NESTED_SPELL_CASTS = 32;
+static constexpr uint32 MAX_CASTS_INSIDE_ONE_CAST = 1000;
+thread_local std::array<uint32, MAX_NESTED_SPELL_CASTS> NestedSpellCasts;
+thread_local uint32 NestedSpellCastCount = 0;
+thread_local uint32 CastsInsideOuterCast = 0;
+thread_local bool TriggerLoopLogged = false;
+
 SpellCastResult Unit::CastSpell(SpellCastTargets const& targets, SpellInfo const* spellInfo, CustomSpellValues const* value, TriggerCastFlags triggerFlags, Item* castItem, AuraEffect const* triggeredByAura, ObjectGuid originalCaster)
 {
     if (!spellInfo)
     {
         LOG_ERROR("entities.unit", "CastSpell: unknown spell by caster {}", GetGUID().ToString());
         return SPELL_FAILED_SPELL_UNAVAILABLE;
+    }
+
+    if (NestedSpellCastCount == MAX_NESTED_SPELL_CASTS ||
+        (NestedSpellCastCount && CastsInsideOuterCast == MAX_CASTS_INSIDE_ONE_CAST))
+    {
+        if (!TriggerLoopLogged)
+        {
+            TriggerLoopLogged = true;
+            std::string chain;
+            for (uint32 index = 0; index < NestedSpellCastCount; ++index)
+                chain += " " + std::to_string(NestedSpellCasts[index]);
+            LOG_ERROR("entities.unit", "CastSpell: spell {} of {} refused, a trigger loop: {} casts nested, {} cast inside "
+                "the outermost one. Nested casts, outermost first:{}", spellInfo->Id, GetName(), NestedSpellCastCount,
+                CastsInsideOuterCast, chain);
+        }
+        return SPELL_FAILED_DONT_REPORT;
     }
 
     /// @todo: this is a workaround - not needed anymore, but required for some scripts :(
@@ -1422,6 +1507,18 @@ SpellCastResult Unit::CastSpell(SpellCastTargets const& targets, SpellInfo const
     }
 
     spell->m_CastItem = castItem;
+    if (NestedSpellCastCount)
+        ++CastsInsideOuterCast;
+    else
+    {
+        CastsInsideOuterCast = 0;
+        TriggerLoopLogged = false;
+    }
+    struct NestedCast
+    {
+        explicit NestedCast(uint32 spellId) { NestedSpellCasts[NestedSpellCastCount++] = spellId; }
+        ~NestedCast() { --NestedSpellCastCount; }
+    } const nested(spellInfo->Id);
     return spell->prepare(&targets, triggeredByAura);
 }
 
@@ -1614,6 +1711,8 @@ void Unit::CalculateSpellDamageTaken(SpellNonMeleeDamage* damageInfo, int32 dama
                     // double blocked amount if block is critical
                     if (victim->isBlockCritical())
                         damageInfo->blocked *= 2;
+                    damageInfo->blocked += Area52CriticalBlockBonus(victim, this, uint32(std::max(0, damage)),
+                        damageInfo->blocked);
                     if (damage < int32(damageInfo->blocked))
                         damageInfo->blocked = uint32(damage);
 
@@ -1929,6 +2028,11 @@ void Unit::CalculateMeleeDamage(Unit* victim, CalcDamageInfo* damageInfo, Weapon
             if (damageInfo->target->isBlockCritical())
                 damageInfo->blocked_amount += damageInfo->blocked_amount;
 
+            uint32 blockableDamage = 0;
+            for (auto const& component : damageInfo->damages)
+                blockableDamage += component.damage;
+            damageInfo->blocked_amount += Area52CriticalBlockBonus(damageInfo->target, this,
+                blockableDamage, damageInfo->blocked_amount);
             uint32 remainingBlock = damageInfo->blocked_amount;
             uint8 fullBlockMask = 0;
             for (uint8 i = 0; i < MAX_ITEM_PROTO_DAMAGES; ++i)
@@ -3209,7 +3313,7 @@ MeleeHitOutcome Unit::RollMeleeOutcomeAgainst(Unit const* victim, WeaponAttackTy
         tmp = dodge_chance;
 
         // xinef: if casting or stunned - cant dodge
-        if (victim->IsNonMeleeSpellCast(false, victim->CanDefendDuringChannel(), true) || victim->HasUnitState(UNIT_STATE_CONTROLLED))
+        if ((!Area52TankDefense(victim) && victim->IsNonMeleeSpellCast(false, victim->CanDefendDuringChannel(), true)) || victim->HasUnitState(UNIT_STATE_CONTROLLED))
             tmp = 0;
 
         if ((tmp > 0)                                        // check if unit _can_ dodge
@@ -3242,7 +3346,7 @@ MeleeHitOutcome Unit::RollMeleeOutcomeAgainst(Unit const* victim, WeaponAttackTy
             tmp = parry_chance;
 
             // xinef: cant parry while casting or while stunned
-            if (victim->IsNonMeleeSpellCast(false, victim->CanDefendDuringChannel(), true) || victim->HasUnitState(UNIT_STATE_CONTROLLED))
+            if ((!Area52TankDefense(victim) && victim->IsNonMeleeSpellCast(false, victim->CanDefendDuringChannel(), true)) || victim->HasUnitState(UNIT_STATE_CONTROLLED))
                 tmp = 0;
 
             if (tmp > 0                                         // check if unit _can_ parry
@@ -3293,7 +3397,7 @@ MeleeHitOutcome Unit::RollMeleeOutcomeAgainst(Unit const* victim, WeaponAttackTy
         tmp = block_chance;
 
         // xinef: cant block while casting or while stunned
-        if (victim->IsNonMeleeSpellCast(false, false, true) || victim->HasUnitState(UNIT_STATE_CONTROLLED))
+        if ((!Area52BlockDuringCast(victim) && victim->IsNonMeleeSpellCast(false, false, true)) || victim->HasUnitState(UNIT_STATE_CONTROLLED))
             tmp = 0;
 
         if (tmp > 0                                          // check if unit _can_ block
@@ -3506,7 +3610,7 @@ bool Unit::isSpellBlocked(Unit* victim, SpellInfo const* spellProto, WeaponAttac
             blockChance += (weaponSkill - victimMaxSkill) * 0.04f;
 
         // xinef: cant block while casting or while stunned
-        if (blockChance < 0.0f || victim->IsNonMeleeSpellCast(false, false, true) || victim->HasUnitState(UNIT_STATE_CONTROLLED))
+        if (blockChance < 0.0f || (!Area52BlockDuringCast(victim) && victim->IsNonMeleeSpellCast(false, false, true)) || victim->HasUnitState(UNIT_STATE_CONTROLLED))
             blockChance = 0.0f;
 
         if (roll_chance_f(blockChance))
@@ -3517,7 +3621,13 @@ bool Unit::isSpellBlocked(Unit* victim, SpellInfo const* spellProto, WeaponAttac
 
 bool Unit::isBlockCritical()
 {
-    if (roll_chance_i(GetTotalAuraModifier(SPELL_AURA_MOD_BLOCK_CRIT_CHANCE)))
+    using namespace Area52HopliteRemaining;
+    int32 chance = GetTotalAuraModifier(SPELL_AURA_MOD_BLOCK_CRIT_CHANCE);
+    if (AscensionFreePick::Applies(ToPlayer()))
+        for (uint32 id : {CriticalBlockRank1, CriticalBlockRank2, CriticalBlockRank3})
+            if (AuraEffect const* talent = GetAuraEffect(id, EFFECT_0))
+                chance -= talent->GetAmount();
+    if (roll_chance_i(std::max(0, chance)))
         return true;
     return false;
 }
@@ -3691,7 +3801,7 @@ SpellMissInfo Unit::MeleeSpellHitResult(Unit* victim, SpellInfo const* spellInfo
             dodgeChance -= GetTotalAuraModifier(SPELL_AURA_MOD_EXPERTISE) * 25;
 
         // xinef: cant dodge while casting or while stunned
-        if (dodgeChance < 0 || victim->IsNonMeleeSpellCast(false, victim->CanDefendDuringChannel(), true) || victim->HasUnitState(UNIT_STATE_CONTROLLED))
+        if (dodgeChance < 0 || (!Area52TankDefense(victim) && victim->IsNonMeleeSpellCast(false, victim->CanDefendDuringChannel(), true)) || victim->HasUnitState(UNIT_STATE_CONTROLLED))
             dodgeChance = 0;
 
         tmp += dodgeChance;
@@ -3712,7 +3822,7 @@ SpellMissInfo Unit::MeleeSpellHitResult(Unit* victim, SpellInfo const* spellInfo
             parryChance -= GetTotalAuraModifier(SPELL_AURA_MOD_EXPERTISE) * 25;
 
         // xinef: cant parry while casting or while stunned
-        if (parryChance < 0 || victim->IsNonMeleeSpellCast(false, victim->CanDefendDuringChannel(), true) || victim->HasUnitState(UNIT_STATE_CONTROLLED))
+        if (parryChance < 0 || (!Area52TankDefense(victim) && victim->IsNonMeleeSpellCast(false, victim->CanDefendDuringChannel(), true)) || victim->HasUnitState(UNIT_STATE_CONTROLLED))
             parryChance = 0;
 
         tmp += parryChance;
@@ -3727,7 +3837,7 @@ SpellMissInfo Unit::MeleeSpellHitResult(Unit* victim, SpellInfo const* spellInfo
             int32(victim->GetUnitBlockChance() * 100.0f) - skillDiff * 4;
 
         // xinef: cant block while casting or while stunned
-        if (blockChance < 0 || victim->IsNonMeleeSpellCast(false, false, true) || victim->HasUnitState(UNIT_STATE_CONTROLLED))
+        if (blockChance < 0 || (!Area52BlockDuringCast(victim) && victim->IsNonMeleeSpellCast(false, false, true)) || victim->HasUnitState(UNIT_STATE_CONTROLLED))
             blockChance = 0;
 
         tmp += blockChance;
@@ -4757,6 +4867,11 @@ bool Unit::CanCastSpellWhileMoving(SpellInfo const* info) const
 {
     if (!info)
         return false;
+    for (uint32 auraId : { 53817u, 853817u, 853818u })
+        if (Aura const* aura = GetAura(auraId))
+            if (AuraEffect const* effect = aura->GetEffect(EFFECT_0))
+                if (aura->GetStackAmount() && effect->IsAffectedOnSpell(info))
+                    return true;
     if (IsPlayer() && getClass() == CLASS_STARCALLER &&
         (info->Id == 801990 || info->Id == 802682 || (HasAura(704772) && !info->IsPositive())))
         return true;
@@ -4851,10 +4966,11 @@ bool Unit::CanCastDuringChannel(SpellInfo const* info) const
         channel->IsChannelActive() && channel->GetSpellInfo()->Id == 800355)
         return true;
     if (IsPlayer() && getClass() == CLASS_STORMBRINGER && info && info->SpellFamilyName == 22 &&
-        (info->SpellFamilyFlags[0] & 33554432) && (info->SpellFamilyFlags[2] & 32) && HasAura(578300) &&
         channel && channel->getState() != SPELL_STATE_FINISHED && channel->IsChannelActive() &&
         channel->GetSpellInfo()->SpellFamilyName == 22 &&
-        (channel->GetSpellInfo()->SpellFamilyFlags[1] & 65536))
+        (channel->GetSpellInfo()->SpellFamilyFlags[1] & 65536) &&
+        ((info->SpellFamilyFlags[0] & 2048) || (info->SpellFamilyFlags[1] & 128) ||
+        ((info->SpellFamilyFlags[0] & 33554432) && (info->SpellFamilyFlags[2] & 32) && HasAura(578300))))
         return true;
     return getClass() == CLASS_WITCH_DOCTOR && info && info->SpellFamilyName == 19 &&
         ((info->SpellFamilyFlags[1] & 2048) || (info->SpellFamilyFlags[2] & 536870913)) &&
@@ -5618,15 +5734,20 @@ void Unit::RemoveOwnedAuras(std::function<bool(Aura const*)> const& check)
 
 void Unit::RemoveAppliedAuras(std::function<bool(AuraApplication const*)> const& check)
 {
-    for (AuraApplicationMap::iterator iter = m_appliedAuras.begin(); iter != m_appliedAuras.end();)
+    std::vector<std::pair<uint32, AuraApplication*>> const applications(m_appliedAuras.begin(), m_appliedAuras.end());
+    for (auto const& [spellId, aurApp] : applications)
     {
-        // RemoveAura no-ops on applications already mid-removal
-        if (!iter->second->GetRemoveMode() && check(iter->second))
+        AuraApplicationMapBoundsNonConst range = m_appliedAuras.equal_range(spellId);
+        for (AuraApplicationMap::iterator iter = range.first; iter != range.second; ++iter)
         {
-            RemoveAura(iter);
-            continue;
+            if (iter->second != aurApp)
+                continue;
+
+            if (!aurApp->GetRemoveMode() && check(aurApp))
+                RemoveAura(iter);
+
+            break;
         }
-        ++iter;
     }
 }
 
@@ -5964,6 +6085,14 @@ void Unit::RemoveAurasWithInterruptFlags(uint32 flag, uint32 except, bool isAuto
     {
         Aura* aura = (*iter)->GetBase();
         ++iter;
+        if ((flag & AURA_INTERRUPT_FLAG_TAKE_DAMAGE) && except && aura->GetId() == 24131)
+        {
+            Unit* caster = aura->GetCaster();
+            SpellInfo const* source = aura->GetTriggeredByAuraSpellInfo();
+            if (Area52WyvernSleep::PreservesSleep(caster && AscensionFreePick::Applies(caster->ToPlayer()),
+                aura->GetId(), source ? source->Id : 0, sSpellMgr->GetFirstSpellInChain(except)))
+                continue;
+        }
         uint32 const auraFlags = mobileChannel && aura->GetId() == channelId
             ? flag & ~(AURA_INTERRUPT_FLAG_MOVE | AURA_INTERRUPT_FLAG_TURNING) : flag;
         if ((aura->GetSpellInfo()->AuraInterruptFlags & auraFlags) && (!except || aura->GetId() != except))
@@ -9042,6 +9171,315 @@ float Unit::SpellPctDamageModsDone(Unit* victim, SpellInfo const* spellProto, Da
     // bonus against aurastate
     DoneTotalMod *= GetTotalAuraMultiplier(SPELL_AURA_MOD_DAMAGE_DONE_VERSUS_AURASTATE, [victim, spellProto, damagetype, this](AuraEffect const* aurEff)
     {
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_NPC_DAMAGE ||
+            aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_PLAYER_DAMAGE)
+            return spellProto && aurEff->IsAffectedOnSpell(spellProto) &&
+                victim->IsPlayer() == (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_PLAYER_DAMAGE) &&
+                spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, damagetype == DOT);
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, damagetype == DOT);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, damagetype == DOT);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, damagetype == DOT);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, damagetype == DOT);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, damagetype == DOT);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, damagetype == DOT);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, damagetype == DOT);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, damagetype == DOT);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, damagetype == DOT);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, damagetype == DOT);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, damagetype == DOT);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, damagetype == DOT);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, damagetype == DOT);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, damagetype == DOT);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, damagetype == DOT);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, damagetype == DOT);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, damagetype == DOT);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, damagetype == DOT);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, damagetype == DOT);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, damagetype == DOT);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, damagetype == DOT);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, damagetype == DOT);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, damagetype == DOT);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, damagetype == DOT);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, damagetype == DOT);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, damagetype == DOT);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, damagetype == DOT);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, damagetype == DOT);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, damagetype == DOT);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, damagetype == DOT);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, damagetype == DOT);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, damagetype == DOT);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, damagetype == DOT);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, damagetype == DOT);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, damagetype == DOT);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, damagetype == DOT);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, damagetype == DOT);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, damagetype == DOT);
+        }
         if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_AURASTATE_DAMAGE && !aurEff->IsAffectedOnSpell(spellProto))
             return false;
         return victim->HasAuraState(AuraStateType(aurEff->GetMiscValue())) && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, damagetype == DOT);
@@ -9246,7 +9684,8 @@ float Unit::SpellPctDamageModsDone(Unit* victim, SpellInfo const* spellProto, Da
                 uint32 stacks = 0;
                 Unit::AuraEffectList const& auras = victim->GetAuraEffectsByType(SPELL_AURA_PERIODIC_DAMAGE);
                 for (Unit::AuraEffectList::const_iterator itr = auras.begin(); itr != auras.end(); ++itr)
-                    if (((*itr)->GetId() == 31803 || (*itr)->GetId() == 53742) && (*itr)->GetCasterGUID() == GetGUID())
+                    if (((spellProto->Id == 31804 && (*itr)->GetId() == 31803) ||
+                        (spellProto->Id == 53733 && (*itr)->GetId() == 53742)) && (*itr)->GetCasterGUID() == GetGUID())
                     {
                         stacks = (*itr)->GetBase()->GetStackAmount();
                         break;
@@ -9386,6 +9825,11 @@ uint32 Unit::SpellDamageBonusDone(Unit* victim, SpellInfo const* spellProto, uin
     int32 DoneTotal = 0;
     float DoneTotalMod = TotalMod ? TotalMod : SpellPctDamageModsDone(victim, spellProto, damagetype);
 
+    if (AscensionFreePick::Applies(ToPlayer()) && spellProto->GetFirstRankSpell()->Id == 6343)
+        if (Item* weapon = ToPlayer()->GetWeaponForAttack(BASE_ATTACK, true))
+            if (weapon->GetTemplate()->InventoryType == INVTYPE_2HWEAPON)
+                DoneTotalMod *= 1.6f;
+
     // Config : RATE_CREATURE_X_SPELLDAMAGE & Do Not Modify Pet/Guardian/Mind Controlled Damage
     if (IsCreature() && (!ToCreature()->IsPet() || !ToCreature()->IsGuardian() || !ToCreature()->IsControlledByPlayer()))
         DoneTotalMod *= ToCreature()->GetSpellDamageMod(ToCreature()->GetCreatureTemplate()->rank);
@@ -9493,6 +9937,8 @@ uint32 Unit::SpellDamageBonusDone(Unit* victim, SpellInfo const* spellProto, uin
         // damage school unchanged for native resistance and damage modifiers.
         DoneAdvertisedBenefit += std::max(SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_FIRE),
             SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_NATURE));
+    else if (spellProto->Id == 54158 && HasAura(20165))
+        DoneAdvertisedBenefit += SpellBaseHealingBonusDone(spellPowerSchool);
     else
         DoneAdvertisedBenefit += SpellBaseDamageBonusDone(spellPowerSchool);
 
@@ -9584,11 +10030,15 @@ static bool IsAscensionPvpTuningAura(uint32 spellId)
     return spellId >= 887100 && spellId <= 887190;
 }
 
-static bool IsAscensionTuningDamageTakenSource(AuraEffect const* effect, Unit const* attacker)
+static bool IsAscensionTuningDamageTakenSource(AuraEffect const* effect, Unit const* attacker, Unit const* defender)
 {
     // Tuning auras copy the aura 87 selectors of Libram of Tenacity 801461:
     // 1 means damage from players, 2 damage from creatures (cf. Thunder Hide 92815).
     bool const fromPlayer = attacker && attacker->IsCharmedOwnedByPlayerOrPlayer();
+    if (effect->GetId() == 871 && AscensionFreePick::Applies(defender->ToPlayer()))
+        return effect->GetEffIndex() == (fromPlayer ? EFFECT_1 : EFFECT_0);
+    if (effect->GetId() == 86379 && AscensionFreePick::Applies(defender->ToPlayer()))
+        return Area52Bulwark::InsightEffect(effect->GetEffIndex(), fromPlayer);
     if (effect->GetId() == 887083 && effect->GetMiscValueB() == 2)
         return attacker && !fromPlayer;
     if (IsAscensionPvpTuningAura(effect->GetId()) && effect->GetMiscValueB() == 1)
@@ -9606,10 +10056,11 @@ float Unit::GetAscensionNormalTuningDamageMultiplier(Unit const* victim, uint32 
         return 1.0f;
 
     return GetTotalAuraMultiplier(SPELL_AURA_ASCENSION_MOD_PVE_DAMAGE_DONE_PCT,
-        [schoolMask](AuraEffect const* effect)
+        [this, schoolMask](AuraEffect const* effect)
         {
             uint32 const id = effect->GetId();
-            bool const reviewed = (id >= 887000 && id <= 887090) || IsAdventureModeDamageDoneAura(id);
+            bool const reviewed = (id >= 887000 && id <= 887090) || IsAdventureModeDamageDoneAura(id) ||
+                (id == Area52HopliteRemaining::HungerBuff && AscensionFreePick::Applies(ToPlayer()));
             return reviewed && (effect->GetMiscValue() & schoolMask);
         });
 }
@@ -9622,9 +10073,11 @@ float Unit::GetAscensionPvpTuningDamageMultiplier(Unit const* victim, uint32 sch
         return 1.0f;
 
     return GetTotalAuraMultiplier(SPELL_AURA_ASCENSION_MOD_PVP_DAMAGE_DONE_PCT,
-        [schoolMask](AuraEffect const* effect)
+        [this, schoolMask](AuraEffect const* effect)
         {
-            return IsAscensionPvpTuningAura(effect->GetId()) && (effect->GetMiscValue() & schoolMask);
+            bool const hunger = effect->GetId() == Area52HopliteRemaining::HungerBuff &&
+                AscensionFreePick::Applies(ToPlayer());
+            return (hunger || IsAscensionPvpTuningAura(effect->GetId())) && (effect->GetMiscValue() & schoolMask);
         });
 }
 
@@ -9657,12 +10110,34 @@ uint32 Unit::SpellDamageBonusTaken(Unit* caster, SpellInfo const* spellProto, ui
     // from positive and negative SPELL_AURA_MOD_DAMAGE_PERCENT_TAKEN
     // multiplicative bonus, for example Dispersion + Shadowform (0.10*0.85=0.085)
     TakenTotalMod *= GetTotalAuraMultiplier(SPELL_AURA_MOD_DAMAGE_PERCENT_TAKEN,
-        [caster, spellProto](AuraEffect const* effect)
+        [this, caster, spellProto](AuraEffect const* effect)
         {
             return (effect->GetMiscValue() & spellProto->GetSchoolMask()) &&
-                IsAscensionTuningDamageTakenSource(effect, caster);
+                IsAscensionTuningDamageTakenSource(effect, caster, this);
         });
     TakenTotalMod *= GetHealthBasedDamageTakenMultiplier();
+    if (AscensionFreePick::Applies(ToPlayer()) && HasAura(71) && caster &&
+        caster->IsCharmedOwnedByPlayerOrPlayer())
+        TakenTotalMod *= 1.10f;
+
+    if (damagetype == DOT && AscensionFreePick::Applies(ToPlayer()))
+        TakenTotalMod *= GetTotalAuraMultiplier(AuraType(214),
+            [spellProto](AuraEffect const* effect)
+            {
+                switch (effect->GetId())
+                {
+                    case 30299:
+                    case 30301:
+                    case 30302:
+                    case 53583:
+                    case 53585:
+                    case 53659:
+                    case 853586:
+                        return (effect->GetMiscValue() & spellProto->GetSchoolMask()) != 0;
+                    default:
+                        return false;
+                }
+            });
 
     TakenTotalMod = processDummyAuras(TakenTotalMod);
 
@@ -9671,6 +10146,8 @@ uint32 Unit::SpellDamageBonusTaken(Unit* caster, SpellInfo const* spellProto, ui
     {
         TakenTotalMod *= GetTotalAuraMultiplier(SPELL_AURA_MOD_DAMAGE_FROM_CASTER, [caster, spellProto](AuraEffect const* aurEff) -> bool
         {
+            if (Area52FollowupProcs::HealingOnly(AscensionFreePick::Applies(caster->ToPlayer()), aurEff->GetId()))
+                return false;
             if (aurEff->GetCasterGUID() == caster->GetGUID() && aurEff->IsAffectedOnSpell(spellProto))
                 return true;
             return false;
@@ -11051,6 +11528,315 @@ uint32 Unit::MeleeDamageBonusDone(Unit* victim, uint32 pdamage, WeaponAttackType
     // bonus against aurastate
     DoneTotalMod *= GetTotalAuraMultiplier(SPELL_AURA_MOD_DAMAGE_DONE_VERSUS_AURASTATE, [victim, spellProto, this](AuraEffect const* aurEff)
     {
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_NPC_DAMAGE ||
+            aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_PLAYER_DAMAGE)
+            return spellProto && aurEff->IsAffectedOnSpell(spellProto) &&
+                victim->IsPlayer() == (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_PLAYER_DAMAGE) &&
+                spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, false);
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, false);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, false);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, false);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, false);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, false);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, false);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, false);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, false);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, false);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, false);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, false);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, false);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, false);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, false);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, false);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, false);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, false);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, false);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, false);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, false);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, false);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, false);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, false);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, false);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, false);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, false);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, false);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, false);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, false);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, false);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, false);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, false);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, false);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, false);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, false);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, false);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, false);
+        }
+        if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_FROSTBRAND_DAMAGE)
+        {
+            if (!spellProto || !(spellProto->GetSchoolMask() & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_FIRE | SPELL_SCHOOL_MASK_NATURE)))
+                return false;
+            static uint32 const ids[] = { 8034, 8037, 10458, 16352, 16353, 965999, 58797, 58798, 58799 };
+            bool marked = false; for (uint32 id : ids) marked = marked || victim->HasAura(id);
+            return marked && spellProto->ValidateAttribute6SpellDamageMods(this, aurEff, false);
+        }
         if (aurEff->GetMiscValueB() == ASCENSION_CLASSMASK_AURASTATE_DAMAGE &&
             (!spellProto || !aurEff->IsAffectedOnSpell(spellProto)))
             return false;
@@ -11173,12 +11959,15 @@ uint32 Unit::MeleeDamageBonusTaken(Unit* attacker, uint32 pdamage, WeaponAttackT
     float TakenTotalMod = 1.0f;
 
     TakenTotalMod *= GetTotalAuraMultiplier(SPELL_AURA_MOD_DAMAGE_PERCENT_TAKEN,
-        [attacker, damageSchoolMask](AuraEffect const* effect)
+        [this, attacker, damageSchoolMask](AuraEffect const* effect)
         {
             return (effect->GetMiscValue() & damageSchoolMask) &&
-                IsAscensionTuningDamageTakenSource(effect, attacker);
+                IsAscensionTuningDamageTakenSource(effect, attacker, this);
         });
     TakenTotalMod *= GetHealthBasedDamageTakenMultiplier();
+    if (AscensionFreePick::Applies(ToPlayer()) && HasAura(71) && attacker &&
+        attacker->IsCharmedOwnedByPlayerOrPlayer())
+        TakenTotalMod *= 1.10f;
 
     // .. taken pct (special attacks)
     if (spellProto)
@@ -11186,6 +11975,8 @@ uint32 Unit::MeleeDamageBonusTaken(Unit* attacker, uint32 pdamage, WeaponAttackT
         // From caster spells
         TakenTotalMod *= GetTotalAuraMultiplier(SPELL_AURA_MOD_DAMAGE_FROM_CASTER, [attacker, spellProto](AuraEffect const* aurEff)
         {
+            if (Area52FollowupProcs::HealingOnly(AscensionFreePick::Applies(attacker->ToPlayer()), aurEff->GetId()))
+                return false;
             return attacker->GetGUID() == aurEff->GetCasterGUID() && aurEff->IsAffectedOnSpell(spellProto);
         });
 
@@ -12018,6 +12809,40 @@ void Unit::UpdateSpeed(UnitMoveType mtype, bool forced)
     // now we ready for speed calculation
     if (mtype == MOVE_RUN && !IsMounted() && IsPlayer() && getClass() == CLASS_WITCH_HUNTER && HasAura(504790))
         main_speed_mod = std::max(main_speed_mod, 20);
+    if (IsMounted() && AscensionFreePick::Applies(ToPlayer()) &&
+        (mtype == MOVE_RUN || mtype == MOVE_FLIGHT))
+    {
+        AuraType const bonusType = mtype == MOVE_RUN ? SPELL_AURA_MOD_MOUNTED_SPEED_NOT_STACK :
+            SPELL_AURA_MOD_FLIGHT_SPEED_MOUNTED_NOT_STACKING;
+        int32 additiveBonus = 0;
+        int32 multiplicativeBonus = 0;
+        for (AuraEffect const* effect : GetAuraEffectsByType(bonusType))
+        {
+            switch (effect->GetId())
+            {
+                case 61417:
+                case 61418:
+                    if (!HasAura(effect->GetId() == 61417 ? 26022 : 26023))
+                        multiplicativeBonus = std::max(multiplicativeBonus, effect->GetAmount());
+                    break;
+                case 32223:
+                case 991885:
+                case 19559:
+                case 19560:
+                case 26022:
+                case 26023:
+                    additiveBonus = std::max(additiveBonus, effect->GetAmount());
+                    break;
+                default:
+                    multiplicativeBonus = std::max(multiplicativeBonus, effect->GetAmount());
+                    break;
+            }
+        }
+        float const mountMultiplier = 1.0f + std::max(main_speed_mod, 0) / 100.0f;
+        non_stack_bonus = 1.0f + std::max(additiveBonus / mountMultiplier,
+            static_cast<float>(multiplicativeBonus)) / 100.0f;
+    }
+
     float speed = std::max(non_stack_bonus, stack_bonus);
     if (main_speed_mod)
         AddPct(speed, main_speed_mod);
@@ -12103,6 +12928,10 @@ void Unit::UpdateSpeed(UnitMoveType mtype, bool forced)
 
     if (mtype == MOVE_RUN && HasAura(300513))
         speed = std::min(speed, 1.0f); // Crusader's Brand caps running at normal speed.
+
+    if (mtype == MOVE_RUN && AscensionFreePick::Applies(ToPlayer()))
+        if (AuraEffect const* avatar = GetAuraEffect(86380, EFFECT_2))
+            speed = float(avatar->GetAmount()) / 100.0f;
 
     SetSpeed(mtype, speed, forced);
 }
@@ -13527,7 +14356,7 @@ void Unit::CleanupBeforeRemoveFromMap(bool finalCleanup)
         m_cleanupDone = true;
 
     CombatStop();
-    ClearComboPoints();
+    ClearTargetComboPoints();
     ClearComboPointHolders();
     GetMotionMaster()->Clear(false);                    // remove different non-standard movement generators.
 }
@@ -13739,6 +14568,11 @@ void Unit::ProcSkillsAndReactives(bool isVictim, Unit* target, uint32 procFlag, 
                         StartReactiveTimer(REACTIVE_DEFENSE);
                     }
                 }
+                if ((procExtra & PROC_EX_PARRY) && IsPlayer() && ToPlayer()->HasSpell(14251))
+                {
+                    ModifyAuraState(AURA_STATE_HUNTER_PARRY, true);
+                    StartReactiveTimer(REACTIVE_HUNTER_PARRY);
+                }
                 // if and victim block attack
                 if (procExtra & PROC_EX_BLOCK)
                 {
@@ -13754,7 +14588,12 @@ void Unit::ProcSkillsAndReactives(bool isVictim, Unit* target, uint32 procFlag, 
                 {
                     if (IsClass(CLASS_WARRIOR, CLASS_CONTEXT_ABILITY_REACTIVE))
                     {
-                        AddComboPoints(target, 1);
+                        AddTargetComboPoints(target, 1);
+                        StartReactiveTimer(REACTIVE_OVERPOWER);
+                    }
+                    if (IsPlayer())
+                    {
+                        ModifyAuraState(ASCENSION_AURA_STATE_TARGET_DODGED, true);
                         StartReactiveTimer(REACTIVE_OVERPOWER);
                     }
                 }
@@ -14158,7 +14997,29 @@ void Unit::RestoreDisplayId()
     SetDisplayId(GetNativeDisplayId());
 }
 
+bool Unit::HasPlayerComboPoints() const
+{
+    return AscensionPlayerComboPoints::Applies(this);
+}
+
+void Unit::SetPlayerComboPoints(uint8 points)
+{
+    m_playerComboPoints = std::min<uint8>(points, 5);
+    SendComboPoints();
+}
+
 void Unit::AddComboPoints(Unit* target, int8 count)
+{
+    if (!HasPlayerComboPoints())
+    {
+        AddTargetComboPoints(target, count);
+        return;
+    }
+    if (count)
+        SetPlayerComboPoints(uint8(std::clamp(int(m_playerComboPoints) + int(count), 0, 5)));
+}
+
+void Unit::AddTargetComboPoints(Unit* target, int8 count)
 {
     if (!count)
     {
@@ -14186,6 +15047,17 @@ void Unit::AddComboPoints(Unit* target, int8 count)
 
 void Unit::ClearComboPoints()
 {
+    if (!HasPlayerComboPoints())
+    {
+        ClearTargetComboPoints();
+        return;
+    }
+    RemoveAurasByType(SPELL_AURA_RETAIN_COMBO_POINTS);
+    SetPlayerComboPoints(0);
+}
+
+void Unit::ClearTargetComboPoints()
+{
     if (!m_comboTarget)
     {
         return;
@@ -14193,7 +15065,8 @@ void Unit::ClearComboPoints()
 
     // remove Premed-like effects
     // (NB: this Aura retains the CP while it's active - now that CP have reset, it shouldn't be there anymore)
-    RemoveAurasByType(SPELL_AURA_RETAIN_COMBO_POINTS);
+    if (!HasPlayerComboPoints())
+        RemoveAurasByType(SPELL_AURA_RETAIN_COMBO_POINTS);
 
     m_comboPoints = 0;
     SendComboPoints();
@@ -14208,12 +15081,14 @@ void Unit::SendComboPoints()
         return;
     }
 
-    PackedGuid const packGUID = m_comboTarget ? m_comboTarget->GetPackGUID() : PackedGuid();
+    bool const playerPoints = HasPlayerComboPoints();
+    PackedGuid const packGUID = playerPoints ? ToPlayer()->GetTarget().WriteAsPacked() :
+        m_comboTarget ? m_comboTarget->GetPackGUID() : PackedGuid();
     if (Player* playerMe = ToPlayer())
     {
         WorldPacket data(SMSG_UPDATE_COMBO_POINTS, packGUID.size() + 1);
         data << packGUID;
-        data << uint8(m_comboPoints);
+        data << uint8(playerPoints ? m_playerComboPoints : m_comboPoints);
         playerMe->SendDirectMessage(&data);
     }
 
@@ -14243,7 +15118,7 @@ void Unit::ClearComboPointHolders()
 {
     while (!m_ComboPointHolders.empty())
     {
-        (*m_ComboPointHolders.begin())->ClearComboPoints(); // this also removes it from m_comboPointHolders
+        (*m_ComboPointHolders.begin())->ClearTargetComboPoints(); // this also removes it from m_comboPointHolders
     }
 }
 
@@ -14254,10 +15129,10 @@ void Unit::ClearAllReactives()
 
     if (HasAuraState(AURA_STATE_DEFENSE))
         ModifyAuraState(AURA_STATE_DEFENSE, false);
-    if (IsClass(CLASS_HUNTER, CLASS_CONTEXT_ABILITY_REACTIVE) && HasAuraState(AURA_STATE_HUNTER_PARRY))
+    if (HasAuraState(AURA_STATE_HUNTER_PARRY))
         ModifyAuraState(AURA_STATE_HUNTER_PARRY, false);
     if (IsClass(CLASS_WARRIOR, CLASS_CONTEXT_ABILITY_REACTIVE) && IsPlayer())
-        ClearComboPoints();
+        ClearTargetComboPoints();
 }
 
 void Unit::UpdateReactives(uint32 p_time)
@@ -14280,18 +15155,19 @@ void Unit::UpdateReactives(uint32 p_time)
                         ModifyAuraState(AURA_STATE_DEFENSE, false);
                     break;
                 case REACTIVE_HUNTER_PARRY:
-                    if (IsClass(CLASS_HUNTER, CLASS_CONTEXT_ABILITY_REACTIVE) && HasAuraState(AURA_STATE_HUNTER_PARRY))
+                    if (HasAuraState(AURA_STATE_HUNTER_PARRY))
                         ModifyAuraState(AURA_STATE_HUNTER_PARRY, false);
                     break;
                 case REACTIVE_OVERPOWER:
                     if (IsClass(CLASS_WARRIOR, CLASS_CONTEXT_ABILITY_REACTIVE))
                     {
-                        ClearComboPoints();
+                        ClearTargetComboPoints();
                     }
+                    ModifyAuraState(ASCENSION_AURA_STATE_TARGET_DODGED, false);
                     break;
                 case REACTIVE_WOLVERINE_BITE:
                     if (IsHunterPet())
-                        ClearComboPoints();
+                        ClearTargetComboPoints();
                     break;
                 default:
                     break;
@@ -14895,7 +15771,7 @@ bool Unit::HandleAuraRaidProcFromCharge(AuraEffect* triggeredByAura)
     return true;
 }
 
-void Unit::Kill(Unit* killer, Unit* victim, bool durabilityLoss, WeaponAttackType attackType, SpellInfo const* /*spellProto*/, Spell const* /*spell*/ /*= nullptr*/)
+void Unit::Kill(Unit* killer, Unit* victim, bool durabilityLoss, WeaponAttackType attackType, SpellInfo const* spellProto, Spell const* /*spell*/ /*= nullptr*/)
 {
     // Prevent killing unit twice (and giving reward from kill twice)
     if (!victim->GetHealth())
@@ -15008,13 +15884,23 @@ void Unit::Kill(Unit* killer, Unit* victim, bool durabilityLoss, WeaponAttackTyp
         player->RewardPlayerAndGroupAtKill(victim, false);
     }
 
+    if (killer && killer != victim && spellProto && killer->HasAura(12519))
+        if (Player* frostCaster = killer->ToPlayer())
+            if (Area52FollowupProcs::FrostKill(AscensionFreePick::Applies(frostCaster), true,
+                (spellProto->SchoolMask & SPELL_SCHOOL_MASK_FROST) != 0, isRewardAllowed,
+                frostCaster->isHonorOrXPTarget(victim)))
+                frostCaster->CastSpell(frostCaster, 812520, true);
+
     // Do KILL and KILLED procs. KILL proc is called only for the unit who landed the killing blow (and its owner - for pets and totems) regardless of who tapped the victim
     // Spell context is not passed to avoid the killing spell's triggered status from suppressing nested proc events
     if (killer && (killer->IsPet() || killer->IsTotem()))
         if (Unit* owner = killer->GetOwner())
         {
             Unit::ProcSkillsAndAuras(owner, victim, PROC_FLAG_KILL, PROC_FLAG_NONE, PROC_EX_NONE, 0, attackType, nullptr, nullptr, -1, nullptr);
-            sScriptMgr->OnPlayerCreatureKilledByPet( killer->GetCharmerOrOwnerPlayerOrPlayerItself(), victim->ToCreature());
+            // The pets and totems of creatures have no player owner, and a pet can kill a player.
+            Player* ownerPlayer = killer->GetCharmerOrOwnerPlayerOrPlayerItself();
+            if (Creature* killedCreature = victim->ToCreature(); ownerPlayer && killedCreature)
+                sScriptMgr->OnPlayerCreatureKilledByPet(ownerPlayer, killedCreature);
         }
 
     if (killer != victim)

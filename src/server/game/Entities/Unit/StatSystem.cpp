@@ -16,6 +16,7 @@
  */
 
 #include "ClassicPlusStats.h"
+#include "../../../coa/AscensionFreePick.h"
 #include "Config.h"
 #include "Creature.h"
 #include "Item.h"
@@ -728,7 +729,9 @@ void Player::CalculateMinMaxDamage(WeaponAttackType attType, bool normalized, bo
     float weaponMinDamage = GetWeaponDamageRange(attType, MINDAMAGE);
     float weaponMaxDamage = GetWeaponDamageRange(attType, MAXDAMAGE);
 
-    if (IsAttackSpeedOverridenShapeShift()) // forms with no override on attack speed use normal weapon damage
+    // The Mechsuit's attack speed only paces its melee swings; its ranged spells shoot the equipped gun
+    bool const mechsuitRanged = attType == RANGED_ATTACK && GetShapeshiftForm() == FORM_TINKER_MECHSUIT;
+    if (IsAttackSpeedOverridenShapeShift() && !mechsuitRanged) // forms with no override on attack speed use normal weapon damage
     {
         uint8 lvl = GetLevel();
         if (lvl > 60)
@@ -749,7 +752,7 @@ void Player::CalculateMinMaxDamage(WeaponAttackType attType, bool normalized, bo
         weaponMinDamage = BASE_MINDAMAGE;
         weaponMaxDamage = BASE_MAXDAMAGE;
     }
-    else if (attType == RANGED_ATTACK && !IsAscensionClass(getClass())) // stock classes use ammo DPS
+    else if (attType == RANGED_ATTACK && UsesProjectileAmmo(getClass())) // stock classes use ammo DPS
     {
         weaponMinDamage += GetAmmoDPS() * attackSpeedMod;
         weaponMaxDamage += GetAmmoDPS() * attackSpeedMod;
@@ -916,7 +919,8 @@ void Player::UpdateParryPercentage()
     m_realParry = 0.0f;
     // Starcaller and Primalist need Hunter's parry curve; their general Druid fallback has no parry cap.
     // Sun Cleric's March of the Valkyr uses the Paladin curve with its Strength-based melee scaling.
-    Classes const parryClass = getClass() == CLASS_STARCALLER || getClass() == CLASS_WILDWALKER ? CLASS_HUNTER :
+    Classes const parryClass = AscensionFreePick::Applies(this) ? CLASS_WARRIOR :
+        getClass() == CLASS_STARCALLER || getClass() == CLASS_WILDWALKER ? CLASS_HUNTER :
         getClass() == CLASS_SUN_CLERIC ? CLASS_PALADIN :
         GetLegacyClassForCustomClass(Classes(getClass()));
     uint32 const pclass = parryClass - 1;

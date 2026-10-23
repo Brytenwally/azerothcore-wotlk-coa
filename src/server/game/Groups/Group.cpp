@@ -16,6 +16,7 @@
  */
 
 #include "Group.h"
+#include "DungeonHealth.h"
 #include "AreaDefines.h"
 #include "Battleground.h"
 #include "BattlegroundMgr.h"
@@ -1181,6 +1182,9 @@ void Group::GroupLoot(Loot* loot, WorldObject* pLootedObject)
 
                 loot->items[itemSlot].is_blocked = true;
 
+                if (r->totalPass != r->totalPlayersRolling)
+                    sScriptMgr->OnGroupLootRollStart(this, *r, *loot, *i);
+
                 // If there is any "auto pass", broadcast the pass now.
                 if (r->totalPass)
                 {
@@ -1268,6 +1272,8 @@ void Group::GroupLoot(Loot* loot, WorldObject* pLootedObject)
 
             loot->quest_items[itemSlot - loot->items.size()].is_blocked = true;
 
+            sScriptMgr->OnGroupLootRollStart(this, *r, *loot, *i);
+
             SendLootStartRoll(60000, pLootedObject->GetMapId(), *r);
 
             RollId.push_back(r);
@@ -1342,6 +1348,8 @@ void Group::NeedBeforeGreed(Loot* loot, WorldObject* lootedObject)
 
                 loot->items[itemSlot].is_blocked = true;
 
+                sScriptMgr->OnGroupLootRollStart(this, *r, *loot, *i);
+
                 //Broadcast Pass and Send Rollstart
                 for (Roll::PlayerVote::const_iterator itr = r->playerVote.begin(); itr != r->playerVote.end(); ++itr)
                 {
@@ -1411,6 +1419,8 @@ void Group::NeedBeforeGreed(Loot* loot, WorldObject* lootedObject)
             r->itemSlot = itemSlot;
 
             loot->quest_items[itemSlot - loot->items.size()].is_blocked = true;
+
+            sScriptMgr->OnGroupLootRollStart(this, *r, *loot, *i);
 
             //Broadcast Pass and Send Rollstart
             for (Roll::PlayerVote::const_iterator itr = r->playerVote.begin(); itr != r->playerVote.end(); ++itr)
@@ -2333,15 +2343,17 @@ void Group::ResetInstances(uint8 method, bool isRaid, Player* leader)
     {
         case INSTANCE_RESET_ALL:
             {
-                if (leader->GetDifficulty(false) != DUNGEON_DIFFICULTY_NORMAL)
-                    break;
+                // CoA: Heroic and Mythic 5-man dungeons are resettable like Normal ones; permanent binds still block
                 std::vector<InstanceSave*> toUnbind;
-                BoundInstancesMap const& m_boundInstances = sInstanceSaveMgr->PlayerGetBoundInstances(leader->GetGUID(), Difficulty(DUNGEON_DIFFICULTY_NORMAL));
+                for (uint8 difficulty = DUNGEON_DIFFICULTY_NORMAL; difficulty < MAX_DUNGEON_DIFFICULTY; ++difficulty)
+                {
+                BoundInstancesMap const& m_boundInstances = sInstanceSaveMgr->PlayerGetBoundInstances(leader->GetGUID(), Difficulty(difficulty));
                 for (BoundInstancesMap::const_iterator itr = m_boundInstances.begin(); itr != m_boundInstances.end(); ++itr)
                 {
                     InstanceSave* instanceSave = itr->second.save;
                     MapEntry const* entry = sMapStore.LookupEntry(itr->first);
-                    if (!entry || entry->IsRaid() || !instanceSave->CanReset())
+                    if (!entry || entry->IsRaid() || !instanceSave->CanReset() ||
+                    (difficulty != DUNGEON_DIFFICULTY_NORMAL && !DungeonHealth::IsVanillaDungeon(instanceSave->GetMapId())))
                         continue;
 
                     Map* map = sMapMgr->FindMap(instanceSave->GetMapId(), instanceSave->GetInstanceId());
@@ -2356,6 +2368,7 @@ void Group::ResetInstances(uint8 method, bool isRaid, Player* leader)
                     }
 
                     sInstanceSaveMgr->DeleteInstanceSavedData(instanceSave->GetInstanceId());
+                }
                 }
                 for (std::vector<InstanceSave*>::const_iterator itr = toUnbind.begin(); itr != toUnbind.end(); ++itr)
                     sInstanceSaveMgr->UnbindAllFor(*itr);

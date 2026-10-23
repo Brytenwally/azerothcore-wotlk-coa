@@ -23,6 +23,48 @@ void CharacterDatabaseConnection::DoPrepareStatements()
     if (!m_reconnecting)
         m_stmts.resize(MAX_CHARACTERDATABASE_STATEMENTS);
 
+    PrepareStatement(CHAR_SEL_A52_DELETE_STATE,
+        "SELECT owner_account,archived FROM area52_build WHERE id=?", CONNECTION_ASYNC);
+    PrepareStatement(CHAR_UPD_A52_ARCHIVE_BUILD,
+        "UPDATE area52_build SET archived=1 WHERE id=? AND owner_account=? AND archived=0", CONNECTION_ASYNC);
+    PrepareStatement(CHAR_SEL_A52_ACTIVE_REVISION,
+        "SELECT b.owner_account,r.revision,JSON_UNQUOTE(JSON_EXTRACT(r.document,'$.wire')),"
+        "COALESCE(f.revision,0)=r.revision FROM area52_build b JOIN area52_build_revision r ON r.build_id=b.id "
+        "LEFT JOIN area52_build_featured f ON f.build_id=b.id WHERE b.id=? AND r.revision=?",
+        CONNECTION_ASYNC);
+    PrepareStatement(CHAR_SEL_A52_BUILD,
+        "SELECT b.owner_account,r.revision,JSON_UNQUOTE(JSON_EXTRACT(r.document,'$.wire')),"
+        "COALESCE(f.revision,0)=r.revision FROM area52_build b JOIN area52_build_revision r ON r.build_id=b.id "
+        "LEFT JOIN area52_build_featured f ON f.build_id=b.id WHERE b.id=? AND b.archived=0 "
+        "AND r.revision=(SELECT MAX(x.revision) FROM area52_build_revision x WHERE x.build_id=b.id)",
+        CONNECTION_ASYNC);
+    PrepareStatement(CHAR_SEL_A52_BUILD_PUBLIC,
+        "SELECT b.owner_account,r.revision,JSON_UNQUOTE(JSON_EXTRACT(r.document,'$.wire')),"
+        "COALESCE(f.revision,0)=r.revision FROM area52_build b JOIN area52_build_revision r ON r.build_id=b.id "
+        "LEFT JOIN area52_build_featured f ON f.build_id=b.id WHERE b.id=? AND b.archived=0 "
+        "AND r.revision=IF(b.owner_account=?,(SELECT MAX(x.revision) FROM area52_build_revision x WHERE x.build_id=b.id),"
+        "COALESCE(f.revision,(SELECT MAX(x.revision) FROM area52_build_revision x WHERE x.build_id=b.id)))",
+        CONNECTION_ASYNC);
+    PrepareStatement(CHAR_SEL_A52_BUILD_LIST,
+        "SELECT b.owner_account,r.revision,JSON_UNQUOTE(JSON_EXTRACT(r.document,'$.wire')),"
+        "COALESCE(f.revision,0)=r.revision FROM area52_build b JOIN area52_build_revision r ON r.build_id=b.id "
+        "LEFT JOIN area52_build_featured f ON f.build_id=b.id WHERE b.archived=0 "
+        "AND r.revision=IF(b.owner_account=?,(SELECT MAX(x.revision) FROM area52_build_revision x WHERE x.build_id=b.id),"
+        "COALESCE(f.revision,(SELECT MAX(x.revision) FROM area52_build_revision x WHERE x.build_id=b.id))) "
+        "AND (?=0 OR r.category=?) ORDER BY (b.owner_account=?) DESC,b.id DESC LIMIT 256", CONNECTION_ASYNC);
+    PrepareStatement(CHAR_SEL_A52_BUILD_OWNED,
+        "SELECT id FROM area52_build WHERE owner_account=? AND archived=0 ORDER BY id LIMIT 128", CONNECTION_ASYNC);
+    PrepareStatement(CHAR_SEL_A52_BUILD_COUNT,
+        "SELECT COUNT(*),(SELECT COUNT(*) FROM area52_build WHERE id=?) "
+        "FROM area52_build WHERE owner_account=?", CONNECTION_ASYNC);
+    PrepareStatement(CHAR_INS_A52_BUILD,
+        "INSERT INTO area52_build(id,owner_account) VALUES (?,?)", CONNECTION_ASYNC);
+    PrepareStatement(CHAR_INS_A52_BUILD_REVISION,
+        "INSERT INTO area52_build_revision(build_id,revision,category,name,document) "
+        "SELECT b.id,?,?,?,JSON_OBJECT('wire',?) FROM area52_build b WHERE b.id=? AND b.owner_account=? "
+        "AND b.archived=0 AND COALESCE((SELECT MAX(r.revision) FROM area52_build_revision r "
+        "WHERE r.build_id=b.id),0)=?", CONNECTION_ASYNC);
+
     // Read-only safety gate for the unregistered, never-saved Create probe.
     PrepareStatement(CHAR_SEL_FRESH_CHECK_GUID_COUNT, "SELECT COUNT(*) FROM characters WHERE guid BETWEEN ? AND ?", CONNECTION_SYNCH);
 
@@ -609,7 +651,7 @@ void CharacterDatabaseConnection::DoPrepareStatements()
     PrepareStatement(CHAR_UPD_CHAR_PET_NAME, "UPDATE character_pet SET name = ?, renamed = 1 WHERE owner = ? AND id = ?", CONNECTION_ASYNC);
     PrepareStatement(CHAR_UPD_CHAR_PET_SLOT_BY_ID, "UPDATE character_pet SET slot = ? WHERE owner = ? AND id = ?", CONNECTION_ASYNC);
     PrepareStatement(CHAR_DEL_CHAR_PET_BY_ID, "DELETE FROM character_pet WHERE id = ?", CONNECTION_ASYNC);
-    PrepareStatement(CHAR_DEL_CHAR_PET_BY_SLOT, "DELETE FROM character_pet WHERE owner = ? AND (slot = ? OR slot > ?)", CONNECTION_ASYNC);
+    PrepareStatement(CHAR_DEL_CHAR_PET_BY_SLOT, "DELETE FROM character_pet WHERE owner = ? AND (slot = ? OR slot > ?) AND PetType = ?", CONNECTION_ASYNC);
     PrepareStatement(CHAR_REP_CHAR_PET, "REPLACE INTO character_pet (id, entry, owner, modelid, CreatedBySpell, PetType, level, exp, Reactstate, name, renamed, slot, curhealth, curmana, curhappiness, savetime, abdata) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", CONNECTION_ASYNC);
 
     // PvPstats
@@ -654,6 +696,9 @@ void CharacterDatabaseConnection::DoPrepareStatements()
     PrepareStatement(CHAR_SEL_CHAR_SETTINGS, "SELECT source, data FROM character_settings WHERE guid = ?", CONNECTION_BOTH);
     PrepareStatement(CHAR_REP_CHAR_SETTINGS, "REPLACE INTO character_settings (guid, source, data) VALUES (?, ?, ?)", CONNECTION_ASYNC);
     PrepareStatement(CHAR_DEL_CHAR_SETTINGS, "DELETE FROM character_settings WHERE guid = ?", CONNECTION_ASYNC);
+    PrepareStatement(CHAR_SEL_ACCOUNT_CHARACTER_SETTINGS_BY_SOURCE,
+        "SELECT s.data FROM character_settings s JOIN characters c ON c.guid = s.guid "
+        "WHERE c.account = ? AND s.guid <> ? AND s.source = ?", CONNECTION_ASYNC);
 
     // Instance saved data. Stores the states of gameobjects in instances to be loaded on server start
     PrepareStatement(CHAR_SELECT_INSTANCE_SAVED_DATA, "SELECT guid, state FROM instance_saved_go_state_data WHERE id = ?", CONNECTION_SYNCH);
@@ -697,6 +742,36 @@ void CharacterDatabaseConnection::DoPrepareStatements()
     PrepareStatement(CHAR_DEL_MANASTORM_CACHE_ITEMS, "DELETE ii FROM item_instance ii INNER JOIN ascension_manastorm_cache mc ON mc.item = ii.guid AND mc.guid = ii.owner_guid WHERE mc.guid = ?", CONNECTION_ASYNC);
     PrepareStatement(CHAR_INS_MANASTORM_CACHE_INVENTORY, "INSERT INTO character_inventory (guid, bag, slot, item) VALUES (?, ?, ?, ?)", CONNECTION_ASYNC);
     PrepareStatement(CHAR_SEL_MANASTORM_INVENTORY_ITEM, "SELECT COUNT(*) FROM character_inventory ci INNER JOIN item_instance ii ON ii.guid = ci.item AND ii.owner_guid = ci.guid WHERE ci.guid = ? AND ci.item = ?", CONNECTION_SYNCH);
+
+    PrepareStatement(CHAR_SEL_FREEPICK_MYSTIC_COLLECTION,
+        "SELECT spell FROM account_freepick_mystic_collection WHERE account = ?", CONNECTION_ASYNC);
+    PrepareStatement(CHAR_INS_FREEPICK_MYSTIC_COLLECTION,
+        "INSERT IGNORE INTO account_freepick_mystic_collection (account, spell) VALUES (?, ?)", CONNECTION_ASYNC);
+
+    PrepareStatement(CHAR_SEL_A52_CERTIFICATIONS,
+        "SELECT entry, account, character_name FROM area52_tester_certification WHERE checks_confirmed = 7 "
+        "ORDER BY certified_at, entry", CONNECTION_SYNCH);
+    PrepareStatement(CHAR_SEL_A52_LAST_CHARACTERS,
+        "SELECT c.account, c.name FROM characters c "
+        "LEFT JOIN area52_certification_last_character l ON l.account=c.account "
+        "ORDER BY c.account, (c.guid=l.guid) DESC, c.online DESC, c.logout_time DESC, c.guid DESC", CONNECTION_SYNCH);
+    PrepareStatement(CHAR_UPS_A52_LAST_CHARACTER,
+        "INSERT INTO area52_certification_last_character(account,guid,character_name) VALUES (?,?,?) "
+        "ON DUPLICATE KEY UPDATE guid=VALUES(guid),character_name=VALUES(character_name)", CONNECTION_SYNCH);
+    PrepareStatement(CHAR_SEL_A52_CERTIFICATION,
+        "SELECT entry, account, character_name FROM area52_tester_certification WHERE entry = ? AND checks_confirmed = 7", CONNECTION_SYNCH);
+    PrepareStatement(CHAR_INS_A52_CERTIFICATION,
+        "INSERT IGNORE INTO area52_tester_certification (entry, account, guid, character_name, evidence_sha256, checks_confirmed) VALUES (?, ?, ?, ?, ?, 7)", CONNECTION_SYNCH);
+
+    PrepareStatement(CHAR_SEL_A52_CERTIFICATION_REWARD,
+        "SELECT r.item FROM area52_certification_reward_rule r WHERE r.account = ? "
+        "AND NOT EXISTS (SELECT 1 FROM area52_certification_reward_delivery d WHERE d.account = r.account) "
+        "AND (SELECT COUNT(*) FROM area52_tester_certification c WHERE c.account = r.account AND c.checks_confirmed = 7) "
+        ">= r.required_count",
+        CONNECTION_SYNCH);
+    PrepareStatement(CHAR_INS_A52_CERTIFICATION_REWARD,
+        "INSERT INTO area52_certification_reward_delivery (account, guid, item) VALUES (?, ?, ?)",
+        CONNECTION_ASYNC);
 
     PrepareStatement(CHAR_INS_PLAYER_ANTICHEAT_ALERT, "INSERT INTO player_anticheat_alert (account, guid, name, reason, details, size) VALUES (?, ?, ?, ?, ?, ?)", CONNECTION_ASYNC);
 }

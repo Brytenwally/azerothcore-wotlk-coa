@@ -15,6 +15,7 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "../../coa/AscensionFreePick.h"
 #include "DBCStores.h"
 #include "GameObjectAI.h"
 #include "Log.h"
@@ -552,6 +553,21 @@ void WorldSession::HandleCastSpellOpcode(WorldPacket& recvPacket)
                 if (actualSpellInfo)
                     spellInfo = actualSpellInfo;
             }
+
+    if (mover == _player && AscensionFreePick::Applies(_player) &&
+        !spellInfo->IsPassive() && spellInfo->IsPositive() &&
+        !spellInfo->HasAttribute(SPELL_ATTR0_NO_AURA_CANCEL) &&
+        _player->HasAura(spellInfo->Id, _player->GetGUID()))
+    {
+        auto const specific = spellInfo->GetSpellSpecific();
+        bool const stanceOrForm = spellInfo->HasAura(SPELL_AURA_MOD_SHAPESHIFT) &&
+            (spellInfo->SpellFamilyName == SPELLFAMILY_WARRIOR || spellInfo->SpellFamilyName == SPELLFAMILY_DRUID);
+        if (stanceOrForm || specific == SPELL_SPECIFIC_ASPECT || specific == SPELL_SPECIFIC_AURA)
+        {
+            _player->RemoveOwnedAura(spellInfo->Id, _player->GetGUID(), 0, AURA_REMOVE_BY_CANCEL);
+            return;
+        }
+    }
 
     Spell* spell = new Spell(mover, spellInfo, triggerFlag, ObjectGuid::Empty, false);
 

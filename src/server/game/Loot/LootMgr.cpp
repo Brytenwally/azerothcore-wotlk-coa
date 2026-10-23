@@ -16,19 +16,72 @@
  */
 
 #include "LootMgr.h"
+#include "DatabaseEnv.h"
+#include "DungeonLoot.h"
+#include "Field.h"
+#include "Map.h"
 #include "Containers.h"
 #include "DisableMgr.h"
 #include "Group.h"
 #include "ItemEnchantmentMgr.h"
 #include "Log.h"
 #include "ObjectMgr.h"
+#include "Creature.h"
 #include "Player.h"
+#include <algorithm>
 #include "ScriptMgr.h"
 #include "SharedDefines.h"
 #include "SpellInfo.h"
 #include "SpellMgr.h"
 #include "Util.h"
 #include "World.h"
+
+namespace
+{
+    DungeonLoot::Variants dungeonLootVariants;
+}
+
+void LoadDungeonLootVariants()
+{
+    dungeonLootVariants.clear();
+    auto* statement = WorldDatabase.GetPreparedStatement(WORLD_SEL_COA_DUNGEON_LOOT_VARIANT);
+    if (PreparedQueryResult result = WorldDatabase.Query(statement))
+    {
+        do
+        {
+            Field* fields = result->Fetch();
+            uint32 const base = fields[0].Get<uint32>();
+            ItemTemplate const* original = sObjectMgr->GetItemTemplate(base);
+            if (!original || (original->Class != ITEM_CLASS_WEAPON && original->Class != ITEM_CLASS_ARMOR)
+                || original->StartQuest || original->Bonding == BIND_QUEST_ITEM)
+                continue;
+
+            std::array<uint32, 2> variants{};
+            for (uint8 tier = 0; tier < 2; ++tier)
+            {
+                uint32 const entry = fields[tier + 1].Get<uint32>();
+                if (!entry)
+                    continue;
+
+                ItemTemplate const* target = sObjectMgr->GetItemTemplate(entry);
+                if (!target || target->Class != original->Class || target->SubClass != original->SubClass
+                    || target->InventoryType != original->InventoryType || target->StartQuest
+                    || target->Bonding == BIND_QUEST_ITEM)
+                {
+                    LOG_ERROR("sql.sql", "Invalid dungeon loot variant {} -> {} (difficulty {})", base, entry, tier + 1);
+                    continue;
+                }
+
+                variants[tier] = entry;
+            }
+
+            if (variants[0] || variants[1])
+                dungeonLootVariants.emplace(base, variants);
+        } while (result->NextRow());
+    }
+
+    LOG_INFO("server.loading", ">> Loaded {} dungeon loot variant families", dungeonLootVariants.size());
+}
 
 ServerConfigs const qualityToRate[] =
 {
@@ -478,8 +531,10 @@ void LootItem::AddAllowedLooter(Player const* player)
 //
 
 // Inserts the item into the loot (called by LootTemplate processors)
-void Loot::AddItem(LootStoreItem const& item)
+void Loot::AddItem(LootStoreItem const& original)
 {
+    LootStoreItem item(original);
+    item.itemid = DungeonLoot::Resolve(dungeonLootVariants, original.itemid, dungeonDifficulty, original.needs_quest);
     ItemTemplate const* proto = sObjectMgr->GetItemTemplate(item.itemid);
     if (!proto)
         return;
@@ -544,6 +599,10 @@ bool Loot::FillLoot(uint32 lootId, LootStore const& store, Player* lootOwner, bo
         return false;
 
     lootOwnerGUID = lootOwner->GetGUID();
+    Map const* sourceMap = lootSource ? lootSource->FindMap() : nullptr;
+    bool const worldLoot = &store == &LootTemplates_Creature || &store == &LootTemplates_Gameobject;
+    dungeonDifficulty = sourceMap ? DungeonLoot::Difficulty(sourceMap->GetId(),
+        uint8(sourceMap->GetSpawnMode()), worldLoot) : 0;
 
     LootTemplate const* tab = store.GetLootFor(lootId);
 

@@ -41,6 +41,7 @@
 #include "Cell.h"
 #include "CellImpl.h"
 #include "ClientDBC.h"
+#include "Config.h"
 #include "DBCStores.h"
 #include "GridNotifiers.h"
 #include "GridNotifiersImpl.h"
@@ -586,6 +587,33 @@ void ApplyRangerConditionalDamageContracts(SpellInfo* spellInfo)
         LOG_ERROR("coa", "Skipped unexpected Ranger conditional damage record {}", spellInfo->Id);
 }
 
+void ApplyRangerSerrationsContract(SpellInfo* spellInfo)
+{
+    if (spellInfo->Id != 705050 && spellInfo->Id != 707850)
+        return;
+
+    int32 amount = spellInfo->Id == 705050 ? 4 : 9;
+    for (SpellEffectInfo& effect : spellInfo->Effects)
+    {
+        if (effect.Effect != SPELL_EFFECT_APPLY_AURA ||
+            effect.ApplyAuraName != SPELL_AURA_OVERRIDE_CLASS_SCRIPTS ||
+            effect.MiscValue != ASCENSION_CLASSMASK_AURASTATE_DAMAGE)
+            continue;
+
+        if (effect.BasePoints == amount && effect.DieSides == 1)
+        {
+            effect.ApplyAuraName = SPELL_AURA_MOD_DAMAGE_DONE_VERSUS_AURASTATE;
+            effect.MiscValue = effect.MiscValueB;
+            effect.MiscValueB = ASCENSION_CLASSMASK_AURASTATE_DAMAGE;
+        }
+        else
+            LOG_ERROR("coa", "Skipped unexpected Ranger Serrations record {}", spellInfo->Id);
+        return;
+    }
+
+    LOG_ERROR("coa", "Skipped unexpected Ranger Serrations record {}", spellInfo->Id);
+}
+
 void ApplyRangerUnderhandedContracts(SpellInfo* spellInfo)
 {
     if (!spellInfo || spellInfo->SpellFamilyName != uint32(CLASS_RANGER) + 6 ||
@@ -1035,11 +1063,18 @@ uint32 ChargeRankRoot(uint32 spellId)
 void ApplyClientSpellCharges(SpellInfo* spellInfo)
 {
     auto charge = ClientSpellCharges().find(spellInfo->Id);
-    if (charge == ClientSpellCharges().end() || spellInfo->IsDeprecatedForPlayers ||
-        !IsCustomClassFamily(spellInfo->SpellFamilyName))
+    if (charge == ClientSpellCharges().end() || spellInfo->IsDeprecatedForPlayers)
         return;
 
-    uint32 const root = ChargeRankRoot(spellInfo->Id);
+    bool const area52Charge = (spellInfo->Id == 6178 || spellInfo->Id == 11578 || spellInfo->Id == 18562) &&
+        sConfigMgr->GetOption<bool>("CoA.Enable", true) &&
+        sConfigMgr->GetOption<std::string>("CoA.ClassModel", "coa") == "hero" &&
+        sConfigMgr->GetOption<std::string>("CoA.RealmType", "live") == "live" &&
+        (sConfigMgr->GetOption<uint32>("CoA.GameModeMask", 0) & ~0x400u) == 0;
+    if (!area52Charge && !IsCustomClassFamily(spellInfo->SpellFamilyName))
+        return;
+
+    uint32 const root = area52Charge && spellInfo->Id != 18562 ? 100 : ChargeRankRoot(spellInfo->Id);
     uint32 recoveryMs = charge->second.RecoveryMs;
     if (root == 707141 && charge->second.Category == 110 && charge->second.Maximum == 3 && recoveryMs == 5000)
         recoveryMs = 6000;
@@ -1064,6 +1099,7 @@ void ApplyAscensionClassMechanics(SpellInfo* spellInfo)
     ApplyTinkerScrapperContract(spellInfo);
     ApplyRangerFixedDurationContract(spellInfo);
     ApplyRangerConditionalDamageContracts(spellInfo);
+    ApplyRangerSerrationsContract(spellInfo);
     ApplyRangerUnderhandedContracts(spellInfo);
     ApplyRangerInstinctualCombatantContract(spellInfo);
     ApplyAscensionRangerDamageContracts(spellInfo);
@@ -1155,6 +1191,7 @@ void ApplyAscensionClassMechanics(SpellInfo* spellInfo)
     spellInfo->IsDeprecatedForPlayers =
         HasDeprecatedWord(spellInfo->SpellName[0]) || HasDeprecatedWord(spellInfo->Rank[0]);
     ApplyClientSpellCharges(spellInfo);
+    AscensionTinker::ApplyBeaconChargePool(spellInfo);
 
     if (IsCustomClassFamily(spellInfo->SpellFamilyName))
         spellInfo->EquippedItemInventoryTypeMask = int32(RepairedRangedInventoryMask(spellInfo->EquippedItemClass,
@@ -1382,6 +1419,7 @@ void HandleAscensionClassMechanicsCast(Spell* spell)
     if (firstRank == 800316)
     {
         player->CastSpell(player, 500175, true);
+        player->RemoveAurasDueToSpell(SPELL_GUARDIAN_REPRISAL_READY);
     }
     else if (IsGuardianCenturionStrike(info->Id) && player->HasAura(504140))
     {
