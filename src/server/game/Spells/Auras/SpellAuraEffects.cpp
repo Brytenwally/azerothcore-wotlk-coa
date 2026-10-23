@@ -4643,14 +4643,18 @@ void AuraEffect::HandleAuraModIncreaseHealth(AuraApplication const* aurApp, uint
     if (apply)
     {
         target->HandleStatFlatModifier(UNIT_MOD_HEALTH, TOTAL_VALUE, float(GetAmount()), apply);
-        target->ModifyHealth(GetAmount());
+        if (target->IsAlive())
+            target->ModifyHealth(GetAmount());
     }
     else
     {
-        if (int32(target->GetHealth()) > GetAmount())
-            target->ModifyHealth(-GetAmount());
-        else if (target->IsAlive())
-            target->SetHealth(1);
+        if (target->IsAlive())
+        {
+            if (int32(target->GetHealth()) > GetAmount())
+                target->ModifyHealth(-GetAmount());
+            else
+                target->SetHealth(1);
+        }
         target->HandleStatFlatModifier(UNIT_MOD_HEALTH, TOTAL_VALUE, float(GetAmount()), apply);
     }
 }
@@ -5909,8 +5913,8 @@ void AuraEffect::HandleAuraEmpathy(AuraApplication const* aurApp, uint8 mode, bo
             return;
     }
 
-    if (target->GetCreatureType() == CREATURE_TYPE_BEAST)
-        target->ApplyModUInt32Value(UNIT_DYNAMIC_FLAGS, UNIT_DYNFLAG_SPECIALINFO, apply);
+    // Ascension's Undead, Demon, Dragonkin and Elemental Lore name their creature type in TargetCreatureType.
+    target->ApplyModUInt32Value(UNIT_DYNAMIC_FLAGS, UNIT_DYNFLAG_SPECIALINFO, apply);
 }
 
 void AuraEffect::HandleAuraModFaction(AuraApplication const* aurApp, uint8 mode, bool apply) const
@@ -6836,6 +6840,7 @@ void AuraEffect::HandlePeriodicHealAurasTick(Unit* target, Unit* caster) const
         if (caster && GetBase()->GetType() == UNIT_AURA_TYPE &&
             !(GetSpellInfo()->AscensionInheritsResolvedAmount &&
               ((GetSpellInfo()->SpellFamilyName == 31 && GetSpellInfo()->Id == 520497) ||
+               (GetSpellInfo()->SpellFamilyName == 26 && GetSpellInfo()->Id == 680693) ||
                (GetSpellInfo()->SpellFamilyName == 34 && GetSpellInfo()->Id == 706255) ||
                (GetSpellInfo()->SpellFamilyName == 28 && GetSpellInfo()->Id == 561231))))
             damage = int32(float(damage) * caster->GetTotalAuraMultiplier(SPELL_AURA_MOD_HEALING_DONE_PERCENT));

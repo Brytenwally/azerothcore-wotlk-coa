@@ -905,6 +905,28 @@ void Spell::SelectSpellTargets()
         }
     }
 
+    if (m_originalCaster)
+        for (TargetInfo& targetInfo : m_UniqueTargetInfo)
+        {
+            if (targetInfo.missCondition != SPELL_MISS_MISS || !targetInfo.effectMask)
+                continue;
+
+            bool positiveEffects = true;
+            for (uint8 index = 0; index < MAX_SPELL_EFFECTS; ++index)
+                if ((targetInfo.effectMask & (1u << index)) && !m_spellInfo->IsPositiveEffect(index))
+                {
+                    positiveEffects = false;
+                    break;
+                }
+            if (!positiveEffects)
+                continue;
+
+            Unit* target = targetInfo.targetGUID == m_caster->GetGUID() ? m_caster
+                : ObjectAccessor::GetUnit(*m_caster, targetInfo.targetGUID);
+            if (target && !m_originalCaster->IsHostileTo(target) && !target->IsImmunedToSpell(m_spellInfo, this))
+                targetInfo.missCondition = SPELL_MISS_NONE;
+        }
+
     if (uint64 dstDelay = CalculateDelayMomentForDst())
         m_delayMoment = dstDelay;
 }
@@ -7277,6 +7299,13 @@ SpellCastResult Spell::CheckPower()
     // item cast not used power
     if (m_CastItem)
         return SPELL_CAST_OK;
+
+    // CoA: dungeon creatures on Heroic/Mythic never run out of power (Heroic/Mythic templates often have no mana pool,
+    // e.g. Incendius and Magmus failed every spell with SPELL_FAILED_NO_POWER)
+    if (Creature const* creature = m_caster->ToCreature())
+        if (!creature->IsCharmedOwnedByPlayerOrPlayer() && creature->GetMap()->IsDungeon()
+            && creature->GetMap()->GetDifficulty() != DUNGEON_DIFFICULTY_NORMAL)
+            return SPELL_CAST_OK;
 
     //While .cheat power is enabled dont check if we need power to cast the spell
     if (m_caster->IsPlayer())

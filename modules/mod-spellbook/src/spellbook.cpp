@@ -53,6 +53,7 @@
 // They are plain generated data headers, so they are read rather than copied.
 #include "AscensionCoATalentData.h"
 #include "AscensionCustomClassData.h"
+#include "AscensionFelsworn.h"
 #include "AscensionGuardianCompletion.h"
 #include "AscensionSpellProgressionData.h"
 #include "SpellbookCostData.h"
@@ -225,6 +226,8 @@ namespace
                                                 uint32 requiredAbility)
         {
             if (!spellId || !sSpellMgr->GetSpellInfo(spellId))
+                return;
+            if (!AscensionFelsworn::CanLearnRift(player, spellId))
                 return;
             if (windowView && classId == CLASS_GUARDIAN && AscensionGuardian::Ballad(spellId) &&
                 (spec != 20 || !player->HasAura(505344)))
@@ -562,7 +565,8 @@ namespace
         // client is never left waiting on a purchase nothing will handle.
         if (found == rows.end())
         {
-            if (IsTreeSpell(uint32(player->getClass()), wanted) ||
+            if (!AscensionFelsworn::CanLearnRift(player, wanted) ||
+                IsTreeSpell(uint32(player->getClass()), wanted) ||
                 HasRankOrBetter(player, wanted) ||
                 (player->getClass() == CLASS_GUARDIAN && AscensionGuardian::Ballad(wanted)))
             {
@@ -799,6 +803,10 @@ namespace Spellbook
         std::vector<uint32> spells;
         if (!player)
             return spells;
+
+        for (SpellbookOfferData::Offer const &offer : SpellbookOfferData::Offers)
+            if (offer.ClassId == player->getClass() && offer.FirstSpellId && offer.RequiredLevel > level)
+                spells.push_back(offer.SpellId);
 
         for (SpellbookRankData::Rank const &rank : SpellbookRankData::Ranks)
             if (rank.ClassId == player->getClass() && rank.RequiredLevel > level)
