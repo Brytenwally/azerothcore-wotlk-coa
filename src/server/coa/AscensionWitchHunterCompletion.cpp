@@ -96,6 +96,13 @@ void ApplyContracts(SpellInfo* info)
     if (!info || info->SpellFamilyName != 21)
         return;
     uint32 id = info->Id;
+    if (id == 681486 && info->Effects[EFFECT_2].ApplyAuraName == SPELL_AURA_ADD_PCT_MODIFIER &&
+        info->Effects[EFFECT_2].MiscValue == SPELLMOD_DOT &&
+        info->Effects[EFFECT_2].SpellClassMask == flag96(0, 268436480, 0))
+    {
+        info->Effects[EFFECT_2].MiscValue = SPELLMOD_DAMAGE;
+        info->Effects[EFFECT_2].SpellClassMask = flag96(1024, 0, 0);
+    }
     if (Family(info, 1, 4194304))
     {
         info->InterruptFlags |= SPELL_INTERRUPT_FLAG_MOVEMENT;
@@ -107,6 +114,8 @@ void ApplyContracts(SpellInfo* info)
         ConvertCreatureTypeDamage(info, EFFECT_1);
     if (id == 804026)
         ConvertCreatureTypeDamage(info, EFFECT_0);
+    if (id == 800697)
+        info->Effects[EFFECT_1].ChainTarget = info->Effects[EFFECT_0].ChainTarget;
     if (id == 804194 && info->Effects[EFFECT_1].ApplyAuraName == SPELL_AURA_MOD_ARMOR_PENETRATION_PCT)
         info->Effects[EFFECT_1].ApplyAuraName = SPELL_AURA_ASCENSION_MOD_IGNORE_ARMOR_PCT;
     if (id == 707535)
