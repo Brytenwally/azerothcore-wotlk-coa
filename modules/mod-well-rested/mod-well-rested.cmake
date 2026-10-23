@@ -1,4 +1,0 @@
-if(BUILD_TESTING)
-  set_property(GLOBAL APPEND PROPERTY ACORE_MODULE_TEST_SOURCES
-    "${CMAKE_CURRENT_LIST_DIR}/tests/state_test.cpp")
-endif()
