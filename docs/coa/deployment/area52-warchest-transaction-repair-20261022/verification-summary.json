@@ -1,0 +1,12 @@
+{
+  "id": "area52-warchest-transaction-repair-20261022",
+  "reports": {
+    "build": "fd30b3ef03025770372e71873e0c3342ed53c7c379c3e89254411b3aba05c6e5",
+    "focused-final": "ac4e79d4407f7cac3300064649c23f3d0146eadab138648c7b70f724fe913d91"
+  },
+  "source_before": "000b4315bedf88b7d9279cfcb9390b650fd32069b9708cc56e8e7f8af0e2e1a8",
+  "source_after": "f3dd3cd91e1fe223ba51c7a7276cc8e93ff0e791d7f6e6177ea4509d14b4708b",
+  "binary": "0c62ed293231d523af0e7e3899dcf702b43eb223c6eaf728e4d8e6c906ab08c0",
+  "scope": "Actual statement registrations plus extracted native connection-aware adapters; old path rejects and repaired path passes. Recovery service adapters mocked. No gameplay or live restart.",
+  "previous_tests_superseded": "Previous native adapters did not enforce connection registration; SQL-only atomicity tests remain scoped valid."
+}

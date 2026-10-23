@@ -1,0 +1,105 @@
+{
+  "id": "area52-world-quest-batch4-expanded-20261021",
+  "quest_ids": [
+    86,
+    90,
+    317,
+    337,
+    354,
+    868,
+    1195,
+    2745,
+    4134,
+    8325,
+    8326,
+    8327,
+    8330,
+    8334,
+    8335,
+    8336,
+    8338,
+    8345,
+    8347,
+    9170,
+    17002,
+    17006,
+    100071,
+    100073,
+    254053,
+    1660059,
+    1660074
+  ],
+  "counts": {
+    "quest_poi": {
+      "before": 30,
+      "after": 29
+    },
+    "quest_poi_points": {
+      "before": 84,
+      "after": 78
+    },
+    "creature_template": {
+      "before": 2,
+      "after": 2
+    },
+    "gameobject_template": {
+      "before": 5,
+      "after": 5
+    },
+    "quest_template": {
+      "before": 12,
+      "after": 12
+    },
+    "creature_questitem": {
+      "before": 7,
+      "after": 39
+    },
+    "smart_scripts": {
+      "before": 0,
+      "after": 5
+    }
+  },
+  "changes": {
+    "quest_poi": {
+      "inserted": 9,
+      "deleted": 10,
+      "updated": 2
+    },
+    "quest_poi_points": {
+      "inserted": 35,
+      "deleted": 41,
+      "updated": 18
+    },
+    "creature_template": {
+      "inserted": 0,
+      "deleted": 0,
+      "updated": 2
+    },
+    "gameobject_template": {
+      "inserted": 0,
+      "deleted": 0,
+      "updated": 5
+    },
+    "quest_template": {
+      "inserted": 0,
+      "deleted": 0,
+      "updated": 11
+    },
+    "creature_questitem": {
+      "inserted": 32,
+      "deleted": 0,
+      "updated": 0
+    },
+    "smart_scripts": {
+      "inserted": 5,
+      "deleted": 0,
+      "updated": 0
+    }
+  },
+  "reports": {
+    "offline": "099248f600a591443285095edaecb0b56793985fe41a9a48910f5abd4352d1a0",
+    "source": "071e630462016eae7edcd9a137be8c78ed2fa6a88d36a3e04d4d55c20c718c32"
+  },
+  "hook_sha256": "6238d0c566b69787bca975675df0fbb6b4744929eb2b840270740e337a0a233d",
+  "scope": "Exact deployed schemas, guarded production hook, focused native boundary checks; no gameplay or live writes."
+}

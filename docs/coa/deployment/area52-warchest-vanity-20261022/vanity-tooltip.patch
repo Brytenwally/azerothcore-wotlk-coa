@@ -1,0 +1,11 @@
+--- a/Interface/FrameXML/GameTooltip.lua
++++ b/Interface/FrameXML/GameTooltip.lua
+@@ -618,7 +618,7 @@
+ 			local vanityItem = VanityCollectionUtil.GetOwnerByContentItem(itemID) or VanityCollectionUtil.GetItem(itemID)
+ 			local vanityItemID = vanityItem and vanityItem.itemid or itemID
+ 			if vanityItem and vanityItem.group and not bit.contains(vanityItem.group, Enum.VanityCategory.Consumable) then
+-				if C_VanityCollection.IsCollectionItemOwned(vanityItemID) then
++				if C_VanityCollection.IsCollectionItemOwned(itemID) or C_VanityCollection.IsCollectionItemOwned(vanityItemID) then
+ 					self:AddLine(VANITY_ALREADY_OWNED, 0, 1, 0, false)
+ 				else
+ 					self:AddLine(VANITY_NOT_OWNED, 1, 0.2, 0.1, false)

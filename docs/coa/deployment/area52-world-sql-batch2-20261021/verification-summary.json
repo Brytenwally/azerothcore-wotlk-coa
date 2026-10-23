@@ -1,0 +1,13 @@
+{
+  "id": "area52-world-sql-batch2-20261021",
+  "rows": 72,
+  "tables": [
+    "creature",
+    "gameobject",
+    "item_template"
+  ],
+  "offline_report_sha256": "a2c7c5e4a2dabbf90b69f36602b3943771452f03fb73d2bb6b7e6ec43e5d2349",
+  "hook_sha256": "ddb7e6a28560b85b7cfafbd8b5cdc51683fb3d5eaa412b92ea16e08a50767b54",
+  "scope": "Actual production hook on isolated MySQL8.4 exact schemas; no live writes. Heights sourced from upstream measurements, not independently rendered.",
+  "expected_binary": "3cf40e492e8f72d88762f450f73c30f58a5419372e36ad498d013e67ebb9f0be"
+}

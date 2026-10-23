@@ -1,0 +1,52 @@
+{
+  "id": "area52-quest-corrections-batch3-20261021",
+  "quest_ids": [
+    3341,
+    254054,
+    254064,
+    254107,
+    1660007,
+    1660010,
+    1660011,
+    1660013,
+    1660015,
+    1660017,
+    1660018,
+    1660019,
+    1660021,
+    1660037,
+    1660054,
+    1660065,
+    1660072,
+    1660075,
+    1660077,
+    1660080,
+    1660085
+  ],
+  "counts": {
+    "quest_poi": {
+      "before": 22,
+      "after": 58
+    },
+    "quest_poi_points": {
+      "before": 22,
+      "after": 204
+    },
+    "creature_template": {
+      "before": 1,
+      "after": 1
+    },
+    "creature_template_addon": {
+      "before": 0,
+      "after": 1
+    }
+  },
+  "new_rows": 219,
+  "updated_rows": 3,
+  "reports": {
+    "offline": "491d9eea5b5fa7b079e5e193eca534ea831ce1f2e8c82a1d3f6e25c25a8acf35",
+    "source-final": "d27f711fc8ed9a301b880e44e8770c6086bf0d79e30dee792abce4c3b4b05f97"
+  },
+  "hook_sha256": "2e5d095294306410090deab310a3894160e26c6994f057e7a351bd28222599ca",
+  "scope": "Exact deployed schemas, production hook, offline SQL fixture only; no gameplay/client changes."
+}

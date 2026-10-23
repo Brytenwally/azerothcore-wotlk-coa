@@ -1,0 +1,25 @@
+-- Upstream d3dedcf03b, scoped to missing goods; preserve Area 52 Mystic Scrolls and all reference rows.
+DELETE FROM `creature_loot_template` WHERE (`Entry`,`Item`) IN ((1528,159),(1528,2589),(1528,4604),(1534,159),(1534,2589),(1534,4604),(1538,159),(1538,2589),(1538,2875),(1538,4604),(1539,159),(1539,2589),(1539,2875),(1539,4604),(1540,159),(1540,2589),(1540,2875),(1540,4604),(1536,159),(1536,2589),(1536,4604),(1536,2875));
+INSERT INTO `creature_loot_template` (`Entry`,`Item`,`Reference`,`Chance`,`QuestRequired`,`LootMode`,`GroupId`,`MinCount`,`MaxCount`,`Comment`) VALUES
+(1528, 159,  0, 4,  0, 1, 0, 1, 1, 'Shambling Horror - Refreshing Spring Water (undead family kit)'),
+(1528, 2589, 0, 33, 0, 1, 0, 1, 2, 'Shambling Horror - Linen Cloth (undead family kit)'),
+(1528, 4604, 0, 10, 0, 1, 0, 1, 1, 'Shambling Horror - Forest Mushroom Cap (undead family kit)'),
+(1534, 159,  0, 4,  0, 1, 0, 1, 1, 'Wailing Ancestor - Refreshing Spring Water (undead family kit)'),
+(1534, 2589, 0, 33, 0, 1, 0, 1, 2, 'Wailing Ancestor - Linen Cloth (undead family kit)'),
+(1534, 4604, 0, 10, 0, 1, 0, 1, 1, 'Wailing Ancestor - Forest Mushroom Cap (undead family kit)'),
+(1538, 159,  0, 4,  0, 1, 0, 1, 1, 'Scarlet Friar - Refreshing Spring Water (Scarlet family kit)'),
+(1538, 2589, 0, 33, 0, 1, 0, 1, 2, 'Scarlet Friar - Linen Cloth (Scarlet family kit)'),
+(1538, 2875, 0, 40, 1, 1, 0, 1, 1, 'Scarlet Friar - Scarlet Insignia Ring (quest 374)'),
+(1538, 4604, 0, 10, 0, 1, 0, 1, 1, 'Scarlet Friar - Forest Mushroom Cap (Scarlet family kit)'),
+(1539, 159,  0, 4,  0, 1, 0, 1, 1, 'Scarlet Neophyte - Refreshing Spring Water (Scarlet family kit)'),
+(1539, 2589, 0, 33, 0, 1, 0, 1, 2, 'Scarlet Neophyte - Linen Cloth (Scarlet family kit)'),
+(1539, 2875, 0, 40, 1, 1, 0, 1, 1, 'Scarlet Neophyte - Scarlet Insignia Ring (quest 374)'),
+(1539, 4604, 0, 10, 0, 1, 0, 1, 1, 'Scarlet Neophyte - Forest Mushroom Cap (Scarlet family kit)'),
+(1540, 159,  0, 4,  0, 1, 0, 1, 1, 'Scarlet Vanguard - Refreshing Spring Water (Scarlet family kit)'),
+(1540, 2589, 0, 33, 0, 1, 0, 1, 2, 'Scarlet Vanguard - Linen Cloth (Scarlet family kit)'),
+(1540, 2875, 0, 40, 1, 1, 0, 1, 1, 'Scarlet Vanguard - Scarlet Insignia Ring (quest 374)'),
+(1540, 4604, 0, 10, 0, 1, 0, 1, 1, 'Scarlet Vanguard - Forest Mushroom Cap (Scarlet family kit)'),
+(1536, 159,  0, 4,  0, 1, 0, 1, 1, 'Scarlet Missionary - Refreshing Spring Water (Scarlet family kit)'),
+(1536, 2589, 0, 33, 0, 1, 0, 1, 2, 'Scarlet Missionary - Linen Cloth (Scarlet family kit)'),
+(1536, 4604, 0, 10, 0, 1, 0, 1, 1, 'Scarlet Missionary - Forest Mushroom Cap (Scarlet family kit)'),
+(1536, 2875, 0, 40, 1, 1, 0, 1, 1, 'Scarlet Missionary - Scarlet Insignia Ring');

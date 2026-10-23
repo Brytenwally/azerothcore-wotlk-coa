@@ -1,0 +1,13 @@
+--- a/src/server/coa/Area52TesterSupplies.cpp
++++ b/src/server/coa/Area52TesterSupplies.cpp
+@@ -68,7 +68,9 @@
+     attachment->SetData(1, itemGuid);
+     attachment->SetData(2, guid);
+     trans->Append(attachment);
+-    CharacterDatabase.DirectCommitTransaction(trans);
++    auto result = CharacterDatabase.AsyncCommitTransaction(trans);
++    if (!result.m_future.get())
++        return;
+     if (!CharacterDatabase.Query("SELECT account FROM area52_account_gift_delivery "
+         "WHERE campaign = 657112 AND account = {} AND item_guid = {} AND mail_id = {}", account, itemGuid, mailId))
+         return;

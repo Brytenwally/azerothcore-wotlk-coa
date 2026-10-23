@@ -1,0 +1,48 @@
+{
+  "id": "area52-world-dungeon-batch6-20261021",
+  "upstream": [
+    "d3dedcf03b",
+    "2983623a03",
+    "2a9a6c73c4",
+    "efa756ac61"
+  ],
+  "npcs": [
+    1528,
+    1534,
+    1536,
+    1538,
+    1539,
+    1540,
+    7273,
+    5710,
+    3678
+  ],
+  "counts": {
+    "creature_loot_template": {
+      "before": 18,
+      "after": 40
+    },
+    "smart_scripts": {
+      "before": 10,
+      "after": 10
+    },
+    "creature_template": {
+      "before": 1,
+      "after": 1
+    },
+    "conditions": {
+      "before": 4,
+      "after": 0
+    },
+    "gameobject": {
+      "before": 65,
+      "after": 65
+    }
+  },
+  "reports": {
+    "offline": "c67fd416023affd4907777fe7f6c7a442b76c6776ac51b9704a145993f350382",
+    "source": "5eb3ce82d671b2fc1c36fb97426284988452902c7293cda78697f29deedbb379"
+  },
+  "hook_sha256": "6238d0c566b69787bca975675df0fbb6b4744929eb2b840270740e337a0a233d",
+  "scope": "Exact deployed schemas, guarded hook and focused native boundary fixtures. No gameplay or live writes."
+}

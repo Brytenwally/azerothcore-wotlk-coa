@@ -1,0 +1,115 @@
+--- a/src/server/coa/AscensionBlademaster.cpp
++++ b/src/server/coa/AscensionBlademaster.cpp
+@@ -233,15 +233,16 @@
+         Unit* caster = GetCaster();
+         if (!caster->HasAura(Enchant) || !caster->HasAura(Empowerment) || GetHitDamage() <= 0)
+             return;
+-        uint32 root = sSpellMgr->GetFirstSpellInChain(GetSpellInfo()->Id);
+-        if (root == Devastate)
++        Player* player = caster->ToPlayer();
++        uint32 const spell = GetSpellInfo()->Id;
++        if (player->MatchesSpellInteraction(spell, Devastate))
+             caster->CastSpell(GetHitUnit(), Shatter, true);
+         else if (!_selfApplied)
+         {
+             _selfApplied = true;
+-            if (root == DivineStorm)
++            if (player->MatchesSpellInteraction(spell, DivineStorm))
+                 caster->CastSpell(caster, DivineForce, true);
+-            else if (root == Riposte && caster->HasAura(Stagger))
++            else if (player->MatchesSpellInteraction(spell, Riposte) && caster->HasAura(Stagger))
+                 caster->CastSpell(caster, Deflection, true);
+         }
+     }
+--- a/src/server/coa/AscensionMysticEnchant.cpp
++++ b/src/server/coa/AscensionMysticEnchant.cpp
+@@ -297,6 +297,7 @@
+         if (grant.Enchant == 81248)
+             player->SetTemporarySpellReplacement(33831, enabled ? 81249 : 0);
+     }
++    RefreshEpicReplacements(player);
+ }
+ 
+ void Load(Player* player)
+--- a/src/server/coa/AscensionMysticEnchantCatalog.h
++++ b/src/server/coa/AscensionMysticEnchantCatalog.h
+@@ -38,6 +38,7 @@
+ };
+ bool ResolveNative(std::uint32_t spell, std::map<std::uint32_t, SpellNode> const& spells);
+ void RefreshEquipped(Player* player);
++void RefreshEpicReplacements(Player* player);
+ bool GrantsActive(Player const* player, std::uint32_t enchant);
+ void SetGrantedSpell(Player* player, std::uint32_t enchant, std::uint32_t spell, bool enabled);
+ using Slots = std::array<std::uint32_t, 17>;
+--- a/src/server/coa/AscensionMysticKnightEpics.cpp
++++ b/src/server/coa/AscensionMysticKnightEpics.cpp
+@@ -48,6 +48,12 @@
+     if (!player || !player->GetSession() || player->GetSession()->PlayerLogout())
+         return;
+     bool light = Applies(player) && AscensionMysticEnchant::GrantsActive(player, Light) && !player->HasAura(81315);
++    if (!light && Applies(player))
++    {
++        player->RemoveAurasDueToSpell(926590, player->GetGUID());
++        for (uint32 id = 926574; id <= 926588; id += 2)
++            player->RemoveAurasDueToSpell(id, player->GetGUID());
++    }
+     bool deconstruct = Applies(player) && AscensionMysticEnchant::GrantsActive(player, Deconstruction);
+     bool hook = Applies(player) && AscensionMysticEnchant::GrantsActive(player, Hook);
+     for (std::size_t i = 0; i < Consecration.size(); ++i)
+@@ -79,6 +85,8 @@
+             return;
+         if (info->Id == 926590)
+             info->Effects[1].BasePoints = -2;
++        if (info->Id >= 926575 && info->Id <= 926589 && (info->Id % 2) == 1)
++            info->Effects[0].BonusMultiplier = 0.0264f;
+         if (info->Id == 92583)
+             info->Effects[0].BonusMultiplier = 0.2f;
+         auto const rank = std::find(Deconstruct.begin(), Deconstruct.end(), info->Id);
+@@ -144,7 +152,15 @@
+         if (GetHitDamage() > 0 && !GetCaster()->HasAura(81315))
+             GetCaster()->CastSpell(GetCaster(), 926590, true);
+     }
+-    void Register() override { AfterHit += SpellHitFn(spell_area52_emanate_damage::Hit); }
++    void Damage(SpellEffIndex)
++    {
++        SetEffectValue(GetEffectValue() + int32(0.022f * GetCaster()->GetTotalAttackPowerValue(BASE_ATTACK)));
++    }
++    void Register() override
++    {
++        OnEffectLaunchTarget += SpellEffectFn(spell_area52_emanate_damage::Damage, EFFECT_0, SPELL_EFFECT_SCHOOL_DAMAGE);
++        AfterHit += SpellHitFn(spell_area52_emanate_damage::Hit);
++    }
+ };
+ class spell_area52_flesh_hook : public SpellScript
+ {
+@@ -157,8 +173,7 @@
+     }
+     void Damage(SpellEffIndex)
+     {
+-        SetEffectValue(GetEffectValue() + int32(6 * GetCaster()->GetLevel() +
+-            0.2f * GetCaster()->GetTotalAttackPowerValue(BASE_ATTACK)));
++        SetEffectValue(GetEffectValue() + int32(0.2f * GetCaster()->GetTotalAttackPowerValue(BASE_ATTACK)));
+     }
+     void Register() override
+     {
+@@ -314,7 +329,10 @@
+             required.emplace_back(id, "spell_area52_emanate_damage");
+     if (spell == Deconstruction)
+         for (uint32 id : Deconstruct)
++        {
+             required.emplace_back(id, "spell_area52_deconstruct");
++            required.emplace_back(id, "spell_area52_blademaster_empower");
++        }
+     for (auto const& [id, name] : required)
+     {
+         std::list<SpellScript*> scripts;
+@@ -344,3 +362,9 @@
+     }
+     return true;
+ }
++
++void AscensionMysticEnchant::RefreshEpicReplacements(Player* player)
++{
++    if (Applies(player))
++        Synchronize(player);
++}
