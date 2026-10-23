@@ -280,23 +280,7 @@ namespace Trainer
 
     bool Trainer::CanTeachSpell(Player const* player, Spell const* trainerSpell) const
     {
-        SpellState state = GetSpellState(player, trainerSpell);
-        if (state != SpellState::Available)
-            return false;
-
-        SpellInfo const* trainerSpellInfo = sSpellMgr->AssertSpellInfo(trainerSpell->SpellId);
-
-        for (SpellEffectInfo const& spellEffectInfo : trainerSpellInfo->GetEffects())
-        {
-            if (!spellEffectInfo.IsEffect(SPELL_EFFECT_LEARN_SPELL))
-                continue;
-
-            SpellInfo const* learnedSpellInfo = sSpellMgr->GetSpellInfo(spellEffectInfo.TriggerSpell);
-            if (learnedSpellInfo && learnedSpellInfo->IsPrimaryProfessionFirstRank() && !player->GetFreePrimaryProfessionPoints())
-                return false;
-        }
-
-        return true;
+        return GetSpellState(player, trainerSpell) == SpellState::Available;
     }
 
     SpellState Trainer::GetSpellState(Player const* player, Spell const* trainerSpell) const
@@ -345,7 +329,13 @@ namespace Trainer
 
             hasLearnSpellEffect = true;
             if (!player->HasSpell(spellEffectInfo.TriggerSpell))
+            {
                 knowsAllLearnedSpells = false;
+
+                SpellInfo const* learnedSpellInfo = sSpellMgr->GetSpellInfo(spellEffectInfo.TriggerSpell);
+                if (learnedSpellInfo && learnedSpellInfo->IsPrimaryProfessionFirstRank() && !player->GetFreePrimaryProfessionPoints())
+                    return SpellState::Unavailable;
+            }
 
             if (uint32 previousRankSpellId = sSpellMgr->GetPrevSpellInChain(spellEffectInfo.TriggerSpell))
                 if (!wildcardRanks && !player->HasSpell(previousRankSpellId))
