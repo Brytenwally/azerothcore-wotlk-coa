@@ -709,6 +709,7 @@ enum RBACPermissions
     RBAC_PERM_COMMAND_ACCOUNT_INFO                           = 945,
     // custom permissions 1000+
     RBAC_PERM_COMMAND_CHEAT_SPELLCHARGES                     = 1000,
+    RBAC_PERM_COMMAND_GEAR_UNEQUIP                           = 1003,
     RBAC_PERM_MAX
 };
 
