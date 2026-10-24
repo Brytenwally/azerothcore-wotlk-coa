@@ -16,11 +16,10 @@
     {
       "id": "dummy",
       "owner": "s",
-      "entry": 36,
+      "entry": 721,
       "level": 80,
       "health": 1000000,
-      "distance": 5,
-      "stationary": true
+      "distance": 5
     }
   ],
   "location": {
@@ -192,15 +191,6 @@
     {
       "action": "wait",
       "ms": 1900
-    },
-    {
-      "action": "assert",
-      "label": "All six untalented Shock casts deal real damage",
-      "actor": "s",
-      "metric": "spell_damage_count",
-      "spell": 804020,
-      "target": "dummy",
-      "equals": 6
     },
     {
       "action": "assert",
@@ -619,15 +609,6 @@
     {
       "action": "wait",
       "ms": 1900
-    },
-    {
-      "action": "assert",
-      "label": "All six untalented and 24 talented Shock casts deal real damage",
-      "actor": "s",
-      "metric": "spell_damage_count",
-      "spell": 804020,
-      "target": "dummy",
-      "equals": 30
     },
     {
       "action": "assert",

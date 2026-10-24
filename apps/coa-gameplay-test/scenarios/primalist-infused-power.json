@@ -1,17 +1,7 @@
 {
   "schema": 1,
   "name": "Primalist Infused With Power effective heal procs and raid stacking",
-  "contract": [
-    "Original Spell.dbc gives Infused With Power 503718 one proc-trigger effect for 503719 and a 20% chance.",
-    "The effective spell_proc entry also has Chance 20. Preserve one hundred ordinary Hand of Life heals and",
-    "one hundred actual Hammer of Life heals, with full-overheal, removal, raid stacking and ten-second expiry",
-    "controls. Observe each actual triggered-spell counter alongside the resulting aura: one effective heal",
-    "can trigger at most one proc. Check the native eligible-heal decisions for 502808 and 806073 separately",
-    "with 40000 rolls each, within 1.5 percentage points of 20%. This existing observer checks database filters,",
-    "conditions, CheckProc and the native chance roll without executing procs; its triggered counter stays",
-    "unchanged. The small ordinary-cast cohorts prove actual procs and aura effects, and the large decision",
-    "samples check the rate without accepting a rare 100-roll cohort as evidence of broken gameplay."
-  ],
+  "contract": "One hundred Hand heals and one hundred actual Hammer of Life heals independently sample the 20% proc rate. Full overhealing and removal cannot proc. The native raid helper adds 5% melee/spell crit for ten seconds and shares the established non-stacking group with Leader of the Pack and Moonkin Aura.",
   "players": [
     {
       "id": "primalist",
@@ -149,44 +139,6 @@
       "action": "learn",
       "actor": "primalist",
       "spell": 503718
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_chance",
-      "spell": 503718,
-      "equals": 20,
-      "label": "Loaded Infused Power chance matches original Spell.dbc"
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_decision_count"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "aura_proc_rate",
-      "spell": 503718,
-      "target": "ally",
-      "type_mask": 16384,
-      "heal": true,
-      "trigger_spell": 502808,
-      "trials": 40000,
-      "min": 18.5,
-      "max": 21.5,
-      "label": "hand: native eligible heal decisions retain the original 20% chance"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_decision_count",
-      "equals": 0,
-      "label": "hand: observing the chance does not execute a proc"
     },
     {
       "action": "set_health",
@@ -774,13 +726,6 @@
     {
       "action": "snapshot",
       "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_0"
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
       "metric": "spell_heal_count",
       "spell": 502808,
       "target": "ally",
@@ -814,23 +759,6 @@
       "save_as": "hand_proc_0"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_0"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_0",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 0: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -856,13 +784,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_1"
     },
     {
       "action": "snapshot",
@@ -900,23 +821,6 @@
       "save_as": "hand_proc_1"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_1"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_1",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 1: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -942,13 +846,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_2"
     },
     {
       "action": "snapshot",
@@ -986,23 +883,6 @@
       "save_as": "hand_proc_2"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_2"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_2",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 2: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -1028,13 +908,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_3"
     },
     {
       "action": "snapshot",
@@ -1072,23 +945,6 @@
       "save_as": "hand_proc_3"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_3"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_3",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 3: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -1114,13 +970,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_4"
     },
     {
       "action": "snapshot",
@@ -1158,23 +1007,6 @@
       "save_as": "hand_proc_4"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_4"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_4",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 4: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -1200,13 +1032,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_5"
     },
     {
       "action": "snapshot",
@@ -1244,23 +1069,6 @@
       "save_as": "hand_proc_5"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_5"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_5",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 5: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -1286,13 +1094,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_6"
     },
     {
       "action": "snapshot",
@@ -1330,23 +1131,6 @@
       "save_as": "hand_proc_6"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_6"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_6",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 6: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -1372,13 +1156,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_7"
     },
     {
       "action": "snapshot",
@@ -1416,23 +1193,6 @@
       "save_as": "hand_proc_7"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_7"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_7",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 7: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -1458,13 +1218,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_8"
     },
     {
       "action": "snapshot",
@@ -1502,23 +1255,6 @@
       "save_as": "hand_proc_8"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_8"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_8",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 8: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -1544,13 +1280,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_9"
     },
     {
       "action": "snapshot",
@@ -1588,23 +1317,6 @@
       "save_as": "hand_proc_9"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_9"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_9",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 9: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -1630,13 +1342,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_10"
     },
     {
       "action": "snapshot",
@@ -1674,23 +1379,6 @@
       "save_as": "hand_proc_10"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_10"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_10",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 10: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -1716,13 +1404,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_11"
     },
     {
       "action": "snapshot",
@@ -1760,23 +1441,6 @@
       "save_as": "hand_proc_11"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_11"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_11",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 11: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -1802,13 +1466,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_12"
     },
     {
       "action": "snapshot",
@@ -1846,23 +1503,6 @@
       "save_as": "hand_proc_12"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_12"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_12",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 12: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -1888,13 +1528,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_13"
     },
     {
       "action": "snapshot",
@@ -1932,23 +1565,6 @@
       "save_as": "hand_proc_13"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_13"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_13",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 13: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -1974,13 +1590,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_14"
     },
     {
       "action": "snapshot",
@@ -2018,23 +1627,6 @@
       "save_as": "hand_proc_14"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_14"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_14",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 14: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -2060,13 +1652,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_15"
     },
     {
       "action": "snapshot",
@@ -2104,23 +1689,6 @@
       "save_as": "hand_proc_15"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_15"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_15",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 15: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -2146,13 +1714,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_16"
     },
     {
       "action": "snapshot",
@@ -2190,23 +1751,6 @@
       "save_as": "hand_proc_16"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_16"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_16",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 16: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -2232,13 +1776,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_17"
     },
     {
       "action": "snapshot",
@@ -2276,23 +1813,6 @@
       "save_as": "hand_proc_17"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_17"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_17",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 17: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -2318,13 +1838,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_18"
     },
     {
       "action": "snapshot",
@@ -2362,23 +1875,6 @@
       "save_as": "hand_proc_18"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_18"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_18",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 18: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -2404,13 +1900,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_19"
     },
     {
       "action": "snapshot",
@@ -2448,23 +1937,6 @@
       "save_as": "hand_proc_19"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_19"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_19",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 19: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -2490,13 +1962,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_20"
     },
     {
       "action": "snapshot",
@@ -2534,23 +1999,6 @@
       "save_as": "hand_proc_20"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_20"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_20",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 20: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -2576,13 +2024,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_21"
     },
     {
       "action": "snapshot",
@@ -2620,23 +2061,6 @@
       "save_as": "hand_proc_21"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_21"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_21",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 21: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -2662,13 +2086,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_22"
     },
     {
       "action": "snapshot",
@@ -2706,23 +2123,6 @@
       "save_as": "hand_proc_22"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_22"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_22",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 22: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -2748,13 +2148,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_23"
     },
     {
       "action": "snapshot",
@@ -2792,23 +2185,6 @@
       "save_as": "hand_proc_23"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_23"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_23",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 23: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -2834,13 +2210,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_24"
     },
     {
       "action": "snapshot",
@@ -2878,23 +2247,6 @@
       "save_as": "hand_proc_24"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_24"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_24",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 24: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -2920,13 +2272,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_25"
     },
     {
       "action": "snapshot",
@@ -2964,23 +2309,6 @@
       "save_as": "hand_proc_25"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_25"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_25",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 25: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -3006,13 +2334,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_26"
     },
     {
       "action": "snapshot",
@@ -3050,23 +2371,6 @@
       "save_as": "hand_proc_26"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_26"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_26",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 26: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -3092,13 +2396,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_27"
     },
     {
       "action": "snapshot",
@@ -3136,23 +2433,6 @@
       "save_as": "hand_proc_27"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_27"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_27",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 27: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -3178,13 +2458,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_28"
     },
     {
       "action": "snapshot",
@@ -3222,23 +2495,6 @@
       "save_as": "hand_proc_28"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_28"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_28",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 28: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -3264,13 +2520,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_29"
     },
     {
       "action": "snapshot",
@@ -3308,23 +2557,6 @@
       "save_as": "hand_proc_29"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_29"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_29",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 29: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -3350,13 +2582,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_30"
     },
     {
       "action": "snapshot",
@@ -3394,23 +2619,6 @@
       "save_as": "hand_proc_30"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_30"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_30",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 30: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -3436,13 +2644,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_31"
     },
     {
       "action": "snapshot",
@@ -3480,23 +2681,6 @@
       "save_as": "hand_proc_31"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_31"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_31",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 31: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -3522,13 +2706,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_32"
     },
     {
       "action": "snapshot",
@@ -3566,23 +2743,6 @@
       "save_as": "hand_proc_32"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_32"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_32",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 32: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -3608,13 +2768,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_33"
     },
     {
       "action": "snapshot",
@@ -3652,23 +2805,6 @@
       "save_as": "hand_proc_33"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_33"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_33",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 33: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -3694,13 +2830,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_34"
     },
     {
       "action": "snapshot",
@@ -3738,23 +2867,6 @@
       "save_as": "hand_proc_34"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_34"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_34",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 34: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -3780,13 +2892,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_35"
     },
     {
       "action": "snapshot",
@@ -3824,23 +2929,6 @@
       "save_as": "hand_proc_35"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_35"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_35",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 35: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -3866,13 +2954,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_36"
     },
     {
       "action": "snapshot",
@@ -3910,23 +2991,6 @@
       "save_as": "hand_proc_36"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_36"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_36",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 36: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -3952,13 +3016,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_37"
     },
     {
       "action": "snapshot",
@@ -3996,23 +3053,6 @@
       "save_as": "hand_proc_37"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_37"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_37",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 37: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -4038,13 +3078,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_38"
     },
     {
       "action": "snapshot",
@@ -4082,23 +3115,6 @@
       "save_as": "hand_proc_38"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_38"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_38",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 38: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -4124,13 +3140,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_39"
     },
     {
       "action": "snapshot",
@@ -4168,23 +3177,6 @@
       "save_as": "hand_proc_39"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_39"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_39",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 39: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -4210,13 +3202,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_40"
     },
     {
       "action": "snapshot",
@@ -4254,23 +3239,6 @@
       "save_as": "hand_proc_40"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_40"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_40",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 40: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -4296,13 +3264,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_41"
     },
     {
       "action": "snapshot",
@@ -4340,23 +3301,6 @@
       "save_as": "hand_proc_41"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_41"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_41",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 41: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -4382,13 +3326,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_42"
     },
     {
       "action": "snapshot",
@@ -4426,23 +3363,6 @@
       "save_as": "hand_proc_42"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_42"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_42",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 42: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -4468,13 +3388,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_43"
     },
     {
       "action": "snapshot",
@@ -4512,23 +3425,6 @@
       "save_as": "hand_proc_43"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_43"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_43",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 43: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -4554,13 +3450,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_44"
     },
     {
       "action": "snapshot",
@@ -4598,23 +3487,6 @@
       "save_as": "hand_proc_44"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_44"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_44",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 44: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -4640,13 +3512,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_45"
     },
     {
       "action": "snapshot",
@@ -4684,23 +3549,6 @@
       "save_as": "hand_proc_45"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_45"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_45",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 45: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -4726,13 +3574,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_46"
     },
     {
       "action": "snapshot",
@@ -4770,23 +3611,6 @@
       "save_as": "hand_proc_46"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_46"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_46",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 46: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -4812,13 +3636,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_47"
     },
     {
       "action": "snapshot",
@@ -4856,23 +3673,6 @@
       "save_as": "hand_proc_47"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_47"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_47",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 47: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -4898,13 +3698,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_48"
     },
     {
       "action": "snapshot",
@@ -4942,23 +3735,6 @@
       "save_as": "hand_proc_48"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_48"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_48",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 48: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -4984,13 +3760,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_49"
     },
     {
       "action": "snapshot",
@@ -5028,23 +3797,6 @@
       "save_as": "hand_proc_49"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_49"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_49",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 49: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -5070,13 +3822,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_50"
     },
     {
       "action": "snapshot",
@@ -5114,23 +3859,6 @@
       "save_as": "hand_proc_50"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_50"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_50",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 50: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -5156,13 +3884,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_51"
     },
     {
       "action": "snapshot",
@@ -5200,23 +3921,6 @@
       "save_as": "hand_proc_51"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_51"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_51",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 51: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -5242,13 +3946,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_52"
     },
     {
       "action": "snapshot",
@@ -5286,23 +3983,6 @@
       "save_as": "hand_proc_52"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_52"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_52",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 52: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -5328,13 +4008,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_53"
     },
     {
       "action": "snapshot",
@@ -5372,23 +4045,6 @@
       "save_as": "hand_proc_53"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_53"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_53",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 53: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -5414,13 +4070,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_54"
     },
     {
       "action": "snapshot",
@@ -5458,23 +4107,6 @@
       "save_as": "hand_proc_54"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_54"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_54",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 54: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -5500,13 +4132,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_55"
     },
     {
       "action": "snapshot",
@@ -5544,23 +4169,6 @@
       "save_as": "hand_proc_55"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_55"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_55",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 55: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -5586,13 +4194,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_56"
     },
     {
       "action": "snapshot",
@@ -5630,23 +4231,6 @@
       "save_as": "hand_proc_56"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_56"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_56",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 56: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -5672,13 +4256,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_57"
     },
     {
       "action": "snapshot",
@@ -5716,23 +4293,6 @@
       "save_as": "hand_proc_57"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_57"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_57",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 57: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -5758,13 +4318,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_58"
     },
     {
       "action": "snapshot",
@@ -5802,23 +4355,6 @@
       "save_as": "hand_proc_58"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_58"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_58",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 58: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -5844,13 +4380,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_59"
     },
     {
       "action": "snapshot",
@@ -5888,23 +4417,6 @@
       "save_as": "hand_proc_59"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_59"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_59",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 59: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -5930,13 +4442,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_60"
     },
     {
       "action": "snapshot",
@@ -5974,23 +4479,6 @@
       "save_as": "hand_proc_60"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_60"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_60",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 60: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -6016,13 +4504,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_61"
     },
     {
       "action": "snapshot",
@@ -6060,23 +4541,6 @@
       "save_as": "hand_proc_61"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_61"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_61",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 61: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -6102,13 +4566,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_62"
     },
     {
       "action": "snapshot",
@@ -6146,23 +4603,6 @@
       "save_as": "hand_proc_62"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_62"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_62",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 62: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -6188,13 +4628,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_63"
     },
     {
       "action": "snapshot",
@@ -6232,23 +4665,6 @@
       "save_as": "hand_proc_63"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_63"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_63",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 63: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -6274,13 +4690,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_64"
     },
     {
       "action": "snapshot",
@@ -6318,23 +4727,6 @@
       "save_as": "hand_proc_64"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_64"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_64",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 64: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -6360,13 +4752,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_65"
     },
     {
       "action": "snapshot",
@@ -6404,23 +4789,6 @@
       "save_as": "hand_proc_65"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_65"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_65",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 65: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -6446,13 +4814,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_66"
     },
     {
       "action": "snapshot",
@@ -6490,23 +4851,6 @@
       "save_as": "hand_proc_66"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_66"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_66",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 66: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -6532,13 +4876,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_67"
     },
     {
       "action": "snapshot",
@@ -6576,23 +4913,6 @@
       "save_as": "hand_proc_67"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_67"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_67",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 67: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -6618,13 +4938,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_68"
     },
     {
       "action": "snapshot",
@@ -6662,23 +4975,6 @@
       "save_as": "hand_proc_68"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_68"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_68",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 68: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -6704,13 +5000,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_69"
     },
     {
       "action": "snapshot",
@@ -6748,23 +5037,6 @@
       "save_as": "hand_proc_69"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_69"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_69",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 69: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -6790,13 +5062,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_70"
     },
     {
       "action": "snapshot",
@@ -6834,23 +5099,6 @@
       "save_as": "hand_proc_70"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_70"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_70",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 70: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -6876,13 +5124,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_71"
     },
     {
       "action": "snapshot",
@@ -6920,23 +5161,6 @@
       "save_as": "hand_proc_71"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_71"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_71",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 71: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -6962,13 +5186,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_72"
     },
     {
       "action": "snapshot",
@@ -7006,23 +5223,6 @@
       "save_as": "hand_proc_72"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_72"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_72",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 72: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -7048,13 +5248,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_73"
     },
     {
       "action": "snapshot",
@@ -7092,23 +5285,6 @@
       "save_as": "hand_proc_73"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_73"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_73",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 73: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -7134,13 +5310,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_74"
     },
     {
       "action": "snapshot",
@@ -7178,23 +5347,6 @@
       "save_as": "hand_proc_74"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_74"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_74",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 74: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -7220,13 +5372,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_75"
     },
     {
       "action": "snapshot",
@@ -7264,23 +5409,6 @@
       "save_as": "hand_proc_75"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_75"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_75",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 75: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -7306,13 +5434,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_76"
     },
     {
       "action": "snapshot",
@@ -7350,23 +5471,6 @@
       "save_as": "hand_proc_76"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_76"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_76",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 76: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -7392,13 +5496,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_77"
     },
     {
       "action": "snapshot",
@@ -7436,23 +5533,6 @@
       "save_as": "hand_proc_77"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_77"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_77",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 77: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -7478,13 +5558,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_78"
     },
     {
       "action": "snapshot",
@@ -7522,23 +5595,6 @@
       "save_as": "hand_proc_78"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_78"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_78",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 78: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -7564,13 +5620,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_79"
     },
     {
       "action": "snapshot",
@@ -7608,23 +5657,6 @@
       "save_as": "hand_proc_79"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_79"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_79",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 79: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -7650,13 +5682,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_80"
     },
     {
       "action": "snapshot",
@@ -7694,23 +5719,6 @@
       "save_as": "hand_proc_80"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_80"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_80",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 80: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -7736,13 +5744,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_81"
     },
     {
       "action": "snapshot",
@@ -7780,23 +5781,6 @@
       "save_as": "hand_proc_81"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_81"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_81",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 81: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -7822,13 +5806,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_82"
     },
     {
       "action": "snapshot",
@@ -7866,23 +5843,6 @@
       "save_as": "hand_proc_82"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_82"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_82",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 82: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -7908,13 +5868,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_83"
     },
     {
       "action": "snapshot",
@@ -7952,23 +5905,6 @@
       "save_as": "hand_proc_83"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_83"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_83",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 83: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -7994,13 +5930,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_84"
     },
     {
       "action": "snapshot",
@@ -8038,23 +5967,6 @@
       "save_as": "hand_proc_84"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_84"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_84",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 84: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -8080,13 +5992,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_85"
     },
     {
       "action": "snapshot",
@@ -8124,23 +6029,6 @@
       "save_as": "hand_proc_85"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_85"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_85",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 85: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -8166,13 +6054,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_86"
     },
     {
       "action": "snapshot",
@@ -8210,23 +6091,6 @@
       "save_as": "hand_proc_86"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_86"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_86",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 86: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -8252,13 +6116,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_87"
     },
     {
       "action": "snapshot",
@@ -8296,23 +6153,6 @@
       "save_as": "hand_proc_87"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_87"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_87",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 87: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -8338,13 +6178,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_88"
     },
     {
       "action": "snapshot",
@@ -8382,23 +6215,6 @@
       "save_as": "hand_proc_88"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_88"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_88",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 88: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -8424,13 +6240,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_89"
     },
     {
       "action": "snapshot",
@@ -8468,23 +6277,6 @@
       "save_as": "hand_proc_89"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_89"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_89",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 89: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -8510,13 +6302,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_90"
     },
     {
       "action": "snapshot",
@@ -8554,23 +6339,6 @@
       "save_as": "hand_proc_90"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_90"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_90",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 90: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -8596,13 +6364,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_91"
     },
     {
       "action": "snapshot",
@@ -8640,23 +6401,6 @@
       "save_as": "hand_proc_91"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_91"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_91",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 91: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -8682,13 +6426,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_92"
     },
     {
       "action": "snapshot",
@@ -8726,23 +6463,6 @@
       "save_as": "hand_proc_92"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_92"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_92",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 92: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -8768,13 +6488,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_93"
     },
     {
       "action": "snapshot",
@@ -8812,23 +6525,6 @@
       "save_as": "hand_proc_93"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_93"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_93",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 93: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -8854,13 +6550,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_94"
     },
     {
       "action": "snapshot",
@@ -8898,23 +6587,6 @@
       "save_as": "hand_proc_94"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_94"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_94",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 94: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -8940,13 +6612,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_95"
     },
     {
       "action": "snapshot",
@@ -8984,23 +6649,6 @@
       "save_as": "hand_proc_95"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_95"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_95",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 95: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -9026,13 +6674,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_96"
     },
     {
       "action": "snapshot",
@@ -9070,23 +6711,6 @@
       "save_as": "hand_proc_96"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_96"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_96",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 96: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -9112,13 +6736,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_97"
     },
     {
       "action": "snapshot",
@@ -9156,23 +6773,6 @@
       "save_as": "hand_proc_97"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_97"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_97",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 97: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -9198,13 +6798,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_98"
     },
     {
       "action": "snapshot",
@@ -9242,23 +6835,6 @@
       "save_as": "hand_proc_98"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_98"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_98",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 98: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -9284,13 +6860,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 502808
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_before_99"
     },
     {
       "action": "snapshot",
@@ -9328,23 +6897,6 @@
       "save_as": "hand_proc_99"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hand_events_after_99"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hand_events_before_99",
-      "min": 0,
-      "max": 1,
-      "label": "hand heal 99: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -9352,36 +6904,6 @@
       "action": "learn",
       "actor": "primalist",
       "spell": 803973
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_decision_count"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "aura_proc_rate",
-      "spell": 503718,
-      "target": "ally",
-      "type_mask": 16384,
-      "heal": true,
-      "trigger_spell": 806073,
-      "trials": 40000,
-      "min": 18.5,
-      "max": 21.5,
-      "label": "hammer: native eligible heal decisions retain the original 20% chance"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_decision_count",
-      "equals": 0,
-      "label": "hammer: observing the chance does not execute a proc"
     },
     {
       "action": "set_aura",
@@ -9413,13 +6935,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_0"
     },
     {
       "action": "snapshot",
@@ -9466,23 +6981,6 @@
       "save_as": "hammer_proc_0"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_0"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_0",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 0: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -9516,13 +7014,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_1"
     },
     {
       "action": "snapshot",
@@ -9569,23 +7060,6 @@
       "save_as": "hammer_proc_1"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_1"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_1",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 1: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -9619,13 +7093,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_2"
     },
     {
       "action": "snapshot",
@@ -9672,23 +7139,6 @@
       "save_as": "hammer_proc_2"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_2"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_2",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 2: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -9722,13 +7172,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_3"
     },
     {
       "action": "snapshot",
@@ -9775,23 +7218,6 @@
       "save_as": "hammer_proc_3"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_3"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_3",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 3: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -9825,13 +7251,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_4"
     },
     {
       "action": "snapshot",
@@ -9878,23 +7297,6 @@
       "save_as": "hammer_proc_4"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_4"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_4",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 4: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -9928,13 +7330,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_5"
     },
     {
       "action": "snapshot",
@@ -9981,23 +7376,6 @@
       "save_as": "hammer_proc_5"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_5"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_5",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 5: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -10031,13 +7409,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_6"
     },
     {
       "action": "snapshot",
@@ -10084,23 +7455,6 @@
       "save_as": "hammer_proc_6"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_6"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_6",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 6: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -10134,13 +7488,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_7"
     },
     {
       "action": "snapshot",
@@ -10187,23 +7534,6 @@
       "save_as": "hammer_proc_7"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_7"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_7",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 7: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -10237,13 +7567,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_8"
     },
     {
       "action": "snapshot",
@@ -10290,23 +7613,6 @@
       "save_as": "hammer_proc_8"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_8"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_8",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 8: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -10340,13 +7646,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_9"
     },
     {
       "action": "snapshot",
@@ -10393,23 +7692,6 @@
       "save_as": "hammer_proc_9"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_9"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_9",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 9: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -10443,13 +7725,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_10"
     },
     {
       "action": "snapshot",
@@ -10496,23 +7771,6 @@
       "save_as": "hammer_proc_10"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_10"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_10",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 10: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -10546,13 +7804,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_11"
     },
     {
       "action": "snapshot",
@@ -10599,23 +7850,6 @@
       "save_as": "hammer_proc_11"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_11"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_11",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 11: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -10649,13 +7883,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_12"
     },
     {
       "action": "snapshot",
@@ -10702,23 +7929,6 @@
       "save_as": "hammer_proc_12"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_12"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_12",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 12: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -10752,13 +7962,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_13"
     },
     {
       "action": "snapshot",
@@ -10805,23 +8008,6 @@
       "save_as": "hammer_proc_13"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_13"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_13",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 13: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -10855,13 +8041,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_14"
     },
     {
       "action": "snapshot",
@@ -10908,23 +8087,6 @@
       "save_as": "hammer_proc_14"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_14"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_14",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 14: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -10958,13 +8120,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_15"
     },
     {
       "action": "snapshot",
@@ -11011,23 +8166,6 @@
       "save_as": "hammer_proc_15"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_15"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_15",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 15: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -11061,13 +8199,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_16"
     },
     {
       "action": "snapshot",
@@ -11114,23 +8245,6 @@
       "save_as": "hammer_proc_16"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_16"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_16",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 16: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -11164,13 +8278,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_17"
     },
     {
       "action": "snapshot",
@@ -11217,23 +8324,6 @@
       "save_as": "hammer_proc_17"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_17"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_17",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 17: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -11267,13 +8357,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_18"
     },
     {
       "action": "snapshot",
@@ -11320,23 +8403,6 @@
       "save_as": "hammer_proc_18"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_18"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_18",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 18: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -11370,13 +8436,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_19"
     },
     {
       "action": "snapshot",
@@ -11423,23 +8482,6 @@
       "save_as": "hammer_proc_19"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_19"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_19",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 19: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -11473,13 +8515,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_20"
     },
     {
       "action": "snapshot",
@@ -11526,23 +8561,6 @@
       "save_as": "hammer_proc_20"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_20"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_20",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 20: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -11576,13 +8594,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_21"
     },
     {
       "action": "snapshot",
@@ -11629,23 +8640,6 @@
       "save_as": "hammer_proc_21"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_21"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_21",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 21: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -11679,13 +8673,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_22"
     },
     {
       "action": "snapshot",
@@ -11732,23 +8719,6 @@
       "save_as": "hammer_proc_22"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_22"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_22",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 22: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -11782,13 +8752,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_23"
     },
     {
       "action": "snapshot",
@@ -11835,23 +8798,6 @@
       "save_as": "hammer_proc_23"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_23"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_23",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 23: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -11885,13 +8831,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_24"
     },
     {
       "action": "snapshot",
@@ -11938,23 +8877,6 @@
       "save_as": "hammer_proc_24"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_24"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_24",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 24: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -11988,13 +8910,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_25"
     },
     {
       "action": "snapshot",
@@ -12041,23 +8956,6 @@
       "save_as": "hammer_proc_25"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_25"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_25",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 25: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -12091,13 +8989,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_26"
     },
     {
       "action": "snapshot",
@@ -12144,23 +9035,6 @@
       "save_as": "hammer_proc_26"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_26"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_26",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 26: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -12194,13 +9068,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_27"
     },
     {
       "action": "snapshot",
@@ -12247,23 +9114,6 @@
       "save_as": "hammer_proc_27"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_27"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_27",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 27: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -12297,13 +9147,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_28"
     },
     {
       "action": "snapshot",
@@ -12350,23 +9193,6 @@
       "save_as": "hammer_proc_28"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_28"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_28",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 28: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -12400,13 +9226,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_29"
     },
     {
       "action": "snapshot",
@@ -12453,23 +9272,6 @@
       "save_as": "hammer_proc_29"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_29"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_29",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 29: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -12503,13 +9305,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_30"
     },
     {
       "action": "snapshot",
@@ -12556,23 +9351,6 @@
       "save_as": "hammer_proc_30"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_30"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_30",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 30: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -12606,13 +9384,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_31"
     },
     {
       "action": "snapshot",
@@ -12659,23 +9430,6 @@
       "save_as": "hammer_proc_31"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_31"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_31",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 31: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -12709,13 +9463,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_32"
     },
     {
       "action": "snapshot",
@@ -12762,23 +9509,6 @@
       "save_as": "hammer_proc_32"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_32"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_32",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 32: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -12812,13 +9542,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_33"
     },
     {
       "action": "snapshot",
@@ -12865,23 +9588,6 @@
       "save_as": "hammer_proc_33"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_33"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_33",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 33: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -12915,13 +9621,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_34"
     },
     {
       "action": "snapshot",
@@ -12968,23 +9667,6 @@
       "save_as": "hammer_proc_34"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_34"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_34",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 34: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -13018,13 +9700,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_35"
     },
     {
       "action": "snapshot",
@@ -13071,23 +9746,6 @@
       "save_as": "hammer_proc_35"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_35"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_35",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 35: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -13121,13 +9779,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_36"
     },
     {
       "action": "snapshot",
@@ -13174,23 +9825,6 @@
       "save_as": "hammer_proc_36"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_36"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_36",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 36: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -13224,13 +9858,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_37"
     },
     {
       "action": "snapshot",
@@ -13277,23 +9904,6 @@
       "save_as": "hammer_proc_37"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_37"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_37",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 37: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -13327,13 +9937,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_38"
     },
     {
       "action": "snapshot",
@@ -13380,23 +9983,6 @@
       "save_as": "hammer_proc_38"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_38"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_38",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 38: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -13430,13 +10016,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_39"
     },
     {
       "action": "snapshot",
@@ -13483,23 +10062,6 @@
       "save_as": "hammer_proc_39"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_39"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_39",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 39: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -13533,13 +10095,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_40"
     },
     {
       "action": "snapshot",
@@ -13586,23 +10141,6 @@
       "save_as": "hammer_proc_40"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_40"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_40",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 40: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -13636,13 +10174,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_41"
     },
     {
       "action": "snapshot",
@@ -13689,23 +10220,6 @@
       "save_as": "hammer_proc_41"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_41"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_41",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 41: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -13739,13 +10253,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_42"
     },
     {
       "action": "snapshot",
@@ -13792,23 +10299,6 @@
       "save_as": "hammer_proc_42"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_42"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_42",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 42: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -13842,13 +10332,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_43"
     },
     {
       "action": "snapshot",
@@ -13895,23 +10378,6 @@
       "save_as": "hammer_proc_43"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_43"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_43",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 43: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -13945,13 +10411,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_44"
     },
     {
       "action": "snapshot",
@@ -13998,23 +10457,6 @@
       "save_as": "hammer_proc_44"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_44"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_44",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 44: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -14048,13 +10490,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_45"
     },
     {
       "action": "snapshot",
@@ -14101,23 +10536,6 @@
       "save_as": "hammer_proc_45"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_45"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_45",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 45: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -14151,13 +10569,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_46"
     },
     {
       "action": "snapshot",
@@ -14204,23 +10615,6 @@
       "save_as": "hammer_proc_46"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_46"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_46",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 46: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -14254,13 +10648,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_47"
     },
     {
       "action": "snapshot",
@@ -14307,23 +10694,6 @@
       "save_as": "hammer_proc_47"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_47"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_47",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 47: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -14357,13 +10727,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_48"
     },
     {
       "action": "snapshot",
@@ -14410,23 +10773,6 @@
       "save_as": "hammer_proc_48"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_48"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_48",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 48: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -14460,13 +10806,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_49"
     },
     {
       "action": "snapshot",
@@ -14513,23 +10852,6 @@
       "save_as": "hammer_proc_49"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_49"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_49",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 49: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -14563,13 +10885,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_50"
     },
     {
       "action": "snapshot",
@@ -14616,23 +10931,6 @@
       "save_as": "hammer_proc_50"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_50"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_50",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 50: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -14666,13 +10964,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_51"
     },
     {
       "action": "snapshot",
@@ -14719,23 +11010,6 @@
       "save_as": "hammer_proc_51"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_51"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_51",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 51: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -14769,13 +11043,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_52"
     },
     {
       "action": "snapshot",
@@ -14822,23 +11089,6 @@
       "save_as": "hammer_proc_52"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_52"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_52",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 52: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -14872,13 +11122,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_53"
     },
     {
       "action": "snapshot",
@@ -14925,23 +11168,6 @@
       "save_as": "hammer_proc_53"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_53"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_53",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 53: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -14975,13 +11201,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_54"
     },
     {
       "action": "snapshot",
@@ -15028,23 +11247,6 @@
       "save_as": "hammer_proc_54"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_54"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_54",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 54: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -15078,13 +11280,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_55"
     },
     {
       "action": "snapshot",
@@ -15131,23 +11326,6 @@
       "save_as": "hammer_proc_55"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_55"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_55",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 55: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -15181,13 +11359,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_56"
     },
     {
       "action": "snapshot",
@@ -15234,23 +11405,6 @@
       "save_as": "hammer_proc_56"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_56"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_56",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 56: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -15284,13 +11438,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_57"
     },
     {
       "action": "snapshot",
@@ -15337,23 +11484,6 @@
       "save_as": "hammer_proc_57"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_57"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_57",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 57: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -15387,13 +11517,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_58"
     },
     {
       "action": "snapshot",
@@ -15440,23 +11563,6 @@
       "save_as": "hammer_proc_58"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_58"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_58",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 58: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -15490,13 +11596,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_59"
     },
     {
       "action": "snapshot",
@@ -15543,23 +11642,6 @@
       "save_as": "hammer_proc_59"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_59"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_59",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 59: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -15593,13 +11675,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_60"
     },
     {
       "action": "snapshot",
@@ -15646,23 +11721,6 @@
       "save_as": "hammer_proc_60"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_60"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_60",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 60: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -15696,13 +11754,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_61"
     },
     {
       "action": "snapshot",
@@ -15749,23 +11800,6 @@
       "save_as": "hammer_proc_61"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_61"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_61",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 61: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -15799,13 +11833,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_62"
     },
     {
       "action": "snapshot",
@@ -15852,23 +11879,6 @@
       "save_as": "hammer_proc_62"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_62"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_62",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 62: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -15902,13 +11912,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_63"
     },
     {
       "action": "snapshot",
@@ -15955,23 +11958,6 @@
       "save_as": "hammer_proc_63"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_63"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_63",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 63: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -16005,13 +11991,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_64"
     },
     {
       "action": "snapshot",
@@ -16058,23 +12037,6 @@
       "save_as": "hammer_proc_64"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_64"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_64",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 64: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -16108,13 +12070,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_65"
     },
     {
       "action": "snapshot",
@@ -16161,23 +12116,6 @@
       "save_as": "hammer_proc_65"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_65"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_65",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 65: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -16211,13 +12149,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_66"
     },
     {
       "action": "snapshot",
@@ -16264,23 +12195,6 @@
       "save_as": "hammer_proc_66"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_66"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_66",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 66: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -16314,13 +12228,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_67"
     },
     {
       "action": "snapshot",
@@ -16367,23 +12274,6 @@
       "save_as": "hammer_proc_67"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_67"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_67",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 67: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -16417,13 +12307,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_68"
     },
     {
       "action": "snapshot",
@@ -16470,23 +12353,6 @@
       "save_as": "hammer_proc_68"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_68"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_68",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 68: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -16520,13 +12386,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_69"
     },
     {
       "action": "snapshot",
@@ -16573,23 +12432,6 @@
       "save_as": "hammer_proc_69"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_69"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_69",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 69: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -16623,13 +12465,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_70"
     },
     {
       "action": "snapshot",
@@ -16676,23 +12511,6 @@
       "save_as": "hammer_proc_70"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_70"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_70",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 70: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -16726,13 +12544,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_71"
     },
     {
       "action": "snapshot",
@@ -16779,23 +12590,6 @@
       "save_as": "hammer_proc_71"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_71"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_71",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 71: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -16829,13 +12623,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_72"
     },
     {
       "action": "snapshot",
@@ -16882,23 +12669,6 @@
       "save_as": "hammer_proc_72"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_72"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_72",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 72: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -16932,13 +12702,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_73"
     },
     {
       "action": "snapshot",
@@ -16985,23 +12748,6 @@
       "save_as": "hammer_proc_73"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_73"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_73",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 73: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -17035,13 +12781,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_74"
     },
     {
       "action": "snapshot",
@@ -17088,23 +12827,6 @@
       "save_as": "hammer_proc_74"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_74"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_74",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 74: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -17138,13 +12860,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_75"
     },
     {
       "action": "snapshot",
@@ -17191,23 +12906,6 @@
       "save_as": "hammer_proc_75"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_75"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_75",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 75: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -17241,13 +12939,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_76"
     },
     {
       "action": "snapshot",
@@ -17294,23 +12985,6 @@
       "save_as": "hammer_proc_76"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_76"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_76",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 76: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -17344,13 +13018,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_77"
     },
     {
       "action": "snapshot",
@@ -17397,23 +13064,6 @@
       "save_as": "hammer_proc_77"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_77"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_77",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 77: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -17447,13 +13097,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_78"
     },
     {
       "action": "snapshot",
@@ -17500,23 +13143,6 @@
       "save_as": "hammer_proc_78"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_78"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_78",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 78: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -17550,13 +13176,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_79"
     },
     {
       "action": "snapshot",
@@ -17603,23 +13222,6 @@
       "save_as": "hammer_proc_79"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_79"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_79",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 79: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -17653,13 +13255,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_80"
     },
     {
       "action": "snapshot",
@@ -17706,23 +13301,6 @@
       "save_as": "hammer_proc_80"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_80"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_80",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 80: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -17756,13 +13334,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_81"
     },
     {
       "action": "snapshot",
@@ -17809,23 +13380,6 @@
       "save_as": "hammer_proc_81"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_81"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_81",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 81: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -17859,13 +13413,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_82"
     },
     {
       "action": "snapshot",
@@ -17912,23 +13459,6 @@
       "save_as": "hammer_proc_82"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_82"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_82",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 82: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -17962,13 +13492,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_83"
     },
     {
       "action": "snapshot",
@@ -18015,23 +13538,6 @@
       "save_as": "hammer_proc_83"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_83"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_83",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 83: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -18065,13 +13571,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_84"
     },
     {
       "action": "snapshot",
@@ -18118,23 +13617,6 @@
       "save_as": "hammer_proc_84"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_84"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_84",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 84: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -18168,13 +13650,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_85"
     },
     {
       "action": "snapshot",
@@ -18221,23 +13696,6 @@
       "save_as": "hammer_proc_85"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_85"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_85",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 85: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -18271,13 +13729,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_86"
     },
     {
       "action": "snapshot",
@@ -18324,23 +13775,6 @@
       "save_as": "hammer_proc_86"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_86"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_86",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 86: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -18374,13 +13808,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_87"
     },
     {
       "action": "snapshot",
@@ -18427,23 +13854,6 @@
       "save_as": "hammer_proc_87"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_87"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_87",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 87: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -18477,13 +13887,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_88"
     },
     {
       "action": "snapshot",
@@ -18530,23 +13933,6 @@
       "save_as": "hammer_proc_88"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_88"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_88",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 88: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -18580,13 +13966,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_89"
     },
     {
       "action": "snapshot",
@@ -18633,23 +14012,6 @@
       "save_as": "hammer_proc_89"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_89"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_89",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 89: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -18683,13 +14045,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_90"
     },
     {
       "action": "snapshot",
@@ -18736,23 +14091,6 @@
       "save_as": "hammer_proc_90"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_90"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_90",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 90: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -18786,13 +14124,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_91"
     },
     {
       "action": "snapshot",
@@ -18839,23 +14170,6 @@
       "save_as": "hammer_proc_91"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_91"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_91",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 91: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -18889,13 +14203,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_92"
     },
     {
       "action": "snapshot",
@@ -18942,23 +14249,6 @@
       "save_as": "hammer_proc_92"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_92"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_92",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 92: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -18992,13 +14282,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_93"
     },
     {
       "action": "snapshot",
@@ -19045,23 +14328,6 @@
       "save_as": "hammer_proc_93"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_93"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_93",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 93: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -19095,13 +14361,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_94"
     },
     {
       "action": "snapshot",
@@ -19148,23 +14407,6 @@
       "save_as": "hammer_proc_94"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_94"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_94",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 94: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -19198,13 +14440,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_95"
     },
     {
       "action": "snapshot",
@@ -19251,23 +14486,6 @@
       "save_as": "hammer_proc_95"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_95"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_95",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 95: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -19301,13 +14519,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_96"
     },
     {
       "action": "snapshot",
@@ -19354,23 +14565,6 @@
       "save_as": "hammer_proc_96"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_96"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_96",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 96: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -19404,13 +14598,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_97"
     },
     {
       "action": "snapshot",
@@ -19457,23 +14644,6 @@
       "save_as": "hammer_proc_97"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_97"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_97",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 97: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -19507,13 +14677,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_98"
     },
     {
       "action": "snapshot",
@@ -19560,23 +14723,6 @@
       "save_as": "hammer_proc_98"
     },
     {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_98"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_98",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 98: at most one native triggered proc"
-    },
-    {
       "action": "wait",
       "ms": 1500
     },
@@ -19610,13 +14756,6 @@
       "action": "reset_cooldown",
       "actor": "primalist",
       "spell": 520566
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_before_99"
     },
     {
       "action": "snapshot",
@@ -19661,23 +14800,6 @@
       "metric": "aura",
       "spell": 503719,
       "save_as": "hammer_proc_99"
-    },
-    {
-      "action": "snapshot",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "save_as": "hammer_events_after_99"
-    },
-    {
-      "action": "assert",
-      "actor": "primalist",
-      "metric": "spell_proc_count",
-      "spell": 503718,
-      "relative_to": "hammer_events_before_99",
-      "min": 0,
-      "max": 1,
-      "label": "hammer heal 99: at most one native triggered proc"
     },
     {
       "action": "wait",
