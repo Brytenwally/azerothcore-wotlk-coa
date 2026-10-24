@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "name": "Improved Soul Leech modifies Soul Leech Mana only, not Shadow Bolt or itself",
+  "contract": [
+    "Improved Soul Leech rank 1 (54117) carries two maskless first-effect modifiers (+4 and +2, SPELLMOD_EFFECT1).",
+    "SpellAffect.dbc names their targets: Soul Leech Mana 59117 and 59118. Without that routing they reach every",
+    "Warlock spell, including the talent's own passive first effect, which recalculates from its own modifier on every",
+    "reapplication until it overflows: Shadow Bolt and Incinerate deal 0 and Immolate's periodic damage explodes.",
+    "With routing, Shadow Bolt (47809) keeps its first effect and Soul Leech Mana (59117) gains exactly +6."
+  ],
+  "timeout_ms": 60000,
+  "players": [
+    { "id": "lock", "race": 1, "class": 9, "level": 80 }
+  ],
+  "steps": [
+    { "action": "wait", "label": "Let login hooks settle", "ms": 3000 },
+    { "action": "assert", "label": "Baseline: Shadow Bolt's first effect is unmodified",
+      "actor": "lock", "metric": "spell_modifier", "spell": 47809, "op": 3, "base": 100, "equals": 100 },
+    { "action": "learn", "actor": "lock", "spell": 54117 },
+    { "action": "assert", "label": "Improved Soul Leech is active",
+      "actor": "lock", "metric": "aura", "spell": 54117, "equals": 1, "within_ms": 3000 },
+    { "action": "assert", "label": "Soul Leech Mana gains both first-effect modifiers (+4 +2)",
+      "actor": "lock", "metric": "spell_modifier", "spell": 59117, "op": 3, "base": 0, "equals": 6 },
+    { "action": "assert", "label": "Shadow Bolt's first effect is not modified by Improved Soul Leech",
+      "actor": "lock", "metric": "spell_modifier", "spell": 47809, "op": 3, "base": 100, "equals": 100 },
+    { "action": "learn", "actor": "lock", "spell": 54118 },
+    { "action": "assert", "label": "Learning rank 2 does not grow the modifier on Soul Leech Mana",
+      "actor": "lock", "metric": "spell_modifier", "spell": 59117, "op": 3, "base": 0, "max": 10 },
+    { "action": "assert", "label": "Shadow Bolt is still unmodified after rank 2",
+      "actor": "lock", "metric": "spell_modifier", "spell": 47809, "op": 3, "base": 100, "equals": 100 }
+  ]
+}
