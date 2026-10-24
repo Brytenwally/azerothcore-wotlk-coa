@@ -1,0 +1,554 @@
+--- a/src/server/coa/AscensionMageTalentTargets.h
++++ b/src/server/coa/AscensionMageTalentTargets.h
+@@ -8,6 +8,10 @@
+ {
+     switch (modifier)
+     {
++        case 410000:
++        case 410001:
++        case 410002:
++            return false;
+         case 828574:
+         case 828575:
+         case 828576:
+--- a/src/server/game/Entities/GameObject/GameObject.cpp
++++ b/src/server/game/Entities/GameObject/GameObject.cpp
+@@ -16,6 +16,7 @@
+  */
+ 
+ #include "AccountMgr.h"
++#include "../../../coa/AscensionFreePick.h"
+ #include "BattlegroundAV.h"
+ #include "CellImpl.h"
+ #include "CreatureAISelector.h"
+@@ -234,7 +235,10 @@
+         bool erase = true;
+         if (Player* channeler = ObjectAccessor::GetPlayer(*this, *itr))
+             if (Spell* spell = channeler->GetCurrentSpell(CURRENT_CHANNELED_SPELL))
+-                if (spell->m_spellInfo->Id == animSpell)
++                if (spell->m_spellInfo->Id == animSpell &&
++                    !((GetEntry() == 194108 || GetEntry() == 179944) &&
++                      AscensionFreePick::Applies(channeler) &&
++                      (channeler->HasAura(1004019) || channeler->IsInCombat())))
+                     erase = false;
+ 
+         if (erase)
+--- a/src/server/game/Entities/Player/Player.cpp
++++ b/src/server/game/Entities/Player/Player.cpp
+@@ -13084,6 +13084,16 @@
+     if (m_summon_expire < GameTime::GetGameTime().count())
+         return;
+ 
++    if (!m_ritualSummoner.IsEmpty() && AscensionFreePick::Applies(this))
++    {
++        Player* summoner = ObjectAccessor::FindPlayer(m_ritualSummoner);
++        if (HasAura(1004019) || !summoner || summoner->HasAura(1004019))
++        {
++            m_summon_expire = 0;
++            return;
++        }
++    }
++
+     // drop flag at summon
+     // this code can be reached only when GM is summoning player who carries flag, because player should be immune to summoning spells when he carries flag
+     if (Battleground* bg = GetBattleground())
+@@ -17214,7 +17224,8 @@
+     return "|Hplayer:" + name + "|h" + color + name + "|h|r";
+ }
+ 
+-void Player::SetSummonPoint(uint32 mapid, float x, float y, float z, uint32 delay /*= 0*/, bool asSpectator /*= false*/)
++void Player::SetSummonPoint(uint32 mapid, float x, float y, float z, uint32 delay /*= 0*/,
++    bool asSpectator /*= false*/, ObjectGuid ritualSummoner /*= ObjectGuid::Empty*/)
+ {
+     m_summon_expire = GameTime::GetGameTime().count() + (delay ? delay : MAX_PLAYER_SUMMON_DELAY);
+     m_summon_mapid = mapid;
+@@ -17222,6 +17233,7 @@
+     m_summon_y = y;
+     m_summon_z = z;
+     m_summon_asSpectator = asSpectator;
++    m_ritualSummoner = ritualSummoner;
+ }
+ 
+ bool Player::IsSummonAsSpectator() const
+--- a/src/server/game/Entities/Player/Player.h
++++ b/src/server/game/Entities/Player/Player.h
+@@ -1117,7 +1117,8 @@
+     }
+     bool TeleportToEntryPoint();
+ 
+-    void SetSummonPoint(uint32 mapid, float x, float y, float z, uint32 delay = 0, bool asSpectator = false);
++    void SetSummonPoint(uint32 mapid, float x, float y, float z, uint32 delay = 0, bool asSpectator = false,
++        ObjectGuid ritualSummoner = ObjectGuid::Empty);
+     [[nodiscard]] bool IsSummonAsSpectator() const;
+     void SetSummonAsSpectator(bool on) { m_summon_asSpectator = on; }
+     void SummonIfPossible(bool agree, ObjectGuid summoner_guid);
+@@ -3062,6 +3063,7 @@
+     uint32 m_lastpetnumber;
+ 
+     // Player summoning
++    ObjectGuid m_ritualSummoner;
+     time_t m_summon_expire;
+     uint32 m_summon_mapid;
+     float  m_summon_x;
+--- a/src/server/game/Entities/Unit/Unit.cpp
++++ b/src/server/game/Entities/Unit/Unit.cpp
+@@ -2902,12 +2902,14 @@
+             uint32 procAttacker = 0, procVictim = 0;
+             DamageInfo splittedDmgInfo(attacker, caster, splitted, spellInfo, splitSchoolMask, dmgInfo.GetDamageType());
+             splittedDmgInfo.AddHitMask(PROC_HIT_NORMAL);
+-            if (caster->IsImmunedToDamageOrSchool(schoolMask))
++            bool const unpreventableSoulLink = splitSpellInfo->Id == 25228 &&
++                AscensionFreePick::Applies(victim->ToPlayer()) && caster->GetCharmerOrOwner() == victim;
++            if (!unpreventableSoulLink && caster->IsImmunedToDamageOrSchool(schoolMask))
+             {
+                 splittedDmgInfo.AddHitMask(PROC_HIT_IMMUNE);
+                 splittedDmgInfo.AbsorbDamage(splitted);
+             }
+-            else
++            else if (!unpreventableSoulLink)
+             {
+                 Unit::CalcAbsorbResist(splittedDmgInfo, true);
+                 Unit::DealDamageMods(caster, splitted, &splitted_absorb);
+@@ -9952,6 +9954,8 @@
+         DoneAdvertisedBenefit += SpellBaseDamageBonusDone(spellPowerSchool);
+ 
+     // Check for table values
++    float const area52CoefficientScale = spellProto->Id == 820337 && effIndex == EFFECT_0 &&
++        damagetype != DOT && AscensionFreePick::Applies(ToPlayer()) && victim->IsPlayer() ? 0.5f : 1.0f;
+     float coeff = spellProto->Effects[effIndex].BonusMultiplier;
+     SpellBonusEntry const* bonus = sSpellMgr->GetSpellBonusData(spellProto->Id);
+     if (bonus)
+@@ -9976,7 +9980,7 @@
+                 WeaponAttackType attType = (spellProto->UseRangedAttackPowerForDamage || (spellProto->IsRangedWeaponSpell() && spellProto->DmgClass != SPELL_DAMAGE_CLASS_MELEE)) ? RANGED_ATTACK : BASE_ATTACK;
+                 float APbonus = float(victim->GetTotalAuraModifier(attType == BASE_ATTACK ? SPELL_AURA_MELEE_ATTACK_POWER_ATTACKER_BONUS : SPELL_AURA_RANGED_ATTACK_POWER_ATTACKER_BONUS));
+                 APbonus += GetTotalAttackPowerValue(attType);
+-                DoneTotal += int32(apCoeff * stack * ApCoeffMod * APbonus);
++                DoneTotal += int32(apCoeff * area52CoefficientScale * stack * ApCoeffMod * APbonus);
+             }
+         }
+     }
+@@ -9989,6 +9993,7 @@
+ 
+     // Default calculation
+     coeff += GetSpellPowerCoefficientFlatBonus(spellProto);
++    coeff *= area52CoefficientScale;
+     // Unleashed Frost Glyph has no base SP term, but Unleashed Power supplies
+     // one through the native flat coefficient modifier. Preserve every other
+     // zero-coefficient spell's admission and the normal spellmod calculation.
+@@ -15514,6 +15519,51 @@
+     }
+ }
+ 
++namespace
++{
++bool Area52DemonTalentAura(PetAura const* aura)
++{
++    switch (aura->GetAura(416))
++    {
++        case 25228:
++        case 23759:
++        case 23826:
++        case 23827:
++        case 23828:
++        case 23829:
++            return true;
++        default:
++            return false;
++    }
++}
++
++uint32 Area52PetAuraId(Unit* controlled, PetAura const* aura)
++{
++    uint32 const id = aura->GetAura(controlled->GetEntry());
++    Unit* owner = controlled->GetCharmerOrOwner();
++    if (!owner || !AscensionFreePick::Applies(owner->ToPlayer()))
++        return id;
++    bool const demon = controlled->GetCreatureType() == CREATURE_TYPE_DEMON;
++    bool const enslaved = controlled->GetCharmerGUID() == owner->GetGUID();
++    if (id == 25228)
++        return demon && (controlled->GetEntry() != 416 || enslaved) ? id : 0;
++    if (demon && enslaved)
++    {
++        uint32 const impAura = aura->GetAura(416);
++        switch (impAura)
++        {
++            case 23759: return 92629;
++            case 23826: return 92630;
++            case 23827: return 92631;
++            case 23828: return 92632;
++            case 23829: return 92633;
++            default: break;
++        }
++    }
++    return id;
++}
++}
++
+ void Unit::AddPetAura(PetAura const* petSpell)
+ {
+     if (!IsPlayer())
+@@ -15533,14 +15583,14 @@
+ 
+     m_petAuras.erase(petSpell);
+     if (Pet* pet = ToPlayer()->GetPet())
+-        pet->RemoveAurasDueToSpell(petSpell->GetAura(pet->GetEntry()));
++        pet->RemoveAurasDueToSpell(Area52PetAuraId(pet, petSpell));
+     if (Unit* charm = GetCharm())
+-        charm->RemoveAurasDueToSpell(petSpell->GetAura(charm->GetEntry()));
++        charm->RemoveAurasDueToSpell(Area52PetAuraId(charm, petSpell));
+ }
+ 
+ void Unit::CastPetAura(PetAura const* aura)
+ {
+-    uint32 auraId = aura->GetAura(GetEntry());
++    uint32 auraId = Area52PetAuraId(this, aura);
+     if (!auraId)
+         return;
+ 
+@@ -15556,13 +15606,21 @@
+ bool Unit::IsPetAura(Aura const* aura)
+ {
+     Unit* owner = GetOwner();
++    bool charmedDemon = false;
++    if (!owner && GetCreatureType() == CREATURE_TYPE_DEMON)
++        if (Unit* charmer = GetCharmer())
++            if (AscensionFreePick::Applies(charmer->ToPlayer()))
++            {
++                owner = charmer;
++                charmedDemon = true;
++            }
+ 
+     if (!owner || !owner->IsPlayer())
+         return false;
+ 
+     // if the owner has that pet aura, return true
+     for (PetAura const* petAura : owner->m_petAuras)
+-        if (petAura->GetAura(GetEntry()) == aura->GetId())
++        if ((!charmedDemon || Area52DemonTalentAura(petAura)) && Area52PetAuraId(this, petAura) == aura->GetId())
+             return true;
+ 
+     return false;
+@@ -15943,8 +16001,14 @@
+                 ACE_Stack_Trace trace(0, 50);
+                 LOG_INFO("misc", "TRACE: {}\n\n", trace);*/
+             }
+-            else
+-            {
++            else if (!AscensionFreePick::Applies(victim->ToPlayer()) ||
++                (!victim->ToPlayer()->HasSpellCooldown(66233) &&
++                    !victim->ToPlayer()->HasSpellCooldown(31231) &&
++                    !victim->ToPlayer()->HasSpellCooldown(20711)))
++            {
++                if (AscensionFreePick::Applies(victim->ToPlayer()))
++                    for (uint32 spell : {66233u, 31231u, 20711u})
++                        victim->ToPlayer()->AddSpellCooldown(spell, 0, 2 * MINUTE * IN_MILLISECONDS);
+                 // save value before aura remove
+                 uint32 ressSpellId = victim->GetUInt32Value(PLAYER_SELF_RES_SPELL);
+                 if (!ressSpellId)
+@@ -16624,6 +16688,11 @@
+     if (IsPlayer())
+         sScriptMgr->OnPlayerBeingCharmed(ToPlayer(), charmer, _oldFactionId, charmer->GetFaction());
+ 
++    if (AscensionFreePick::Applies(charmer->ToPlayer()) && GetCreatureType() == CREATURE_TYPE_DEMON)
++        for (PetAura const* aura : charmer->m_petAuras)
++            if (Area52DemonTalentAura(aura))
++                CastPetAura(aura);
++
+     return true;
+ }
+ 
+@@ -16641,6 +16710,12 @@
+         //        ABORT();
+         return;
+     }
++
++    if (charmer && AscensionFreePick::Applies(charmer->ToPlayer()))
++        for (PetAura const* aura : charmer->m_petAuras)
++            if (Area52DemonTalentAura(aura))
++                if (uint32 const id = Area52PetAuraId(this, aura))
++                    RemoveAurasDueToSpell(id);
+ 
+     CharmType type;
+     if (HasUnitState(UNIT_STATE_POSSESSED))
+--- a/src/server/game/Spells/Auras/SpellAuras.cpp
++++ b/src/server/game/Spells/Auras/SpellAuras.cpp
+@@ -16,6 +16,7 @@
+  */
+ 
+ #include "ArenaSpectator.h"
++#include "../../../coa/AscensionFreePick.h"
+ #include "CellImpl.h"
+ #include "Common.h"
+ #include "GameTime.h"
+@@ -2851,6 +2852,12 @@
+         else
+         {
+             float radius = GetSpellInfo()->Effects[effIndex].CalcRadius(caster);
++            // Area52's rank-one Voidwalker row alone has a copied 10-yard
++            // radius. The untouched client and the other ranks use 100 yards.
++            if (GetSpellInfo()->Id == 23760)
++                if (Unit* owner = GetUnitOwner()->GetCharmerOrOwner())
++                    if (AscensionFreePick::Applies(owner->ToPlayer()))
++                        radius = 100.0f;
+ 
+             if (!GetUnitOwner()->HasAuraState(AURA_STATE_BANISHED, GetSpellInfo(), caster))
+             {
+--- a/src/server/game/Spells/Spell.cpp
++++ b/src/server/game/Spells/Spell.cpp
+@@ -5753,6 +5753,28 @@
+ 
+ SpellCastResult Spell::CheckCast(bool strict, uint32* /*param1*/, uint32* /*param2*/)
+ {
++    if ((m_spellInfo->Id == 698 || m_spellInfo->Id == 61993 || m_spellInfo->Id == 23598 ||
++         m_spellInfo->Id == 59782 || m_spellInfo->Id == 32783 || m_spellInfo->Id == 7720) &&
++        AscensionFreePick::Applies(m_caster->ToPlayer()))
++    {
++        if (m_caster->HasAura(1004019))
++            return SPELL_FAILED_NOT_HERE;
++        if (m_caster->IsInCombat())
++            return SPELL_FAILED_AFFECTING_COMBAT;
++    }
++
++    if (m_spellInfo->Id == 19028 && AscensionFreePick::Applies(m_caster->ToPlayer()))
++    {
++        Unit* demon = m_caster->ToPlayer()->GetPet();
++        if (!demon)
++            demon = m_caster->GetCharm();
++        if (!demon || !demon->IsAlive() || demon->GetCreatureType() != CREATURE_TYPE_DEMON ||
++            (demon->GetEntry() == 416 && demon->GetCharmerGUID() != m_caster->GetGUID()))
++            return SPELL_FAILED_NO_PET;
++        if (!m_caster->IsWithinDistInMap(demon, 30.0f))
++            return SPELL_FAILED_OUT_OF_RANGE;
++    }
++
+     // check death state
+     if (!m_caster->IsAlive() && !m_spellInfo->HasAttribute(SPELL_ATTR0_PASSIVE) && !(m_spellInfo->HasAttribute(SPELL_ATTR0_ALLOW_CAST_WHILE_DEAD) || (IsTriggered() && !m_triggeredByAuraSpell)))
+         return SPELL_FAILED_CASTER_DEAD;
+--- a/src/server/game/Spells/SpellEffects.cpp
++++ b/src/server/game/Spells/SpellEffects.cpp
+@@ -4660,7 +4660,13 @@
+     float x, y, z;
+     m_caster->GetPosition(x, y, z);
+ 
+-    player->SetSummonPoint(m_caster->GetMapId(), x, y, z);
++    bool const ritualSummon = m_spellInfo->Id == 7720;
++    if (ritualSummon && AscensionFreePick::Applies(player) &&
++        (player->HasAura(1004019) || m_caster->HasAura(1004019)))
++        return;
++
++    player->SetSummonPoint(m_caster->GetMapId(), x, y, z, 0, false,
++        ritualSummon ? m_caster->GetGUID() : ObjectGuid::Empty);
+ 
+     WorldPacket data(SMSG_SUMMON_REQUEST, 8 + 4 + 4);
+     data << m_caster->GetGUID();                                // summoner guid
+--- a/src/server/game/Spells/SpellInfo.cpp
++++ b/src/server/game/Spells/SpellInfo.cpp
+@@ -16,6 +16,7 @@
+  */
+ 
+ #include "../../coa/AscensionMageTalentTargets.h"
++#include "../../coa/AscensionFreePick.h"
+ #include "SpellInfo.h"
+ #include "../../coa/AscensionMysticEnchant.h"
+ #include "Chat.h"
+@@ -1568,6 +1569,15 @@
+         (mod->mask & flag96(0, 16384, 0)))
+         return true;
+ 
++    // Heart's bonus hit inherits Judgement damage modifiers without becoming
++    // another Judgement event for proc masks, costs or cooldowns.
++    if (Id == 820337 && AscensionFreePick::Enabled() &&
++        SpellFamilyName == affectSpell->SpellFamilyName &&
++        (mod->mask & flag96(0x00800000u, 0, 0)) &&
++        (mod->op == SPELLMOD_DAMAGE || mod->op == SPELLMOD_EFFECT1 ||
++         mod->op == SPELLMOD_ALL_EFFECTS || mod->op == SPELLMOD_BONUS_MULTIPLIER))
++        return true;
++
+     return IsAffected(affectSpell->SpellFamilyName, mod->mask);
+ }
+ 
+--- a/src/server/scripts/Spells/spell_generic.cpp
++++ b/src/server/scripts/Spells/spell_generic.cpp
+@@ -4399,7 +4399,7 @@
+ 
+     bool Load() override
+     {
+-        return GetUnitOwner()->GetPower(POWER_MANA);
++        return GetUnitOwner()->GetMaxPower(POWER_MANA) != 0;
+     }
+ 
+     void CalculateAmount(AuraEffect const* /*aurEff*/, int32& amount, bool& /*canBeRecalculated*/)
+--- a/src/server/scripts/Spells/spell_paladin.cpp
++++ b/src/server/scripts/Spells/spell_paladin.cpp
+@@ -16,6 +16,7 @@
+  */
+ 
+ #include "GameTime.h"
++#include "../../coa/AscensionFreePick.h"
+ #include "Group.h"
+ #include "Player.h"
+ #include "SpellAuraEffects.h"
+@@ -357,6 +358,33 @@
+     void Absorb(AuraEffect* aurEff, DamageInfo& dmgInfo, uint32& absorbAmount)
+     {
+         Unit* victim = GetTarget();
++        if (AscensionFreePick::Applies(victim->ToPlayer()))
++        {
++            Player* player = victim->ToPlayer();
++            uint32 const damage = dmgInfo.GetDamage();
++            uint32 const health = victim->GetHealth();
++            uint32 const cap = victim->CountPctFromMaxHealth(15);
++            uint32 const rescueAbsorb = std::min(damage, cap);
++            uint32 const rank = GetSpellInfo()->GetRank();
++            uint32 const chance = rank == 3 ? 100 : rank * 33;
++            if (damage >= health && damage - rescueAbsorb < health &&
++                !player->HasSpellCooldown(66233) && !player->HasSpellCooldown(31231) &&
++                !player->HasSpellCooldown(20711) && !player->HasAura(66233) && roll_chance_i(chance))
++            {
++                absorbAmount = rescueAbsorb;
++                for (uint32 spell : {66233u, 31231u, 20711u})
++                    player->AddSpellCooldown(spell, 0, 2 * MINUTE * IN_MILLISECONDS);
++                uint32 const requiredDefense = victim->GetLevel() * 5 + 140;
++                float const defense = std::min(1.0f, float(victim->GetDefenseSkillValue()) / requiredDefense);
++                int32 const heal = victim->CountPctFromMaxHealth(uint32(healPct * defense));
++                victim->CastCustomSpell(PAL_SPELL_ARDENT_DEFENDER_HEAL, SPELLVALUE_BASE_POINT0,
++                    heal, victim, true, nullptr, aurEff);
++                victim->CastSpell(victim, 66234, true);
++            }
++            else if (health < victim->CountPctFromMaxHealth(35))
++                absorbAmount = CalculatePct(damage, absorbPct);
++            return;
++        }
+         int32 remainingHealth = victim->GetHealth() - dmgInfo.GetDamage();
+         uint32 allowedHealth = victim->CountPctFromMaxHealth(35);
+         // If damage kills us
+@@ -1465,7 +1493,11 @@
+         if (!effectiveHeal)
+             return;
+ 
+-        int32 bp = int32(CalculatePct(effectiveHeal, aurEff->GetAmount()));
++        int32 amount = aurEff->GetAmount();
++        if ((GetId() == 31785 || GetId() == 33776) &&
++            AscensionFreePick::Applies(GetTarget()->ToPlayer()) && GetTarget()->HasAura(701463))
++            amount *= 2;
++        int32 bp = int32(CalculatePct(effectiveHeal, amount));
+         if (bp)
+             GetTarget()->CastCustomSpell(SPELL_PALADIN_SPIRITUAL_ATTUNEMENT_MANA, SPELLVALUE_BASE_POINT0, bp, GetTarget(), true, nullptr, aurEff);
+     }
+@@ -1833,16 +1865,25 @@
+         return ValidateSpellInfo({ SPELL_PALADIN_HEART_OF_THE_CRUSADER_EFF_R1 });
+     }
+ 
++    bool CheckProc(ProcEventInfo& eventInfo)
++    {
++        return eventInfo.GetActionTarget() &&
++            (!eventInfo.GetSpellInfo() || eventInfo.GetSpellInfo()->Id != 820337);
++    }
++
+     void HandleProc(AuraEffect const* aurEff, ProcEventInfo& eventInfo)
+     {
+         PreventDefaultAction();
+ 
+         uint32 spellId = sSpellMgr->GetSpellWithRank(SPELL_PALADIN_HEART_OF_THE_CRUSADER_EFF_R1, GetSpellInfo()->GetRank());
+         eventInfo.GetActor()->CastSpell(eventInfo.GetActionTarget(), spellId, true, nullptr, aurEff);
+-    }
+-
+-    void Register() override
+-    {
++        if (GetSpellInfo()->Id == 20337 && AscensionFreePick::Applies(eventInfo.GetActor()->ToPlayer()))
++            eventInfo.GetActor()->CastSpell(eventInfo.GetActionTarget(), 820337, true, nullptr, aurEff);
++    }
++
++    void Register() override
++    {
++        DoCheckProc += AuraCheckProcFn(spell_pal_heart_of_the_crusader::CheckProc);
+         OnEffectProc += AuraEffectProcFn(spell_pal_heart_of_the_crusader::HandleProc, EFFECT_0, SPELL_AURA_DUMMY);
+     }
+ };
+@@ -2302,8 +2343,55 @@
+     }
+ };
+ 
++class spell_area52_heart_crusader_damage : public SpellScript
++{
++    PrepareSpellScript(spell_area52_heart_crusader_damage);
++
++    void FilterTargets(std::list<WorldObject*>& targets)
++    {
++        if (AscensionFreePick::Applies(GetCaster()->ToPlayer()) && targets.size() > 5)
++            targets.resize(5);
++    }
++
++    void Register() override
++    {
++        OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(
++            spell_area52_heart_crusader_damage::FilterTargets, EFFECT_0, TARGET_UNIT_DEST_AREA_ENEMY);
++    }
++};
++
++class spell_area52_improved_consecration : public SpellScript
++{
++    PrepareSpellScript(spell_area52_improved_consecration);
++
++    void Cast()
++    {
++        Unit* caster = GetCaster();
++        if (!AscensionFreePick::Applies(caster->ToPlayer()))
++            return;
++        for (uint32 rank : {410002u, 410001u, 410000u})
++            if (AuraEffect const* effect = caster->GetAuraEffect(rank, EFFECT_0))
++            {
++                AuraEffect const* slow = caster->GetAuraEffect(rank, EFFECT_1);
++                if (!slow)
++                    return;
++                int32 damage = effect->GetAmount();
++                int32 speed = slow->GetAmount();
++                caster->CastCustomSpell(caster, 410003, &damage, &speed, nullptr, true, nullptr, effect);
++                return;
++            }
++    }
++
++    void Register() override
++    {
++        AfterCast += SpellCastFn(spell_area52_improved_consecration::Cast);
++    }
++};
++
+ void AddSC_paladin_spell_scripts()
+ {
++    RegisterSpellScript(spell_area52_heart_crusader_damage);
++    RegisterSpellScript(spell_area52_improved_consecration);
+     RegisterSpellAndAuraScriptPair(spell_pal_seal_of_command, spell_pal_seal_of_command_aura);
+     RegisterSpellScript(spell_pal_divine_intervention);
+     RegisterSpellScript(spell_pal_divine_purpose);
+--- a/src/server/scripts/Spells/spell_rogue.cpp
++++ b/src/server/scripts/Spells/spell_rogue.cpp
+@@ -16,6 +16,7 @@
+  */
+ 
+ #include "AreaDefines.h"
++#include "../../coa/AscensionFreePick.h"
+ #include "CellImpl.h"
+ #include "GameTime.h"
+ #include "GridNotifiers.h"
+@@ -189,12 +190,19 @@
+     void Absorb(AuraEffect* /*aurEff*/, DamageInfo& dmgInfo, uint32& absorbAmount)
+     {
+         Player* target = GetTarget()->ToPlayer();
++        bool const area52 = AscensionFreePick::Applies(target);
++        if (area52 && (target->HasSpellCooldown(66233) || target->HasSpellCooldown(20711)))
++            return;
+         if (dmgInfo.GetDamage() < target->GetHealth() || target->HasSpellCooldown(SPELL_ROGUE_CHEAT_DEATH_COOLDOWN) || !roll_chance_i(absorbChance))
+             return;
+ 
+         target->CastSpell(target, SPELL_ROGUE_CHEAT_DEATH_COOLDOWN, true);
+         target->CastSpell(target, SPELL_ROGUE_CHEATING_DEATH, true);
+-        target->AddSpellCooldown(SPELL_ROGUE_CHEAT_DEATH_COOLDOWN, 0, MINUTE * IN_MILLISECONDS);
++        target->AddSpellCooldown(SPELL_ROGUE_CHEAT_DEATH_COOLDOWN, 0,
++            (area52 ? 2 : 1) * MINUTE * IN_MILLISECONDS);
++        if (area52)
++            for (uint32 spell : {66233u, 20711u})
++                target->AddSpellCooldown(spell, 0, 2 * MINUTE * IN_MILLISECONDS);
+ 
+         uint32 health10 = target->CountPctFromMaxHealth(10);
+ 
