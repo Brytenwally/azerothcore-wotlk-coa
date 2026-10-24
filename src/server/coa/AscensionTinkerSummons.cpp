@@ -231,14 +231,10 @@ struct npc_ascension_tinker_pet : PetAI
             events.Update(diff);
             if (!initialized)
             {
+                if (me->HasReactState(REACT_PASSIVE))
+                    me->SetReactState(REACT_DEFENSIVE);
                 if (CharmInfo* charmInfo = me->GetCharmInfo())
-                {
-                    if (me->HasReactState(REACT_PASSIVE) && charmInfo->GetPlayerReactState() != REACT_PASSIVE)
-                    {
-                        me->SetReactState(REACT_DEFENSIVE);
-                        charmInfo->SetPlayerReactState(REACT_DEFENSIVE);
-                    }
-                }
+                    charmInfo->SetPlayerReactState(me->GetReactState());
             }
             if (!initialized || events.ExecuteEvent())
             {
@@ -278,10 +274,6 @@ struct npc_ascension_tinker_device : ScriptedAI
     {
         return me->GetEntry() == 226012 || me->GetEntry() == 840028 || me->GetEntry() == 226112;
     }
-    bool Explosive() const
-    {
-        return Bomb() || me->GetEntry() == 50045 || me->GetEntry() == 50600 || me->GetEntry() == 226312;
-    }
     void Pursue(Unit* target)
     {
         MotionMaster* motion = me->GetMotionMaster();
@@ -303,7 +295,7 @@ struct npc_ascension_tinker_device : ScriptedAI
         me->SetOwnerGUID(owner);
         player->m_Controlled.insert(me);
         me->SetFaction(player->GetFaction());
-        if (Turret(me->GetEntry()) || Explosive())
+        if (Turret(me->GetEntry()))
         {
             me->m_ControlledByPlayer = true;
             me->SetUnitFlag(UNIT_FLAG_PLAYER_CONTROLLED);
@@ -313,13 +305,6 @@ struct npc_ascension_tinker_device : ScriptedAI
         me->SetCombatMovement(Mobile());
         State(player).summons.insert(me->GetGUID());
         Scale(player,me,true);
-        if (Turret(me->GetEntry()))
-        {
-            Cast(player, player, 807293);
-            if (!player->HasSpell(500470))
-                player->learnSpell(500470, true);
-            player->SetTemporarySpellReplacement(500239, 500470);
-        }
         focus = State(player).focus;
         start = previous = me->GetPosition();
         if (!Mobile())
@@ -413,16 +398,6 @@ struct npc_ascension_tinker_device : ScriptedAI
         {
             player->m_Controlled.erase(me);
             State(player).summons.erase(me->GetGUID());
-            if (Turret(me->GetEntry()))
-            {
-                auto devices = Devices(player);
-                if (std::none_of(devices.begin(), devices.end(), [](Creature* device) { return Turret(device->GetEntry()); }))
-                {
-                    player->RemoveAurasDueToSpell(807293, player->GetGUID());
-                    player->SetTemporarySpellReplacement(500239, 0);
-                    player->removeSpell(500470, SPEC_MASK_ALL, true);
-                }
-            }
         }
     }
     void OnDespawn() override { Cleanup(); }
