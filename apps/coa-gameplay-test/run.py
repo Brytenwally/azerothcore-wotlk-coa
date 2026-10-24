@@ -77,7 +77,7 @@ METRICS = {
     'aura_amplitude_ms', 'melee_crit_chance', 'dodge_chance', 'parry_chance', 'expertise', 'combat_rating',
     'spell_modifier', 'spell_cast_time_ms', 'spell_max_range', 'spell_max_stacks', 'spell_healing_done',
     'aura_crit_chance', 'aura_script_value', 'melee_hit_chance', 'spell_hit_chance', 'spell_power',
-    'spell_done_crit_chance', 'spell_taken_crit_chance', 'spell_done_crit_chance_scripted', 'ranged_taken_crit_chance',
+    'spell_done_crit_chance', 'spell_taken_crit_chance', 'spell_done_crit_chance_scripted',
     'melee_spell_damage_done', 'script_melee_damage_taken',
     'script_spell_damage_taken', 'script_periodic_damage_taken', 'script_heal_received', 'spell_effect_value',
     'block_chance', 'block_value', 'critical_block_chance', 'spell_critical_damage', 'armor_reduced_damage',
@@ -112,11 +112,10 @@ METRIC_FIELDS = {'actor', 'metric', 'spell', 'power', 'caster', 'effect', 'item'
                  'min_distance', 'owner_display', 'skill', 'cache', 'table', 'exclude', 'dungeon', 'from'}
 ACTIONS = {
     'stop_attack': ({'actor'}, {'actor'}),
-    'set_moving': ({'actor', 'enabled'}, {'actor', 'enabled', 'flag'}),
+    'set_moving': ({'actor', 'enabled'}, {'actor', 'enabled'}),
     'level_scaling_packet': ({'actor', 'value'}, {'actor', 'value'}),
     'console': ({'command'}, {'command'}),
-    'game_event': ({'event', 'active'}, {'event', 'active'}),
-    'command': ({'actor', 'command'}, {'actor', 'command', 'rejected'}),
+    'command': ({'actor', 'command'}, {'actor', 'command'}),
     'whisper': ({'actor', 'to', 'text'}, {'actor', 'to', 'text', 'language'}),
     'wait': ({'ms'}, {'ms'}),
     'snapshot': ({'actor', 'metric', 'save_as'}, METRIC_FIELDS | {'save_as'}),
@@ -128,17 +127,12 @@ ACTIONS = {
     'money': ({'actor', 'copper'}, {'actor', 'copper'}),
     'set_aura': ({'actor', 'spell', 'stacks'}, {'actor', 'spell', 'stacks', 'pet'}),
     'cancel_aura': ({'actor', 'spell'}, {'actor', 'spell'}),
-    'cast': ({'actor', 'spell'}, {'actor', 'spell', 'target', 'destination', 'target_pet'}),
+    'cast': ({'actor', 'spell'}, {'actor', 'spell', 'target', 'destination'}),
     'attack': ({'actor', 'target'}, {'actor', 'target', 'pet'}),
     'pvp': ({'actor', 'enabled'}, {'actor', 'enabled'}),
     'group': ({'actor', 'target'}, {'actor', 'target', 'loot_method'}),
     'lfg_dungeon': ({'actor', 'dungeon'}, {'actor', 'dungeon'}),
     'lfg_teleport': ({'actor'}, {'actor', 'out'}),
-    'lfg_join': ({'actor', 'dungeons', 'roles'}, {'actor', 'dungeons', 'roles'}),
-    'lfg_set_roles': ({'actor', 'roles'}, {'actor', 'roles'}),
-    'lfg_accept': ({'actor'}, {'actor'}),
-    'lfg_final_credit': ({'actor'}, {'actor'}),
-    'encounter_credit': ({'actor', 'entry'}, {'actor', 'entry'}),
     'leave_group': ({'actor'}, {'actor'}),
     'die': ({'actor'}, {'actor'}),
     'cast_charm': ({'actor', 'spell'}, {'actor', 'spell', 'target'}),
@@ -238,8 +232,8 @@ def validate(scenario):
     for player in players:
         keys(player, {'id', 'race', 'class'},
              {'id', 'race', 'class', 'level', 'bot', 'spell_hit_rating', 'spell_crit_rating',
-              'melee_crit_rating', 'ranged_crit_rating', 'ranged_hit_rating', 'melee_hit_rating',
-              'expertise_rating', 'allow_regeneration', 'name', 'expansion'}, 'player')
+              'melee_crit_rating', 'ranged_hit_rating', 'melee_hit_rating', 'expertise_rating',
+              'allow_regeneration', 'name', 'expansion'}, 'player')
         identity = player['id']
         require(isinstance(identity, str) and ACTOR_ID.fullmatch(identity), 'Invalid player id')
         require(identity not in actor_ids, 'Duplicate actor id')
@@ -256,7 +250,6 @@ def validate(scenario):
         number(player.get('spell_hit_rating', 0), 'spell_hit_rating', 0, 100000, True)
         number(player.get('spell_crit_rating', 0), 'spell_crit_rating', 0, 100000, True)
         number(player.get('melee_crit_rating', 0), 'melee_crit_rating', 0, 100000, True)
-        number(player.get('ranged_crit_rating', 0), 'ranged_crit_rating', 0, 100000, True)
         number(player.get('ranged_hit_rating', 0), 'ranged_hit_rating', 0, 100000, True)
         number(player.get('melee_hit_rating', 0), 'melee_hit_rating', 0, 100000, True)
         number(player.get('expertise_rating', 0), 'expertise_rating', 0, 100000, True)
@@ -299,11 +292,6 @@ def validate(scenario):
             if action == 'command':
                 require(step['command'].startswith('.') and len(step['command']) > 1,
                         f'{where}: player command must start with a dot')
-                if 'rejected' in step:
-                    require(type(step['rejected']) is bool, f'{where}: rejected must be boolean')
-        if action == 'game_event':
-            number(step['event'], f'{where}.event', 1, 2**16 - 1, True)
-            require(type(step['active']) is bool, f'{where}: active must be boolean')
         if action == 'whisper':
             require(isinstance(step['to'], str) and step['to'].strip()
                     and isinstance(step['text'], str) and step['text'].strip(),
@@ -316,10 +304,6 @@ def validate(scenario):
                     f'{where}: action needs a player')
             if action == 'cast' and step['actor'] not in player_ids:
                 require('destination' not in step, f'{where}: creature cast has no destination')
-            if action == 'cast' and 'target_pet' in step:
-                require(type(step['target_pet']) is bool, f'{where}: target_pet must be boolean')
-                require(step['actor'] in player_ids and 'target' not in step,
-                        f'{where}: target_pet casts from a player at their current pet')
         for key in ('target', 'caster'):
             if key in step:
                 require(step[key] in actor_ids, f'{where}: unknown {key}')
@@ -348,9 +332,6 @@ def validate(scenario):
             require(step['actor'] in player_ids, f'{where}: pet fixture needs a player')
         if action in {'pvp', 'set_moving'}:
             require(type(step['enabled']) is bool, f'{where}: enabled must be boolean')
-        if action == 'set_moving' and 'flag' in step:
-            require(step['flag'] in {'forward', 'backward', 'strafe_left', 'strafe_right'},
-                f'{where}: flag must be forward, backward, strafe_left or strafe_right')
         if 'all_specs' in step:
             require(type(step['all_specs']) is bool, f'{where}: all_specs must be boolean')
         for key in ('race_mask', 'class_mask'):
@@ -365,15 +346,6 @@ def validate(scenario):
                 number(step['loot_method'], f'{where}.loot_method', 0, 4, True)
         if action == 'lfg_dungeon':
             number(step['dungeon'], f'{where}.dungeon', 1, 2**24 - 1, True)
-        if action == 'encounter_credit':
-            number(step['entry'], f'{where}.entry', 1, 2**32 - 1, True)
-        if action == 'lfg_join':
-            require(type(step['dungeons']) is list and 0 < len(step['dungeons']) <= 50,
-                    f'{where}: dungeons must list 1-50 LFGDungeons ids')
-            for index, dungeon in enumerate(step['dungeons']):
-                number(dungeon, f'{where}.dungeons[{index}]', 1, 2**24 - 1, True)
-        if action in {'lfg_join', 'lfg_set_roles'}:
-            number(step['roles'], f'{where}.roles', 0, 15, True)
         if action == 'lfg_teleport' and 'out' in step:
             require(type(step['out']) is bool, f'{where}: out must be boolean')
         for key in ('ms', 'within_ms'):
@@ -580,8 +552,7 @@ def validate(scenario):
                           'ball_turn_in_count', 'ball_turn_in_quest',
                           'temporary_spell_replacement'} | PLAYER_STAT_METRICS:
                 require(step['actor'] in player_ids, f'{where}: metric needs a player')
-            snapshot_metric = 'spell_event_count' if metric in {'spell_cast_count', 'spell_proc_count'} else metric
-            shape = (snapshot_metric, step.get('exclude'))
+            shape = (metric, step.get('exclude'))
             if 'relative_to' in step:
                 require(snapshots.get(step['relative_to']) == shape, f'{where}: missing or incompatible snapshot')
             if 'ratio_to' in step:

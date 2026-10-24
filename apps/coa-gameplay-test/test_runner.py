@@ -45,25 +45,6 @@ class RunnerTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 run.validate(candidate)
 
-    def test_personal_bank_split_packets(self):
-        for direction in ('deposit', 'withdraw'):
-            scenario = copy.deepcopy(self.scenario)
-            step = {'action': 'personal_bank_swap', 'actor': 'caster', 'entry': 475001,
-                    'direction': direction, 'count': 5}
-            if direction == 'deposit':
-                step['item'] = 2589
-            else:
-                step['inventory_slot'] = 38
-            scenario['steps'].append(step)
-            self.assertIs(run.validate(scenario), scenario)
-            for key, value in (('count', -1), ('count', 2**31), ('count', True), ('slot', 98),
-                               ('inventory_slot', 39), ('direction', 'invalid')):
-                invalid = copy.deepcopy(scenario)
-                invalid['steps'][-1][key] = value
-                with self.subTest(direction=direction, key=key, value=value):
-                    with self.assertRaises(ValueError):
-                        run.validate(invalid)
-
     def setUp(self):
         self.scenario = run.read_json(Path(__file__).parent / 'scenarios' / 'frostbolt.json')
 
@@ -227,15 +208,6 @@ class RunnerTests(unittest.TestCase):
                                        'spell': 997800, 'target': 'caster', 'target_pet': True, 'equals': 0})
         self.assertIs(run.validate(self.scenario), self.scenario)
         for change in ({'target_pet': 1}, {'target': 'target'}, {'metric': 'health'}, {'actor': 'target'}):
-            scenario = copy.deepcopy(self.scenario)
-            scenario['steps'][-1].update(change)
-            with self.subTest(change=change), self.assertRaises(ValueError):
-                run.validate(scenario)
-
-    def test_cast_at_current_pet(self):
-        self.scenario['steps'].append({'action': 'cast', 'actor': 'caster', 'spell': 801707, 'target_pet': True})
-        self.assertIs(run.validate(self.scenario), self.scenario)
-        for change in ({'target_pet': 1}, {'target': 'target'}, {'actor': 'target'}):
             scenario = copy.deepcopy(self.scenario)
             scenario['steps'][-1].update(change)
             with self.subTest(change=change), self.assertRaises(ValueError):
@@ -409,7 +381,6 @@ class RunnerTests(unittest.TestCase):
             lambda s: s['players'][0].update(expertise_rating=True),
             lambda s: s['players'][0].update(allow_regeneration=0),
             lambda s: s['players'][0].update(spell_crit_rating=-1),
-            lambda s: s['players'][0].update(ranged_crit_rating=-1),
             lambda s: s['steps'].append({'action': 'who', 'actor': 'caster', 'class_mask': 2**32}),
             lambda s: s['steps'].append({'action': 'who', 'actor': 'caster', 'target': 'target'}),
             lambda s: s['steps'].append({'action': 'assert', 'actor': 'caster', 'metric': 'who_class', 'equals': 1}),

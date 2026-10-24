@@ -12,7 +12,6 @@ import shutil
 import sqlite3
 import subprocess
 import tempfile
-import textwrap
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -46,7 +45,7 @@ def main():
     harness = (HERE / "harness.cpp").read_text(encoding="utf-8")
     for marker, code in (
         ("INITIALIZATION", initialization),
-        ("ADMISSION", textwrap.indent(attack, "    ")),
+        ("ADMISSION", attack),
         ("TIMER", method(unit, "void Unit::resetAttackTimer(")),
         ("TURRET", method(summons, "bool Turret(")),
         ("NOTIFY_ATTACK", method(tinker, "bool NotifyAttack(")),
