@@ -1,0 +1,32 @@
+[
+  {
+    "id": 13743,
+    "field": 170,
+    "before": "Increases the duration of Sprint by 0.5 seconds.\n\n|cFFAAAAAACapstone Bonus: Using Sprint removes all slow effects and while Sprint is active the duration of root effects are reduced by $81089S1% and your movement can't be reduced below 100% of normal movement speed.|r\n\n@ext:|cffffff00VERIFIED|r:ext@",
+    "after": "Increases the duration of Sprint by 0.5 seconds.\n\n|cFFAAAAAACapstone Bonus: Using Sprint removes all slow effects and while Sprint is active the duration of root effects are reduced by $81089S1% and your movement can't be reduced below base movement speed.|r\n\n@ext:|cffffff00VERIFIED|r:ext@"
+  },
+  {
+    "id": 13875,
+    "field": 170,
+    "before": "Increases the duration of Sprint by 1 second.\n\n|cFFAAAAAACapstone Bonus: Using Sprint removes all slow effects and while Sprint is active the duration of root effects are reduced by $81089S1% and your movement can't be reduced below 100% of normal movement speed.|r\n\n@ext:|cffffff00VERIFIED|r:ext@",
+    "after": "Increases the duration of Sprint by 1 second.\n\n|cFFAAAAAACapstone Bonus: Using Sprint removes all slow effects and while Sprint is active the duration of root effects are reduced by $81089S1% and your movement can't be reduced below base movement speed.|r\n\n@ext:|cffffff00VERIFIED|r:ext@"
+  },
+  {
+    "id": 81089,
+    "field": 170,
+    "before": "Reduces the duration of root effects by $s1% and your movement can't be lowered below 100% of normal movement speed.",
+    "after": "Reduces the duration of root effects by $s1% and your movement can't be lowered below base movement speed."
+  },
+  {
+    "id": 81089,
+    "field": 187,
+    "before": "Reduces the duration of root effects by $s1% and your movement can't be lowered below 100% of normal movement speed.",
+    "after": "Reduces the duration of root effects by $s1% and your movement can't be lowered below base movement speed."
+  },
+  {
+    "id": 813875,
+    "field": 170,
+    "before": "Increases the duration of Sprint by 1.5 seconds.\n\nCapstone Bonus: Using Sprint removes all slow effects and while Sprint is active the duration of root effects are reduced by $81089S1% and your movement can't be reduced below 100% of normal movement speed.\n\n@ext:|cffffff00VERIFIED|r:ext@",
+    "after": "Increases the duration of Sprint by 1.5 seconds.\n\nCapstone Bonus: Using Sprint removes all slow effects and while Sprint is active the duration of root effects are reduced by $81089S1% and your movement can't be reduced below base movement speed.\n\n@ext:|cffffff00VERIFIED|r:ext@"
+  }
+]
