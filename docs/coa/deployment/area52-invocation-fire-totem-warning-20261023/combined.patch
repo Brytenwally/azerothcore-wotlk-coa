@@ -1,0 +1,109 @@
+--- a/src/server/coa/Area52Dependencies.inc
++++ b/src/server/coa/Area52Dependencies.inc
+@@ -174,7 +174,12 @@
+     void Absorb(AuraEffect*, DamageInfo& damage, uint32& amount)
+     {
+         Unit* owner = GetTarget();
+-        amount = Area52Dependency::ManaBarrierAbsorb(damage.GetDamage(), owner->GetPower(POWER_MANA),
++        Spell* channel = owner->GetCurrentSpell(CURRENT_CHANNELED_SPELL);
++        bool const empowered = Area52Dependency::InvocationBarrierActive(
++            AscensionFreePick::Applies(owner->ToPlayer()), owner->IsAlive(),
++            channel && channel->getState() == SPELL_STATE_CASTING, channel ? channel->GetSpellInfo()->Id : 0);
++        amount = Area52Dependency::ManaBarrierAbsorb(damage.GetDamage(),
++            empowered ? owner->GetMaxPower(POWER_MANA) : owner->GetPower(POWER_MANA),
+             owner->GetMaxPower(POWER_MANA), damage.GetSchoolMask() & SPELL_SCHOOL_MASK_MAGIC);
+     }
+ 
+--- a/src/server/coa/Area52DependencyRules.h
++++ b/src/server/coa/Area52DependencyRules.h
+@@ -40,6 +40,11 @@
+         percent = percent * 140 / 100;
+     return percent;
+ }
++constexpr bool InvocationBarrierActive(bool area52, bool alive, bool channeling, std::uint32_t spell)
++{
++    return area52 && alive && channeling && spell == 986067;
++}
++
+ constexpr std::uint32_t ManaBarrierAbsorb(std::uint32_t damage, std::uint32_t mana, std::uint32_t maximum, bool magic)
+ {
+     if (!maximum)
+--- a/src/server/game/Entities/Unit/Unit.cpp
++++ b/src/server/game/Entities/Unit/Unit.cpp
+@@ -17,6 +17,7 @@
+ 
+ #include "Unit.h"
+ #include "../../../coa/AscensionFreePick.h"
++#include "../../../coa/Area52DependencyRules.h"
+ #include "../../../coa/Area52FollowupProcRules.h"
+ #include "../../../coa/Area52WyvernSleep.h"
+ #include "../../../coa/Area52HopliteRemainingRules.h"
+@@ -2760,16 +2761,24 @@
+         // xinef: do this after absorb is rounded to damage...
+         AddPct(currentAbsorb, -auraAbsorbMod);
+ 
+-        int32 manaReduction = currentAbsorb;
+-
+-        // lower absorb amount by talents
+-        if (float manaMultiplier = absorbAurEff->GetSpellInfo()->Effects[absorbAurEff->GetEffIndex()].CalcValueMultiplier(absorbAurEff->GetCaster()))
+-            manaReduction = int32(float(manaReduction) * manaMultiplier);
+-
+-        int32 manaTaken = -victim->ModifyPower(POWER_MANA, -manaReduction);
+-
+-        // take case when mana has ended up into account
+-        currentAbsorb = currentAbsorb ? int32(float(currentAbsorb) * (float(manaTaken) / float(manaReduction))) : 0;
++        Spell* channel = victim->GetCurrentSpell(CURRENT_CHANNELED_SPELL);
++        bool const invocationBarrier = absorbAurEff->GetId() == 701463 &&
++            Area52Dependency::InvocationBarrierActive(AscensionFreePick::Applies(victim->ToPlayer()),
++                victim->IsAlive(), channel && channel->getState() == SPELL_STATE_CASTING,
++                channel ? channel->GetSpellInfo()->Id : 0);
++        if (!invocationBarrier)
++        {
++            int32 manaReduction = currentAbsorb;
++
++            // lower absorb amount by talents
++            if (float manaMultiplier = absorbAurEff->GetSpellInfo()->Effects[absorbAurEff->GetEffIndex()].CalcValueMultiplier(absorbAurEff->GetCaster()))
++                manaReduction = int32(float(manaReduction) * manaMultiplier);
++
++            int32 manaTaken = -victim->ModifyPower(POWER_MANA, -manaReduction);
++
++            // take case when mana has ended up into account
++            currentAbsorb = currentAbsorb ? int32(float(currentAbsorb) * (float(manaTaken) / float(manaReduction))) : 0;
++        }
+ 
+         dmgInfo.AbsorbDamage(currentAbsorb);
+ 
+--- a/src/server/scripts/Commands/cs_message.cpp
++++ b/src/server/scripts/Commands/cs_message.cpp
+@@ -42,6 +42,7 @@
+             { "nameannounce",   HandleNameAnnounceCommand,   rbac::RBAC_PERM_COMMAND_NAMEANNOUNCE,   Console::Yes },
+             { "gmnameannounce", HandleGMNameAnnounceCommand, rbac::RBAC_PERM_COMMAND_GMNAMEANNOUNCE, Console::Yes },
+             { "announce",       HandleAnnounceCommand,       rbac::RBAC_PERM_COMMAND_ANNOUNCE,       Console::Yes },
++            { "realmwarning",   HandleRealmWarningCommand,   rbac::RBAC_PERM_COMMAND_ANNOUNCE,       Console::Yes },
+             { "gmannounce",     HandleGMAnnounceCommand,     rbac::RBAC_PERM_COMMAND_GMANNOUNCE,     Console::Yes },
+             { "notify",         HandleNotifyCommand,         rbac::RBAC_PERM_COMMAND_NOTIFY,         Console::Yes },
+             { "gmnotify",       HandleGMNotifyCommand,       rbac::RBAC_PERM_COMMAND_GMNOTIFY,       Console::Yes },
+@@ -83,6 +84,23 @@
+             return false;
+ 
+         sWorldSessionMgr->SendServerMessage(SERVER_MSG_STRING, Acore::StringFormat(handler->GetAcoreString(LANG_SYSTEMMESSAGE), message.data()));
++        return true;
++    }
++
++    static bool HandleRealmWarningCommand(ChatHandler* handler, Tail message)
++    {
++        if (message.empty() || message.size() > 512)
++            return false;
++
++        for (unsigned char value : message)
++            if (value < 32 || value == 127 || value == '|')
++                return false;
++
++        WorldPacket data;
++        ChatHandler::BuildChatPacket(data, CHAT_MSG_RAID_WARNING, LANG_UNIVERSAL, nullptr, nullptr,
++            Acore::StringFormat("[Realm] {}", std::string_view(message)));
++        sWorldSessionMgr->SendGlobalMessage(&data);
++        handler->SendSysMessage("Realm raid warning sent to all online players.");
+         return true;
+     }
+ 
