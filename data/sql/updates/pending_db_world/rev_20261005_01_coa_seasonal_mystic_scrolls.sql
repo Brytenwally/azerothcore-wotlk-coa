@@ -1,5 +1,5 @@
 -- Seasonal Mystic Scrolls as live Ascension serves them: harvested item records, or a same-quality clone named after the enchant where none was harvested.
-INSERT INTO `item_template` (`entry`, `class`, `subclass`, `SoundOverrideSubclass`, `name`, `displayid`, `Quality`, `Flags`, `FlagsExtra`, `BuyPrice`, `SellPrice`, `InventoryType`, `AllowableClass`, `AllowableRace`, `ItemLevel`, `RequiredLevel`, `maxcount`, `stackable`, `bonding`, `description`) VALUES
+INSERT IGNORE INTO `item_template` (`entry`, `class`, `subclass`, `SoundOverrideSubclass`, `name`, `displayid`, `Quality`, `Flags`, `FlagsExtra`, `BuyPrice`, `SellPrice`, `InventoryType`, `AllowableClass`, `AllowableRace`, `ItemLevel`, `RequiredLevel`, `maxcount`, `stackable`, `bonding`, `description`) VALUES
 (200645, 0, 6, -1, 'Mystic Scroll: Threatening Presence', 139592, 2, 134217792, 0, 150000, 1, 0, 512, -1, 60, 0, 0, 1, 0, '@re:901227:0@'),
 (200657, 0, 6, -1, 'Mystic Scroll: Ravager', 139407, 4, 134217792, 0, 0, 1, 0, 2047, -1, 60, 0, 0, 1, 0, '@re:260313:0@'),
 (200704, 0, 6, -1, 'Mystic Scroll: Aether Mangle', 170601, 3, 134217792, 0, 0, 1, 0, 2047, -1, 60, 0, 0, 1, 0, '@re:850068:0@'),
