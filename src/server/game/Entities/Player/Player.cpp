@@ -24,6 +24,8 @@
 #include "ArenaTeamMgr.h"
 #include "ArenaSeasonMgr.h"
 #include "AscensionPooledVitality.h"
+#include "../../../coa/AscensionFreePick.h"
+#include "../../../coa/AscensionPetOwnership.h"
 #include "Battlefield.h"
 #include "BattlefieldMgr.h"
 #include "BattlefieldWG.h"
@@ -112,31 +114,6 @@ enum CustomEquipmentSpells : uint32
     SPELL_BURNING_COMMANDER = 92089,
     SPELL_VALKYR_GRIP = 707072
 };
-
-enum ClientKnownSupersededSpells : uint32
-{
-    SPELL_RANGER_SKULLPIERCER_RANK_1 = 802036
-};
-
-// The Ascension client shows the Ranger Advantage bar only while it knows Skullpiercer rank 1.
-static bool IsKeptInClientSpellbookWhenSuperseded(uint32 spellId)
-{
-    return spellId == SPELL_RANGER_SKULLPIERCER_RANK_1;
-}
-
-static void ReplaceSpellOnActionButtons(Player* player, uint32 from, uint32 to)
-{
-    bool changed = false;
-    for (uint8 slot = 0; slot < MAX_ACTION_BUTTONS; ++slot)
-    {
-        ActionButton const* button = player->GetActionButton(slot);
-        if (button && button->GetType() == ACTION_BUTTON_SPELL && button->GetAction() == from)
-            changed = player->addActionButton(slot, to, ACTION_BUTTON_SPELL) != nullptr || changed;
-    }
-
-    if (changed)
-        player->SendActionButtons(1);
-}
 
 enum CharacterFlags
 {
@@ -1832,7 +1809,7 @@ void Player::RemoveFromWorld()
         StopCastingCharm();
         StopCastingBindSight();
         UnsummonPetTemporaryIfAny();
-        ClearComboPoints(); // pussywizard: crashfix
+        ClearTargetComboPoints(); // pussywizard: crashfix
         ClearComboPointHolders(); // pussywizard: crashfix
         if (ObjectGuid lguid = GetLootGUID()) // pussywizard: crashfix
             m_session->DoLootRelease(lguid);
@@ -2943,8 +2920,7 @@ void Player::SendInitialSpells()
         if (itr->second->State == PLAYERSPELL_REMOVED)
             continue;
 
-        if ((!itr->second->Active && !IsKeptInClientSpellbookWhenSuperseded(itr->first)) ||
-            !itr->second->IsInSpec(GetActiveSpec()))
+        if (!itr->second->Active || !itr->second->IsInSpec(GetActiveSpec()))
             continue;
 
         data << uint32(itr->first);
@@ -3311,12 +3287,7 @@ bool Player::addSpell(uint32 spellId, uint8 addSpecMask, bool updateActive, bool
                     if (!isBeingLoaded() && IsUnlearnNeededForSpell(spellId))
                         SendUnlearnSpells();
 
-                    if (IsInWorld() && IsKeptInClientSpellbookWhenSuperseded(nextSpellInfo->Id))
-                    {
-                        SendLearnPacket(spellInfo->Id, true);
-                        ReplaceSpellOnActionButtons(this, nextSpellInfo->Id, spellInfo->Id);
-                    }
-                    else if (IsInWorld())
+                    if (IsInWorld())
                     {
                         WorldPacket data(SMSG_SUPERCEDED_SPELL, 4 + 4);
                         data << uint32(nextSpellInfo->Id);
@@ -3358,6 +3329,10 @@ bool Player::_addSpell(uint32 spellId, uint8 addSpecMask, bool temporary, bool l
     // pussywizard: already found and temporary, nothing to do
     PlayerSpellMap::iterator itr = m_spells.find(spellId);
     if (itr != m_spells.end() && itr->second->State == PLAYERSPELL_TEMPORARY)
+        return false;
+
+    bool const alreadyOwned = itr != m_spells.end() && itr->second->State != PLAYERSPELL_REMOVED;
+    if (!AscensionFreePick::CanLearnSpell(this, spellId, temporary, alreadyOwned))
         return false;
 
     // xinef: send packet so client can properly recognize this new spell
@@ -3552,11 +3527,13 @@ void Player::learnSpell(uint32 spellId, bool temporary /*= false*/, bool learnFr
 
     uint8 const specMask = GetLearnSpellSpecMask(spellId);
 
+    bool const previouslyKnown = HasSpell(spellId);
     bool const added = addSpell(spellId, specMask, true, temporary, learnFromSkill);
-    if (added)
-    {
+    if (added || (!previouslyKnown && HasSpell(spellId)))
         sScriptMgr->OnPlayerLearnSpell(this, spellId);
 
+    if (added)
+    {
         // pussywizard: a system message "you have learnt spell X (rank Y)"
         // Player::_addSpell already sent this packet for a temporary learn that did not come from a skill line,
         // and Player::removeSpell answers such a grant with a single SMSG_REMOVED_SPELL. Announcing it twice
@@ -3680,7 +3657,8 @@ void Player::removeSpell(uint32 spell_id, uint8 removeSpecMask, bool onlyTempora
     itr->second->specMask = (((uint8)itr->second->specMask) & ~removeSpecMask); // pussywizard: update specMask in map
 
     // pussywizard: some more conditions needed for spells like pyroblast (shouldn't be fully removed when not available in any spec, should stay in db with specMask = 0)
-    if (GetTalentSpellCost(firstRankSpellId) == 0 && !sSpellMgr->IsAdditionalTalentSpell(firstRankSpellId) && itr->second->specMask == 0)
+    if (itr->second->specMask == 0 && (AscensionFreePick::Applies(this) ||
+        (GetTalentSpellCost(firstRankSpellId) == 0 && !sSpellMgr->IsAdditionalTalentSpell(firstRankSpellId))))
     {
         if (itr->second->State == PLAYERSPELL_NEW || itr->second->State == PLAYERSPELL_TEMPORARY)
         {
@@ -3785,6 +3763,15 @@ void Player::removeSpell(uint32 spell_id, uint8 removeSpecMask, bool onlyTempora
             }
         }
     }
+
+    if (AscensionFreePick::Applies(this))
+        if (Pet* pet = GetPet(); pet && pet->getPetType() == SUMMON_PET)
+        {
+            uint32 const summon = pet->GetUInt32Value(UNIT_CREATED_BY_SPELL);
+            if (AscensionPetOwnership::Authorizes(spell_id, summon) &&
+                !AscensionPetOwnership::IsOwned(this, summon))
+                RemovePet(pet, PET_SAVE_NOT_IN_SLOT);
+        }
 
     if (spell_id == SPELL_BURNING_COMMANDER)
         AutoUnequipOffhandIfNeed();
@@ -6874,20 +6861,20 @@ void Player::DuelComplete(DuelCompleteType type)
     // cleanup combo points
     if (GetComboTarget() == duel->Opponent)
     {
-        ClearComboPoints();
+        ClearTargetComboPoints();
     }
     else if (GetComboTargetGUID() == duel->Opponent->GetPetGUID())
     {
-        ClearComboPoints();
+        ClearTargetComboPoints();
     }
 
     if (duel->Opponent->GetComboTarget() == this)
     {
-        duel->Opponent->ClearComboPoints();
+        duel->Opponent->ClearTargetComboPoints();
     }
     else if (duel->Opponent->GetComboTargetGUID() == GetPetGUID())
     {
-        duel->Opponent->ClearComboPoints();
+        duel->Opponent->ClearTargetComboPoints();
     }
 
     //cleanups
@@ -6935,8 +6922,6 @@ void Player::_ApplyItemMods(Item* item, uint8 slot, bool apply)
         UpdateWeaponDependentAuras(attackType);
 
     ApplyEnchantment(item, apply);
-
-    sScriptMgr->OnPlayerAfterApplyItemMods(this, item, slot, apply);
 
     LOG_DEBUG("entities.player.items", "_ApplyItemMods complete.");
 }
@@ -7413,6 +7398,10 @@ void Player::UpdateWeaponDependentCritAuras(WeaponAttackType attackType)
     amount += GetTotalAuraModifier(SPELL_AURA_MOD_WEAPON_CRIT_PERCENT, SPELL_AURA_MOD_CRIT_PCT,
         [this, attackType](AuraEffect const* effect)
         {
+            if (attackType == RANGED_ATTACK && AscensionFreePick::Applies(this) &&
+                (effect->GetId() == 30919 || effect->GetId() == 30920))
+                return false;
+
             return effect->GetAuraType() == SPELL_AURA_MOD_CRIT_PCT || CheckAttackFitToAuraRequirement(attackType, effect);
         });
 
@@ -7743,6 +7732,9 @@ void Player::CastItemCombatSpell(Unit* target, WeaponAttackType attType, uint32 
                     else
                         item->SetEnchantmentCharges(EnchantmentSlot(e_slot), charges);
                 }
+
+                if (!sScriptMgr->OnCastItemCombatSpell(this, target, spellInfo, item))
+                    continue;
 
                 Unit* unitTarget = spellInfo->IsPositive() ? this : target;
                 CastSpell(unitTarget, spellInfo, TriggerCastFlags(TRIGGERED_FULL_MASK & ~TRIGGERED_IGNORE_SPELL_AND_CATEGORY_CD), item);
@@ -8571,9 +8563,6 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
                 else
                     permission = NONE_PERMISSION;
             }
-            if (permission == NONE_PERMISSION && loot_type == LOOT_CORPSE
-                && loot->loot_type != LOOT_SKINNING && creature->IsSharedQuestParticipant(this))
-                permission = QUEST_PERMISSION;
         }
     }
 
@@ -10283,7 +10272,13 @@ bool Player::IsAffectedBySpellmod(SpellInfo const* spellInfo, SpellModifier* mod
     if (mod->op == SPELLMOD_DURATION && spellInfo->GetDuration() == -1)
         return false;
 
-    return spellInfo->IsAffectedBySpellMod(mod);
+    if (spellInfo->IsAffectedBySpellMod(mod))
+        return true;
+    for (uint32 original : GetSpellInteractionOrigins(spellInfo->Id))
+        if (SpellInfo const* ancestor = sSpellMgr->GetSpellInfo(original))
+            if (ancestor->IsAffectedBySpellMod(mod))
+                return true;
+    return false;
 }
 
 template <class T>
@@ -12136,6 +12131,8 @@ Player* Player::GetSelectedPlayer() const
 void Player::SetSelection(ObjectGuid guid)
 {
     SetGuidValue(UNIT_FIELD_TARGET, guid);
+    if (HasPlayerComboPoints())
+        SendComboPoints();
 
     if (NeedSendSpectatorData())
         ArenaSpectator::SendCommand_GUID(FindMap(), GetGUID(), "TRG", guid);
@@ -13904,6 +13901,36 @@ void Player::SetTemporarySpellReplacement(uint32 original, uint32 replacement)
     }
 }
 
+std::vector<uint32> Player::GetSpellInteractionOrigins(uint32 spellId) const
+{
+    std::vector<uint32> origins;
+    if (!AscensionFreePick::Applies(this) || !HasActiveSpell(spellId))
+        return origins;
+
+    std::vector<uint32> pending{spellId};
+    for (size_t index = 0; index < pending.size(); ++index)
+        for (auto const& [original, replacement] : m_temporarySpellReplacements)
+            if (replacement == pending[index] && original != replacement &&
+                HasActiveSpell(original) && HasActiveSpell(replacement) &&
+                std::find(pending.begin(), pending.end(), original) == pending.end())
+            {
+                pending.push_back(original);
+                origins.push_back(original);
+            }
+    return origins;
+}
+
+bool Player::MatchesSpellInteraction(uint32 spellId, uint32 original) const
+{
+    uint32 const root = sSpellMgr->GetFirstSpellInChain(original);
+    if (sSpellMgr->GetFirstSpellInChain(spellId) == root)
+        return true;
+    for (uint32 ancestor : GetSpellInteractionOrigins(spellId))
+        if (sSpellMgr->GetFirstSpellInChain(ancestor) == root)
+            return true;
+    return false;
+}
+
 uint32 Player::GetTemporarySpellReplacement(uint32 original) const
 {
     auto itr = m_temporarySpellReplacements.find(original);
@@ -13911,8 +13938,15 @@ uint32 Player::GetTemporarySpellReplacement(uint32 original) const
         itr->second : original;
 }
 
+bool CanArea52HopliteUseShield(Player const* player);
+
 bool Player::CanUseTwoHandWithShield(ItemTemplate const* main, ItemTemplate const* off) const
 {
+    if (main && off && main->Class == ITEM_CLASS_WEAPON && main->InventoryType == INVTYPE_2HWEAPON &&
+        main->SubClass == ITEM_SUBCLASS_WEAPON_POLEARM && off->Class == ITEM_CLASS_ARMOR &&
+        off->InventoryType == INVTYPE_SHIELD && CanArea52HopliteUseShield(this))
+        return true;
+
     if (getClass() != CLASS_GUARDIAN || !main || !off || main->InventoryType != INVTYPE_2HWEAPON ||
         main->Class != ITEM_CLASS_WEAPON || off->InventoryType != INVTYPE_SHIELD)
         return false;
@@ -17288,6 +17322,8 @@ void Player::StoreSpellCharges(SpellInfo const* spellInfo, SpellChargeState cons
 
 void Player::ConsumeSpellCharge(SpellInfo const* spellInfo, Spell* spell)
 {
+    if (spellInfo->Id == 18562 && AscensionFreePick::Applies(this) && HasAura(415012) && HasAura(415014))
+        return;
     if (!spellInfo->MaxCharges || GetCommandStatus(CHEAT_COOLDOWN) || GetCommandStatus(CHEAT_SPELLCHARGES))
         return;
     int32 recovery = int32(spellInfo->ChargeRecoveryTime);

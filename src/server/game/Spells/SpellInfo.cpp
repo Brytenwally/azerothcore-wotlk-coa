@@ -15,7 +15,9 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "../../coa/AscensionMageTalentTargets.h"
 #include "SpellInfo.h"
+#include "../../coa/AscensionMysticEnchant.h"
 #include "Chat.h"
 #include "ConditionMgr.h"
 #include "Corpse.h"
@@ -29,8 +31,6 @@
 #include "SpellMgr.h"
 #include <algorithm>
 #include <string_view>
-#include <unordered_map>
-#include <vector>
 
 uint32 GetTargetFlagMask(SpellTargetObjectTypes objType)
 {
@@ -1470,23 +1470,6 @@ uint8 SpellInfo::CalcMaxAuraStacks(Unit* caster) const
     return uint8(std::clamp(maximum, 1.0f, 255.0f));
 }
 
-namespace
-{
-    // Ascension names the targets of a modifier without a class mask in SpellAffect.dbc; a negative target
-    // stands for every rank of the chain that starts with that spell.
-    std::unordered_map<uint32, std::vector<int32>> const& SpellAffectTargets()
-    {
-        static std::unordered_map<uint32, std::vector<int32>> const targets = []
-        {
-            std::unordered_map<uint32, std::vector<int32>> byModifier;
-            for (SpellAffectEntry const* entry : sSpellAffectStore)
-                byModifier[entry->ModifierSpellID].push_back(int32(entry->AffectedSpellID));
-            return byModifier;
-        }();
-        return targets;
-    }
-}
-
 bool SpellInfo::IsAffectedBySpellMods() const
 {
     return !(AttributesEx3 & SPELL_ATTR3_IGNORE_CASTER_MODIFIERS);
@@ -1501,10 +1484,6 @@ bool SpellInfo::IsAffectedBySpellMod(SpellModifier const* mod) const
         mod->spellId == 705780 && mod->op == SPELLMOD_JUMP_TARGETS && mod->type == SPELLMOD_FLAT &&
         mod->mask == flag96(128, 0, 0);
 
-    bool const windSurgeTargets = Id == 653226 && SpellFamilyName == 38 &&
-        mod->spellId == 805750 && mod->op == SPELLMOD_JUMP_TARGETS && mod->type == SPELLMOD_FLAT &&
-        mod->mask == flag96(0, 0x40000, 0);
-
     bool const bloodFueledAbsorb = Id == 560361 && mod->spellId == 705416 && mod->op == SPELLMOD_EFFECT1 &&
         mod->type == SPELLMOD_PCT;
 
@@ -1514,8 +1493,7 @@ bool SpellInfo::IsAffectedBySpellMod(SpellModifier const* mod) const
         mod->type == SPELLMOD_PCT;
 
     // xinef: dont check duration mod
-    if (mod->op != SPELLMOD_DURATION && !bandageGunTargets && !windSurgeTargets &&
-        !bloodFueledAbsorb && !bwonsamdisEdgeSplash)
+    if (mod->op != SPELLMOD_DURATION && !bandageGunTargets && !bloodFueledAbsorb && !bwonsamdisEdgeSplash)
         if (!IsAffectedBySpellMods())
             return false;
 
@@ -1526,6 +1504,9 @@ bool SpellInfo::IsAffectedBySpellMod(SpellModifier const* mod) const
 
     if (mod->targetSpellId && mod->targetSpellId != Id)
         return false;
+
+    if (auto const target = AscensionMageTalentTarget(mod->spellId, Id))
+        return *target;
 
     if (SpellFamilyName == 31 && affectSpell->SpellFamilyName == 31)
     {
@@ -1587,20 +1568,7 @@ bool SpellInfo::IsAffectedBySpellMod(SpellModifier const* mod) const
         (mod->mask & flag96(0, 16384, 0)))
         return true;
 
-    if (!mod->mask)
-    {
-        auto const named = SpellAffectTargets().find(mod->spellId);
-        if (named != SpellAffectTargets().end())
-        {
-            uint32 const firstRank = sSpellMgr->GetFirstSpellInChain(Id);
-            return std::any_of(named->second.begin(), named->second.end(), [&](int32 target)
-                { return target < 0 ? uint32(-target) == firstRank : uint32(target) == Id; });
-        }
-    }
-
-    bool affected = IsAffected(affectSpell->SpellFamilyName, mod->mask);
-    sScriptMgr->OnSpellModFamilyMask(affectSpell, this, mod, affected);
-    return affected;
+    return IsAffected(affectSpell->SpellFamilyName, mod->mask);
 }
 
 bool SpellInfo::CanPierceImmuneAura(SpellInfo const* auraSpellInfo) const
@@ -3143,6 +3111,7 @@ int32 SpellInfo::CalcPowerCost(Unit const* caster, SpellSchoolMask schoolMask, S
     // intrinsically instant, non-channeled mana spells; ranged animation delay
     // and temporary cast-time spellmods do not change that classification.
     float powerCostMultiplier = caster->GetFloatValue(static_cast<uint16>(UNIT_FIELD_POWER_COST_MULTIPLIER) + school);
+    powerCostMultiplier += AscensionMysticEnchant::NonstackingCostCorrection(caster, uint32(1) << school);
     if (PowerType == POWER_MANA && !IsChanneled() && (!CastTimeEntry || CastTimeEntry->CastTime == 0))
         powerCostMultiplier -= float(caster->GetTotalAuraModifier(SPELL_AURA_ASCENSION_MOD_INSTANT_MANA_COST_PCT)) / 100.0f;
 

@@ -73,10 +73,7 @@ class aura_ascension_reaper_tormented_souls : public AuraScript
 {
     PrepareAuraScript(aura_ascension_reaper_tormented_souls);
 
-    bool Validate(SpellInfo const*) override
-    {
-        return ValidateSpellInfo({TormentedSoulHeal, SoulfusedConstitution, SoulfusedConstitutionWard});
-    }
+    bool Validate(SpellInfo const*) override { return ValidateSpellInfo({TormentedSoulHeal}); }
 
     bool CheckProc(ProcEventInfo& eventInfo)
     {
@@ -96,16 +93,8 @@ class aura_ascension_reaper_tormented_souls : public AuraScript
     void Ward(AuraEffect const*, AuraEffectHandleModes)
     {
         Unit* owner = GetTarget();
-        if (!owner->HasAura(SoulfusedConstitution))
-            return;
-        Aura* ward = owner->GetAura(SoulfusedConstitutionWard, owner->GetGUID());
-        if (!ward)
-            ward = owner->AddAura(SoulfusedConstitutionWard, owner);
-        if (ward)
-        {
-            ward->SetMaxDuration(GetAura()->GetMaxDuration());
-            ward->SetDuration(GetAura()->GetDuration());
-        }
+        if (owner->HasAura(SoulfusedConstitution) && !owner->HasAura(SoulfusedConstitutionWard))
+            owner->CastSpell(owner, SoulfusedConstitutionWard, true);
     }
 
     void EndWard(AuraEffect const*, AuraEffectHandleModes)
@@ -119,7 +108,7 @@ class aura_ascension_reaper_tormented_souls : public AuraScript
         OnEffectProc += AuraEffectProcFn(aura_ascension_reaper_tormented_souls::Consume, EFFECT_1,
             SPELL_AURA_PROC_TRIGGER_SPELL);
         AfterEffectApply += AuraEffectApplyFn(aura_ascension_reaper_tormented_souls::Ward, EFFECT_0,
-            SPELL_AURA_MOD_DAMAGE_PERCENT_TAKEN, AURA_EFFECT_HANDLE_REAL_OR_REAPPLY_MASK);
+            SPELL_AURA_MOD_DAMAGE_PERCENT_TAKEN, AURA_EFFECT_HANDLE_REAL);
         AfterEffectRemove += AuraEffectRemoveFn(aura_ascension_reaper_tormented_souls::EndWard, EFFECT_0,
             SPELL_AURA_MOD_DAMAGE_PERCENT_TAKEN, AURA_EFFECT_HANDLE_REAL);
     }

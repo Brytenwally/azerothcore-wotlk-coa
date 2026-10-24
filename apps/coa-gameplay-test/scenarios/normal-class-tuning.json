@@ -131,9 +131,9 @@
       "equals": 1
     },
     {
-      "action": "specialization",
+      "action": "command",
       "actor": "chrono",
-      "id": 33
+      "command": ".localspec 33"
     },
     {
       "action": "assert",
@@ -152,9 +152,9 @@
       "equals": 21
     },
     {
-      "action": "specialization",
+      "action": "command",
       "actor": "chrono",
-      "id": 31
+      "command": ".localspec 31"
     },
     {
       "action": "assert",

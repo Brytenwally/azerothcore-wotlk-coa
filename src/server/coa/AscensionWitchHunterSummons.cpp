@@ -188,8 +188,10 @@ class HoundActions
                               int32(owner->GetTotalAttackPowerValue(RANGED_ATTACK) * 0.35f);
                 if (owner->HasAura(705450))
                     value += owner->GetLevel() * 2;
-                _me->CastCustomSpell(706332, SPELLVALUE_BASE_POINT1, value, target, TRIGGERED_FULL_MASK);
-                _me->CastCustomSpell(706332, SPELLVALUE_BASE_POINT1, value, target, TRIGGERED_FULL_MASK);
+                _me->CastCustomSpell(706332, SPELLVALUE_BASE_POINT1, value, target, TRIGGERED_FULL_MASK, nullptr,
+                                     nullptr, owner->GetGUID());
+                _me->CastCustomSpell(706332, SPELLVALUE_BASE_POINT1, value, target, TRIGGERED_FULL_MASK, nullptr,
+                                     nullptr, owner->GetGUID());
                 if (_called && owner->HasAura(500056))
                     for (Unit* enemy : Nearby(target, 6.0f))
                         if (owner->IsValidAttackTarget(enemy))
@@ -298,9 +300,6 @@ struct npc_ascension_witch_hunter_field : ScriptedAI
         ownerGuid = owner->GetGUID();
         me->SetOwnerGUID(ownerGuid);
         me->SetFaction(owner->GetFaction());
-        me->m_ControlledByPlayer = true;
-        me->SetUnitFlag(UNIT_FLAG_PLAYER_CONTROLLED);
-        me->SetByteValue(UNIT_FIELD_BYTES_2, 1, owner->GetByteValue(UNIT_FIELD_BYTES_2, 1));
         me->SetLevel(owner->GetLevel());
         me->SetReactState(REACT_PASSIVE);
         me->SetImmuneToNPC(true);
@@ -325,7 +324,6 @@ struct npc_ascension_witch_hunter_field : ScriptedAI
             me->DespawnOrUnsummon();
             return;
         }
-        me->SetByteValue(UNIT_FIELD_BYTES_2, 1, owner->GetByteValue(UNIT_FIELD_BYTES_2, 1));
         uint32 entry = me->GetEntry();
         if (entry == 254862)
         {
@@ -402,13 +400,8 @@ class spell_ascension_witch_hunter_summon : public SpellScript
         player->ApplySpellMod(GetSpellInfo()->Id, SPELLMOD_DURATION, duration);
         if (effect.MiscValue == 50224)
         {
-            Unit* target = GetExplTargetUnit();
-            if (!target || target == player)
-                if (Unit* selected = player->GetSelectedUnit(); selected &&
-                    player->HasInArc(float(M_PI), selected) && player->IsValidAttackTarget(selected))
-                    target = selected;
             SummonHounds(player, std::max(1, effect.CalcValue(player)), duration, GetSpellInfo()->Id,
-                         target);
+                         GetExplTargetUnit());
             return;
         }
         Position position = player->GetPosition();
@@ -433,27 +426,15 @@ class spell_ascension_witch_hunter_summon : public SpellScript
 class spell_ascension_witch_hunter_smoke : public SpellScript
 {
     PrepareSpellScript(spell_ascension_witch_hunter_smoke);
-    bool Validate(SpellInfo const*) override
+    void After()
     {
-        return ValidateSpellInfo({805757});
+        if (WorldLocation const* destination = GetExplTargetDest())
+            GetCaster()->CastSpell(destination->GetPositionX(), destination->GetPositionY(),
+                                   destination->GetPositionZ(), 805757, true);
     }
-
-    void ApplyFriendlySmoke(SpellEffIndex)
-    {
-        if (DynamicObject* cloud = GetCaster()->GetDynObject(GetSpellInfo()->Id))
-        {
-            SpellCastTargets targets;
-            targets.SetDst(*cloud);
-            CustomSpellValues values;
-            values.AddSpellMod(SPELLVALUE_AURA_DURATION, cloud->GetDuration());
-            GetCaster()->CastSpell(targets, sSpellMgr->GetSpellInfo(805757), &values, TRIGGERED_FULL_MASK);
-        }
-    }
-
     void Register() override
     {
-        OnEffectHit += SpellEffectFn(spell_ascension_witch_hunter_smoke::ApplyFriendlySmoke, EFFECT_1,
-                                    SPELL_EFFECT_PERSISTENT_AREA_AURA);
+        AfterCast += SpellCastFn(spell_ascension_witch_hunter_smoke::After);
     }
 };
 }

@@ -15,8 +15,8 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "AscensionQuestLog.h"
 #include "CreatureAI.h"
+#include "../../../coa/AscensionFreePick.h"
 #include "DisableMgr.h"
 #include "GameEventMgr.h"
 #include "GameObjectAI.h"
@@ -50,8 +50,6 @@ void Player::RefreshQuestLogQueries()
         if (Quest const* quest = sObjectMgr->GetQuestTemplate(questId))
             PlayerTalkClass->SendQuestQueryResponse(quest);
     }
-
-    AscensionQuestLog::SendAll(this);
 }
 
 int32 Player::GetQuestLevel(Quest const* quest) const
@@ -520,14 +518,12 @@ bool Player::CanRewardQuest(Quest const* quest, uint32 reward, bool msg)
     ItemPosCountVec dest;
     if (quest->GetRewChoiceItemsCount() > 0)
     {
-        if (uint32 const itemId = LocalLevelScaling::QuestRewardItemFor(this, quest->RewardChoiceItemId[reward],
-            quest->GetQuestLevel()))
+        if (quest->RewardChoiceItemId[reward])
         {
-            InventoryResult res = CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, itemId,
-                quest->RewardChoiceItemCount[reward]);
+            InventoryResult res = CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, quest->RewardChoiceItemId[reward], quest->RewardChoiceItemCount[reward]);
             if (res != EQUIP_ERR_OK)
             {
-                SendEquipError(res, nullptr, nullptr, itemId);
+                SendEquipError(res, nullptr, nullptr, quest->RewardChoiceItemId[reward]);
                 return false;
             }
         }
@@ -537,13 +533,12 @@ bool Player::CanRewardQuest(Quest const* quest, uint32 reward, bool msg)
     {
         for (uint32 i = 0; i < quest->GetRewItemsCount(); ++i)
         {
-            if (uint32 const itemId = LocalLevelScaling::QuestRewardItemFor(this, quest->RewardItemId[i],
-                quest->GetQuestLevel()))
+            if (quest->RewardItemId[i])
             {
-                InventoryResult res = CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, itemId, quest->RewardItemIdCount[i]);
+                InventoryResult res = CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, quest->RewardItemId[i], quest->RewardItemIdCount[i]);
                 if (res != EQUIP_ERR_OK)
                 {
-                    SendEquipError(res, nullptr, nullptr, itemId);
+                    SendEquipError(res, nullptr, nullptr, quest->RewardItemId[i]);
                     return false;
                 }
             }
@@ -618,13 +613,11 @@ void Player::AddQuest(Quest const* quest, Object* questGiver)
     }
 
     // The client caches quest queries per quest ID across characters, so refresh the per-player scaled
-    // level and rewards here as well, scaled or not: the copy it holds from another character would
-    // otherwise colour the log.
-    if (LocalLevelScaling::QuestEnabled.load(std::memory_order_relaxed))
+    // level here as well: the copy it holds from another character would otherwise colour the log.
+    if (LocalLevelScaling::QuestScalingEnabled(this))
         PlayerTalkClass->SendQuestQueryResponse(quest);
 
     SetQuestSlot(log_slot, quest_id, qtime);
-    AscensionQuestLog::SendSlot(this, log_slot);
 
     m_QuestStatusSave[quest_id] = true;
 
@@ -750,8 +743,7 @@ void Player::RewardQuest(Quest const* quest, uint32 reward, Object* questGiver, 
 
     if (quest->GetRewChoiceItemsCount())
     {
-        if (uint32 itemId = LocalLevelScaling::QuestRewardItemFor(this, quest->RewardChoiceItemId[reward],
-            quest->GetQuestLevel()))
+        if (uint32 itemId = quest->RewardChoiceItemId[reward])
         {
             ItemPosCountVec dest;
             if (CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, itemId, quest->RewardChoiceItemCount[reward]) == EQUIP_ERR_OK)
@@ -772,8 +764,7 @@ void Player::RewardQuest(Quest const* quest, uint32 reward, Object* questGiver, 
     {
         for (uint32 i = 0; i < quest->GetRewItemsCount(); ++i)
         {
-            if (uint32 itemId = LocalLevelScaling::QuestRewardItemFor(this, quest->RewardItemId[i],
-                quest->GetQuestLevel()))
+            if (uint32 itemId = quest->RewardItemId[i])
             {
                 ItemPosCountVec dest;
                 if (CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, itemId, quest->RewardItemIdCount[i]) == EQUIP_ERR_OK)
@@ -1171,7 +1162,7 @@ bool Player::SatisfyQuestClass(Quest const* qInfo, bool msg) const
 {
     uint32 reqClass = qInfo->GetRequiredClasses();
 
-    if (reqClass == 0)
+    if (reqClass == 0 || AscensionFreePick::Applies(this))
         return true;
 
     if ((reqClass & getClassMask()) == 0)

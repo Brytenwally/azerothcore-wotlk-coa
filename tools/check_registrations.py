@@ -16,7 +16,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 MODULE = ROOT / 'src/server/coa'
 WORLDSERVER = ROOT / 'src/server/apps/worldserver/Main.cpp'
-NAME = r'(?:AddSC_\w+|Add(?:Ascension|CoA)\w*Scripts)'
+NAME = r'(?:AddSC_\w+|Add(?:Ascension|CoA|Area52)\w*Scripts)'
 DEFINITION = re.compile(r'\bvoid\s+(' + NAME + r')\s*\(\s*(?:void\s*)?\)\s*\{')
 CALL = re.compile(r'\b(' + NAME + r')\s*\(\s*\)\s*;')
 ROOT_CALL = re.compile(r'\bAddCoAScripts\s*\(\s*\)\s*;')

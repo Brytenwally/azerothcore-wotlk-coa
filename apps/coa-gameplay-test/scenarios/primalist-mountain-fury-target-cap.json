@@ -170,9 +170,9 @@
       "enabled": true
     },
     {
-      "action": "specialization",
+      "action": "command",
       "actor": "primalist",
-      "id": 60
+      "command": ".localspec 60"
     },
     {
       "action": "learn",

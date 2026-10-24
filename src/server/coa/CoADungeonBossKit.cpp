@@ -4,6 +4,7 @@
 
 #include "AllCreatureScript.h"
 #include "Creature.h"
+#include "DungeonHealth.h"
 #include "CreatureAI.h"
 #include "DatabaseEnv.h"
 #include "DataMap.h"
@@ -167,7 +168,7 @@ public:
         if (itr == Kits.end())
             return;
         Map const* map = me->GetMap();
-        if (!map || !map->IsNonRaidDungeon() || map->GetDifficulty() == DUNGEON_DIFFICULTY_NORMAL || me->IsCharmedOwnedByPlayerOrPlayer())
+        if (!map || !DungeonHealth::IsVanillaDungeon(map->GetId()) || !map->IsNonRaidDungeon() || map->GetDifficulty() == DUNGEON_DIFFICULTY_NORMAL || me->IsCharmedOwnedByPlayerOrPlayer())
             return;
 
         std::vector<KitEntry> const& kits = itr->second;

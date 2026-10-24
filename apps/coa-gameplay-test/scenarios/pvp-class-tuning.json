@@ -80,9 +80,9 @@
       "equals": 0
     },
     {
-      "action": "specialization",
+      "action": "command",
       "actor": "chrono",
-      "id": 33
+      "command": ".localspec 33"
     },
     {
       "action": "assert",
@@ -92,9 +92,9 @@
       "equals": 1
     },
     {
-      "action": "specialization",
+      "action": "command",
       "actor": "chrono",
-      "id": 31
+      "command": ".localspec 31"
     },
     {
       "action": "assert",
@@ -155,9 +155,9 @@
       "max": 0.902
     },
     {
-      "action": "specialization",
+      "action": "command",
       "actor": "reaper",
-      "id": 57
+      "command": ".localspec 57"
     },
     {
       "action": "assert",

@@ -1,5 +1,6 @@
 /* Copyright (C) 2016+ AzerothCore, GNU AGPL v3. */
 #include "AscensionWildcard.h"
+#include "AscensionFreePick.h"
 #include "DatabaseEnv.h"
 #include "DBCStores.h"
 #include "GameTime.h"
@@ -210,7 +211,8 @@ public:
     {
         std::vector<Item*> mailQueue;
         for (ChestReward const& reward : CHEST_REWARDS)
-            DeliverOrQueueMail(player, mailQueue, reward.Entry, reward.Count);
+            DeliverOrQueueMail(player, mailQueue,
+                reward.Entry == 134995 && AscensionFreePick::Applies(player) ? 98457 : reward.Entry, reward.Count);
 
         uint32 const scrollOfRetreat = player->GetTeamId() == TEAM_HORDE ? SCROLL_OF_RETREAT_HORDE : SCROLL_OF_RETREAT_ALLIANCE;
         DeliverOrQueueMail(player, mailQueue, scrollOfRetreat, 1);

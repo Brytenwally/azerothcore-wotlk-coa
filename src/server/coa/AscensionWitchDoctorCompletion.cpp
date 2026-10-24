@@ -376,7 +376,7 @@ void ApplyContracts(SpellInfo* info)
     if (id == Vigil)
         periodic(EFFECT_1, 1000);
     if (id == Slither)
-        info->AttributesCu &= ~SPELL_ATTR0_CU_NEGATIVE;
+        info->Effects[EFFECT_2].Effect = 0;
     if (id == StalkerSpeed)
         periodic(EFFECT_1, 500);
     if (id == Mirage)

@@ -588,6 +588,21 @@ void SpellMgr::LoadSpellInfoCorrections()
         spellInfo->DmgClass = SPELL_DAMAGE_CLASS_MAGIC;
     });
 
+    ApplySpellFix({ 20467 }, [](SpellInfo* spellInfo)
+    {
+        spellInfo->Effects[EFFECT_1].BasePoints = 18;
+    });
+
+    ApplySpellFix({ 31804, 53733 }, [](SpellInfo* spellInfo)
+    {
+        spellInfo->Effects[EFFECT_0].BasePoints = 0;
+    });
+
+    ApplySpellFix({ 20184, 20185, 20186 }, [](SpellInfo* spellInfo)
+    {
+        spellInfo->AttributesEx5 |= SPELL_ATTR5_LIMIT_N;
+    });
+
     // Hand of Reckoning
     ApplySpellFix({ 62124 }, [](SpellInfo* spellInfo)
     {
@@ -1714,18 +1729,6 @@ void SpellMgr::LoadSpellInfoCorrections()
     ApplySpellFix({ 55550 }, [](SpellInfo* spellInfo)
     {
         spellInfo->Attributes |= SPELL_ATTR0_USES_RANGED_SLOT;
-    });
-
-    // Whirlwind (Rhahk'Zor's Bladestorm) - 2 yards from the center never reaches anyone fighting a creature this size
-    ApplySpellFix({ 2102555 }, [](SpellInfo* spellInfo)
-    {
-        spellInfo->Effects[EFFECT_0].RadiusEntry = sSpellRadiusStore.LookupEntry(EFFECT_RADIUS_8_YARDS);
-    });
-
-    // Buster Call (Edwin VanCleef) - the level 21 marker that drops it would miss every higher level player
-    ApplySpellFix({ 2102593, 2102594, 2102595, 2102596 }, [](SpellInfo* spellInfo)
-    {
-        spellInfo->AttributesEx3 |= SPELL_ATTR3_ALWAYS_HIT;
     });
 
     // Moorabi - Transformation
@@ -5431,6 +5434,19 @@ void SpellMgr::LoadSpellInfoCorrections()
         spellInfo->Effects[EFFECT_0].RadiusEntry = sSpellRadiusStore.LookupEntry(EFFECT_RADIUS_3_YARDS);
     });
 
+    // CoA: Fierce Blow (the dungeon and raid bosses' kit strike): it takes the place of the next
+    // melee swing instead of landing on top of one, and never goes off while another spell is cast.
+    ApplySpellFix({ 975011 }, [](SpellInfo* spellInfo)
+    {
+        spellInfo->Attributes |= SPELL_ATTR0_ON_NEXT_SWING;
+    });
+
+    // CoA: Summon Eye of Immol'thar puts the eyes anywhere up to 30 yards away; keep them close around him.
+    ApplySpellFix({ 2100246 }, [](SpellInfo* spellInfo)
+    {
+        spellInfo->Effects[EFFECT_0].RadiusEntry = sSpellRadiusStore.LookupEntry(EFFECT_RADIUS_10_YARDS);
+    });
+
     for (uint32 i = 0; i < GetSpellInfoStoreSize(); ++i)
     {
         SpellInfo* spellInfo = mSpellInfoMap[i];
@@ -5523,6 +5539,11 @@ void SpellMgr::LoadSpellInfoCorrections()
             // Xinef: Dun Morogh, Kharanos tavern, missing resting flag
             else if (areaEntry->ID == 2102)
                 areaEntry->flags |= AREA_FLAG_REST_ZONE_ALLIANCE;
+
+            // CoA: Ascension's AreaTable marks some dungeon areas flyable (Zul'Farrak); nobody flies
+            // inside a dungeon or raid.
+            if (MapEntry const* mapEntry = sMapStore.LookupEntry(areaEntry->mapid); mapEntry && mapEntry->IsDungeon())
+                areaEntry->flags &= ~AREA_FLAG_OUTLAND;
         }
 
     // Xinef: fix for something?

@@ -1,7 +1,7 @@
 /* Copyright (C) 2016+ AzerothCore, GNU AGPL v3. */
 
 #include "AscensionTamingData.h"
-#include "AscensionWildcard.h"
+#include "AscensionHeroPets.h"
 #include "Creature.h"
 #include "DatabaseEnv.h"
 #include "Log.h"
@@ -203,7 +203,7 @@ class spell_ascension_family_call : public SpellScript
     {
         Player* player = GetCaster() ? GetCaster()->ToPlayer() : nullptr;
         FamilyCall const* call = FindFamilyCall(GetSpellInfo()->Id);
-        if (!player || !call || !AscensionWildcard::IsClasslessHero(player))
+        if (!player || !call || !AscensionHeroPets::Applies(player))
             return SPELL_CAST_OK;
 
         if (player->GetCharmGUID())
@@ -257,7 +257,7 @@ public:
     void OnPlayerForgotSpell(Player* player, uint32 spellId) override
     {
         FamilyCall const* call = FindFamilyCall(spellId);
-        if (!call || !AscensionWildcard::IsClasslessHero(player))
+        if (!call || !AscensionHeroPets::Applies(player))
             return;
         if (Pet* out = player->GetPet(); out && out->getPetType() == HUNTER_PET && IsKind(out->GetEntry(), call->Kind))
             player->RemovePet(out, PET_SAVE_AS_CURRENT);

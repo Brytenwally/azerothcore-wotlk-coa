@@ -44,9 +44,9 @@
   "timeout_ms": 100000,
   "steps": [
     {
-      "action": "specialization",
+      "action": "command",
       "actor": "primalist",
-      "id": 95
+      "command": ".localspec 95"
     },
     {
       "action": "teleport",

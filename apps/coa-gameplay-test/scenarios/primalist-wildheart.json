@@ -27,9 +27,9 @@
   "timeout_ms": 80000,
   "steps": [
     {
-      "action": "specialization",
+      "action": "command",
       "actor": "primalist",
-      "id": 58
+      "command": ".localspec 58"
     },
     {
       "action": "set_aura",

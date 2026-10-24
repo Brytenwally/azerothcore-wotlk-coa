@@ -157,8 +157,7 @@ struct npc_ascension_xoroth_summon : public ScriptedAI
                 remaining = 0;
                 for (Unit* target : Nearby(me, 10))
                     if (player->IsValidAttackTarget(target) &&
-                        !target->IsImmunedToSpell(sSpellMgr->GetSpellInfo(803185)) &&
-                        !target->IsImmuneToForcedMovement())
+                        !target->IsImmunedToSpell(sSpellMgr->GetSpellInfo(803185)))
                         target->GetMotionMaster()->MoveJump(me->GetPositionX(), me->GetPositionY(), me->GetPositionZ(),
                                                             20, 10);
             }

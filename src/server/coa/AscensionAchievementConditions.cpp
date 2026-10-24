@@ -1,10 +1,82 @@
 /* Copyright (C) 2016+ AzerothCore, GNU AGPL v3. */
 #include "AchievementCriteriaScript.h"
+#include "AchievementScript.h"
+#include "Config.h"
+#include "DBCStructure.h"
+#include <atomic>
 #include "Player.h"
 #include "ScriptMgr.h"
 
 namespace
 {
+std::atomic<bool> RestrictSeasonal{false};
+
+bool IsSeasonalAchievement(uint32 id)
+{
+    switch (id)
+    {
+        case 5006:
+        case 5009:
+        case 5012:
+        case 5015:
+        case 5016:
+        case 16718:
+        case 16719:
+        case 16720:
+        case 16721:
+        case 16722:
+        case 16723:
+        case 16724:
+        case 16904:
+        case 16905:
+        case 16906:
+        case 16907:
+        case 16908:
+        case 16909:
+        case 16910:
+        case 17036:
+            return true;
+        default:
+            return false;
+    }
+}
+
+class SeasonalAchievementConfig final : public WorldScript
+{
+public:
+    SeasonalAchievementConfig() : WorldScript("SeasonalAchievementConfig", { WORLDHOOK_ON_AFTER_CONFIG_LOAD }) { }
+
+    void OnAfterConfigLoad(bool) override
+    {
+        RestrictSeasonal = sConfigMgr->GetOption<bool>("CoA.Enable", true)
+            && sConfigMgr->GetOption<std::string>("CoA.RealmType", "live") != "seasonal";
+    }
+};
+
+class SeasonalAchievementCriteria final : public AchievementScript
+{
+public:
+    SeasonalAchievementCriteria() : AchievementScript("SeasonalAchievementCriteria",
+        { ACHIEVEMENTHOOK_CAN_CHECK_CRITERIA }) { }
+
+    bool CanCheckCriteria(AchievementMgr*, AchievementCriteriaEntry const* criteria) override
+    {
+        return !RestrictSeasonal || !criteria || !IsSeasonalAchievement(criteria->referredAchievement);
+    }
+};
+
+class SeasonalAchievementCompletion final : public PlayerScript
+{
+public:
+    SeasonalAchievementCompletion() : PlayerScript("SeasonalAchievementCompletion",
+        { PLAYERHOOK_ON_BEFORE_ACHI_COMPLETE }) { }
+
+    bool OnPlayerBeforeAchievementComplete(Player*, AchievementEntry const* achievement) override
+    {
+        return !RestrictSeasonal || !achievement || !IsSeasonalAchievement(achievement->ID);
+    }
+};
+
 enum GameMode : uint32
 {
     GAME_MODE_IRONMAN = 0x002,
@@ -57,6 +129,9 @@ private:
 
 void AddAscensionAchievementConditionScripts()
 {
+    new SeasonalAchievementConfig();
+    new SeasonalAchievementCriteria();
+    new SeasonalAchievementCompletion();
     for (GameModeCriteria const& criteria : GAME_MODE_CRITERIA)
         new AchievementGameModeCriteria(criteria);
 }

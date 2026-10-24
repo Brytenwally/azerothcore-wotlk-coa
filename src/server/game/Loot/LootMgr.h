@@ -70,8 +70,7 @@ enum PermissionTypes
     RESTRICTED_PERMISSION               = 3,
     ROUND_ROBIN_PERMISSION              = 4,
     OWNER_PERMISSION                    = 5,
-    NONE_PERMISSION                     = 6,
-    QUEST_PERMISSION                    = 7
+    NONE_PERMISSION                     = 6
 };
 
 enum LootType
@@ -268,8 +267,6 @@ public:
     void CheckLootRefs(LootStore const& lootstore, uint32 Id, LootIdSet* ref_set) const;
     bool addConditionItem(Condition* cond);
     [[nodiscard]] bool isReference(uint32 id) const;
-    // Every item entry this template can drop, references followed (the pool of a boss's guaranteed drop)
-    void CollectItems(std::vector<LootStoreItem const*>& out, uint8 depth = 0) const;
 
 private:
     LootStoreItemList Entries;                          // not grouped only
@@ -323,8 +320,7 @@ struct Loot
     std::vector<LootItem> items;
     std::vector<LootItem> quest_items;
     uint32 gold;
-    uint32 unlootedCount{0};
-    bool sharedQuestLoot{false};
+    uint8 unlootedCount{0};
     uint8 dungeonDifficulty{0};
     ObjectGuid roundRobinPlayer;        // GUID of the player having the Round-Robin ownership for the loot. If 0, round robin owner has released.
     ObjectGuid lootOwnerGUID;
@@ -362,7 +358,6 @@ struct Loot
         PlayersLooting.clear();
         items.clear();
         quest_items.clear();
-        sharedQuestLoot = false;
         gold = 0;
         unlootedCount = 0;
         roundRobinPlayer.Clear();
@@ -382,8 +377,6 @@ struct Loot
 
     void generateMoneyLoot(uint32 minAmount, uint32 maxAmount);
     bool FillLoot(uint32 lootId, LootStore const& store, Player* lootOwner, bool personal, bool noEmptyError = false, uint16 lootMode = LOOT_MODE_DEFAULT, WorldObject* lootSource = nullptr);
-    // Heroic/Mythic vanilla dungeon bosses: exactly one piece of gear from the boss's own pool
-    void GuaranteeOneGearDrop(LootTemplate const& tab);
 
     // Inserts the item into the loot (called by LootTemplate processors)
     void AddItem(LootStoreItem const& item);

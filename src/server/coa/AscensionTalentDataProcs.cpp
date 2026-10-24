@@ -1,6 +1,8 @@
 /* Copyright (C) 2016+ AzerothCore, GNU AGPL v3. */
 
 #include "GameTime.h"
+#include "AscensionFreePick.h"
+#include "Player.h"
 #include "ScriptMgr.h"
 #include "SpellAuraEffects.h"
 #include "SpellAuras.h"
@@ -17,8 +19,7 @@ enum TalentDataProcSpells : uint32
 {
     SPELL_ECLIPSE_SOLAR = 48517,
     SPELL_ECLIPSE_LUNAR = 48518,
-    SPELL_REVITALIZE_ENERGIZE = 48542,
-    SPELL_CUT_TO_THE_CHASE_REFRESH = 9931095
+    SPELL_REVITALIZE_ENERGIZE = 48542
 };
 
 constexpr Milliseconds ECLIPSE_COOLDOWN = 30s;
@@ -29,41 +30,12 @@ constexpr uint32 DRUID_REGROWTH = 0x40;
 constexpr uint32 DRUID_REJUVENATION = 0x10;
 constexpr uint32 DRUID_WILD_GROWTH = 0x4000000;
 constexpr uint32 DRUID_EFFLORESCENCE = 0x10000000;
-constexpr uint32 DRUID_FEROCIOUS_BITE = 0x800000;
-constexpr uint32 ROGUE_EVISCERATE = 0x20000;
-constexpr uint32 ROGUE_ENVENOM = 0x8;
-constexpr uint32 ROGUE_SLICE_AND_DICE = 0x40000;
 
 int32 PctOfMaxMana(Unit const* unit, uint32 spellId)
 {
     SpellInfo const* info = sSpellMgr->GetSpellInfo(spellId);
     return info ? CalculatePct(int32(unit->GetMaxPower(POWER_MANA)), info->Effects[EFFECT_0].CalcValue()) : 0;
 }
-
-class aura_ascension_magic_absorption : public AuraScript
-{
-    PrepareAuraScript(aura_ascension_magic_absorption);
-
-    bool CheckProc(ProcEventInfo&)
-    {
-        return GetTarget()->GetMaxPower(POWER_MANA) > 0;
-    }
-
-    void Restore(AuraEffect const* effect, ProcEventInfo&)
-    {
-        PreventDefaultAction();
-        uint32 const trigger = GetSpellInfo()->Effects[effect->GetEffIndex()].TriggerSpell;
-        GetTarget()->CastCustomSpell(trigger, SPELLVALUE_BASE_POINT0, PctOfMaxMana(GetTarget(), trigger), GetTarget(),
-            true, nullptr, effect);
-    }
-
-    void Register() override
-    {
-        DoCheckProc += AuraCheckProcFn(aura_ascension_magic_absorption::CheckProc);
-        OnEffectProc += AuraEffectProcFn(aura_ascension_magic_absorption::Restore, EFFECT_0,
-            SPELL_AURA_PROC_TRIGGER_SPELL);
-    }
-};
 
 class aura_ascension_eclipse : public AuraScript
 {
@@ -81,6 +53,13 @@ class aura_ascension_eclipse : public AuraScript
 
     bool Ready(ProcEventInfo& event, SpellSchoolMask school, Milliseconds readyAt) const
     {
+        if (AscensionFreePick::Applies(GetTarget()->ToPlayer()))
+        {
+            auto const* spell = event.GetSpellInfo();
+            uint32 const required = school == SPELL_SCHOOL_MASK_ARCANE ? 2912 : 5176;
+            if (!spell || spell->GetFirstRankSpell()->Id != required)
+                return false;
+        }
         return (event.GetSchoolMask() & school) && GameTime::GetGameTimeMS() >= readyAt && !InEclipse();
     }
 
@@ -169,61 +148,10 @@ class aura_ascension_revitalize : public AuraScript
     }
 };
 
-class aura_ascension_cut_to_the_chase : public AuraScript
-{
-    PrepareAuraScript(aura_ascension_cut_to_the_chase);
-
-    bool Validate(SpellInfo const*) override
-    {
-        return ValidateSpellInfo({SPELL_CUT_TO_THE_CHASE_REFRESH});
-    }
-
-    bool CheckProc(ProcEventInfo& event)
-    {
-        SpellInfo const* spell = event.GetSpellInfo();
-        if (!spell)
-            return false;
-        flag96 const& flags = spell->SpellFamilyFlags;
-        if (spell->SpellFamilyName == SPELLFAMILY_ROGUE)
-            return (flags[0] & ROGUE_EVISCERATE) || (flags[1] & ROGUE_ENVENOM);
-        return spell->SpellFamilyName == SPELLFAMILY_DRUID && (flags[0] & DRUID_FEROCIOUS_BITE);
-    }
-
-    void Register() override
-    {
-        DoCheckProc += AuraCheckProcFn(aura_ascension_cut_to_the_chase::CheckProc);
-    }
-};
-
-class spell_ascension_cut_to_the_chase_refresh : public SpellScript
-{
-    PrepareSpellScript(spell_ascension_cut_to_the_chase_refresh);
-
-    void Refresh(SpellEffIndex)
-    {
-        Unit* caster = GetCaster();
-        AuraEffect const* sliceAndDice = caster->GetAuraEffect(SPELL_AURA_MOD_MELEE_HASTE, SPELLFAMILY_ROGUE,
-            ROGUE_SLICE_AND_DICE, 0, 0, caster->GetGUID());
-        if (!sliceAndDice)
-            return;
-        Aura* aura = sliceAndDice->GetBase();
-        aura->SetDuration(sliceAndDice->GetSpellInfo()->GetMaxDuration(), true);
-        aura->SetMaxDuration(aura->GetDuration());
-    }
-
-    void Register() override
-    {
-        OnEffectHitTarget += SpellEffectFn(spell_ascension_cut_to_the_chase_refresh::Refresh, EFFECT_0,
-            SPELL_EFFECT_DUMMY);
-    }
-};
 }
 
 void AddSC_AscensionTalentDataProcs()
 {
-    RegisterSpellScript(aura_ascension_magic_absorption);
     RegisterSpellScript(aura_ascension_eclipse);
     RegisterSpellScript(aura_ascension_revitalize);
-    RegisterSpellScript(aura_ascension_cut_to_the_chase);
-    RegisterSpellScript(spell_ascension_cut_to_the_chase_refresh);
 }

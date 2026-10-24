@@ -17,11 +17,13 @@
 
 #include "AllBattlegroundScript.h"
 #include "AscensionSpecialization.h"
-#include "AscensionTalentReplacementData.h"
+#include "AscensionFreePick.h"
 #include "AscensionWildcard.h"
 #include "Battleground.h"
 #include "CoA.Prestige.API.h"
 #include "CoAPrestigeRules.h"
+#include "AscensionPrestigeReset.h"
+#include "World.h"
 #include "CoASpellbook.h"
 #include "Chat.h"
 #include "Config.h"
@@ -71,7 +73,7 @@ namespace
     };
 
     std::atomic<bool> g_enabled{ true };
-    std::atomic<uint32> g_requiredLevel{ 60 };
+    std::atomic<uint32> g_requiredLevel{ 0 };
     std::atomic<uint32> g_experienceBonusPercent{ 300 };
 
     std::mutex g_rewardsLock;
@@ -139,7 +141,7 @@ namespace
     void LoadConfig()
     {
         g_enabled = sConfigMgr->GetOption<bool>("CoAPrestige.Enable", true);
-        g_requiredLevel = std::max<uint32>(2, sConfigMgr->GetOption<uint32>("CoAPrestige.RequiredLevel", 60));
+        g_requiredLevel = std::max<uint32>(2, sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL));
         g_experienceBonusPercent = sConfigMgr->GetOption<uint32>("CoAPrestige.ExperienceBonusPercent", 300);
 
         std::string const text = sConfigMgr->GetOption<std::string>("CoAPrestige.Rewards", DefaultRewards);
@@ -352,14 +354,6 @@ namespace
                 chains.insert(sSpellMgr->GetFirstSpellInChain(ability.SpellId));
                 player->removeSpell(ability.SpellId, SPEC_MASK_ALL, false);
             }
-        for (AscensionCompatData::TalentReplacement const& replacement : AscensionCompatData::TalentReplacements)
-            if (replacement.ClassId == player->getClass())
-                for (AscensionCompatData::ReplacementRank const& rank : replacement.Ranks)
-                    if (rank.RequiredLevel > level && player->HasSpell(rank.SpellId))
-                    {
-                        chains.insert(sSpellMgr->GetFirstSpellInChain(rank.SpellId));
-                        player->removeSpell(rank.SpellId, SPEC_MASK_ALL, false);
-                    }
         for (uint32 const spellId : CoASpellbook::UpgradeRanksAbove(player, level))
             if (player->HasSpell(spellId))
             {
@@ -480,12 +474,22 @@ namespace
         State state = LoadState(player);
         uint32 const requiredLevel = g_requiredLevel;
         bool const wildcard = AscensionWildcard::IsWildcardHero(player);
-        uint32 const specialization = wildcard ? AscensionWildcard::ActiveSpec(player) + 1 :
-            GetAscensionActiveSpecialization(player);
+        bool const freePick = AscensionFreePick::Applies(player);
+        auto const* realmReset = AscensionPrestigeReset::Area52;
+        AscensionPrestigeReset::Plan resetPlan;
+        std::string resetError;
+        if (freePick && (!realmReset || !realmReset->Prepare(player, resetPlan, resetError)))
+        {
+            ChatHandler(player->GetSession()).SendSysMessage(resetError.empty() ?
+                "Area 52 Prestige reset is unavailable." : resetError);
+            return false;
+        }
+        bool const customClass = IsAscensionCustomClassId(player->getClass());
+        uint32 const specialization = freePick ? resetPlan.Build + 1u : wildcard ? AscensionWildcard::ActiveSpec(player) + 1 :
+            customClass ? GetAscensionActiveSpecialization(player) : player->GetActiveSpec() + 1;
 
         ActivationFacts facts;
         facts.enabled = g_enabled;
-        facts.customClass = wildcard || IsAscensionCustomClassId(player->getClass());
         facts.level = player->GetLevel();
         facts.requiredLevel = requiredLevel;
         facts.active = state.active;
@@ -512,11 +516,26 @@ namespace
         }
 
         RememberActionBar(player);
+        uint32 talents = 0;
+        if (freePick)
+        {
+            AscensionPrestigeReset::Result result;
+            if (!realmReset->Reset(player, resetPlan, result, resetError))
+            {
+                chat.SendSysMessage(resetError);
+                return false;
+            }
+            talents = result.Abilities;
+        }
+        else if (wildcard)
+            talents = AscensionWildcard::PrestigeSpecialization(player);
+        else if (customClass)
+            talents = ForgetAscensionClassTalents(player);
+        else
+            player->resetTalents(true);
         DismissPets(player);
         ResetQuests(player, requiredLevel);
 
-        uint32 const talents = wildcard ? AscensionWildcard::PrestigeSpecialization(player) :
-            ForgetAscensionClassTalents(player);
         std::unordered_set<uint32> const chains = ForgetRanksAbove(player, FirstLevel);
         player->GiveLevel(FirstLevel);
         player->SetUInt32Value(PLAYER_XP, 0);

@@ -34,7 +34,6 @@
 #include "GroupMgr.h"
 #include "GuildMgr.h"
 #include "LFGMgr.h"
-#include "LocalLevelScaling.h"
 #include "Log.h"
 #include "MapMgr.h"
 #include "Pet.h"
@@ -802,10 +801,12 @@ void ObjectMgr::LoadCreatureTemplateModels()
             continue;
         }
 
-        if (!sCreatureDisplayInfoStore.LookupEntry(creatureDisplayId))
-            LOG_WARN("sql.sql",
-                     "Creature (Entry: {}) uses display id ({}) unknown to the server; keeping it.",
-                     creatureId, creatureDisplayId);
+        CreatureDisplayInfoEntry const* displayEntry = sCreatureDisplayInfoStore.LookupEntry(creatureDisplayId);
+        if (!displayEntry)
+        {
+            LOG_ERROR("sql.sql", "Creature (Entry: {}) lists non-existing CreatureDisplayID id ({}), this can crash the client.", creatureId, creatureDisplayId);
+            continue;
+        }
 
         CreatureModelInfo const* modelInfo = GetCreatureModelInfo(creatureDisplayId);
         if (!modelInfo)
@@ -1795,7 +1796,10 @@ void ObjectMgr::LoadCreatureModelInfo()
         uint32 modelId = fields[0].Get<uint32>();
         CreatureDisplayInfoEntry const* creatureDisplay = sCreatureDisplayInfoStore.LookupEntry(modelId);
         if (!creatureDisplay)
-            LOG_WARN("sql.sql", "Table `creature_model_info` uses unknown display id ({}); keeping it.", modelId);
+        {
+            LOG_ERROR("sql.sql", "Table `creature_model_info` references missing display id ({}), skipping.", modelId);
+            continue;
+        }
 
         CreatureModelInfo& modelInfo = _creatureModelStore[modelId];
 
@@ -1822,8 +1826,7 @@ void ObjectMgr::LoadCreatureModelInfo()
         if (modelInfo.combat_reach < 0.1f)
             modelInfo.combat_reach = DEFAULT_COMBAT_REACH;
 
-        CreatureModelDataEntry const* modelData = creatureDisplay ? sCreatureModelDataStore.LookupEntry(creatureDisplay->ModelId) : nullptr;
-        if (modelData)
+        if (CreatureModelDataEntry const* modelData = sCreatureModelDataStore.LookupEntry(creatureDisplay->ModelId))
         {
             for (uint32 i = 0; i < 14; i++)
             {
@@ -3995,11 +3998,7 @@ void ObjectMgr::LoadItemTemplates()
 
 ItemTemplate const* ObjectMgr::GetItemTemplate(uint32 entry)
 {
-    if (entry < _itemTemplateStoreFast.size())
-        if (ItemTemplate const* proto = _itemTemplateStoreFast[entry])
-            return proto;
-
-    return LocalLevelScaling::ScaledItemTemplateFor(entry);
+    return entry < _itemTemplateStoreFast.size() ? _itemTemplateStoreFast[entry] : nullptr;
 }
 
 void ObjectMgr::LoadItemSetNameLocales()

@@ -16,6 +16,7 @@
  */
 
 #include "SpellMgr.h"
+#include "../../coa/AscensionFreePick.h"
 #include "Log.h"
 #include "BattlefieldMgr.h"
 #include "BattlegroundIC.h"
@@ -336,6 +337,8 @@ int32 GetDiminishingReturnsLimitDuration(DiminishingGroup group, SpellInfo const
 {
     if (!IsDiminishingReturnsGroupDurationLimited(group))
         return 0;
+    if (AscensionFreePick::Enabled() && spellproto->Id == 954507)
+        return 6 * IN_MILLISECONDS;
 
     // Stone Grip's active tooltip specifies eight seconds against players, before diminishing returns.
     if (spellproto->SpellFamilyName == 37 && spellproto->Id == 800145)
@@ -879,9 +882,7 @@ SpellGroupStackRule SpellMgr::CheckSpellGroupStackRules(SpellInfo const* spellIn
 
     for (std::set<SpellGroup>::iterator itr = groups.begin(); itr!= groups.end(); ++itr)
     {
-        SpellGroupStackMap::const_iterator found = mSpellGroupStack.find(*itr);
-        if (found != mSpellGroupStack.end())
-            rule = found->second;
+        rule = GetSpellGroupStackRule(*itr);
         if (rule)
             break;
     }
@@ -892,7 +893,12 @@ SpellGroupStackRule SpellMgr::GetSpellGroupStackRule(SpellGroup group) const
 {
     SpellGroupStackMap::const_iterator itr = mSpellGroupStack.find(group);
     if (itr != mSpellGroupStack.end())
+    {
+        if (group == 1010 && itr->second == SPELL_GROUP_STACK_RULE_EXCLUSIVE_FROM_SAME_CASTER &&
+            AscensionFreePick::Enabled())
+            return SPELL_GROUP_STACK_RULE_DEFAULT;
         return itr->second;
+    }
 
     return SPELL_GROUP_STACK_RULE_DEFAULT;
 }
@@ -937,7 +943,15 @@ bool SpellMgr::CanSpellTriggerProcOnEvent(SpellProcEntry const& procEntry, ProcE
     if (eventInfo.GetTypeMask() & SPELL_PROC_FLAG_MASK)
         if (SpellInfo const* eventSpellInfo = eventInfo.GetSpellInfo())
             if (!eventSpellInfo->IsAffected(procEntry.SpellFamilyName, procEntry.SpellFamilyMask))
-                return false;
+            {
+                bool inherited = false;
+                if (Player const* actor = eventInfo.GetActor() ? eventInfo.GetActor()->ToPlayer() : nullptr)
+                    for (uint32 original : actor->GetSpellInteractionOrigins(eventSpellInfo->Id))
+                        if (SpellInfo const* ancestor = GetSpellInfo(original))
+                            inherited |= ancestor->IsAffected(procEntry.SpellFamilyName, procEntry.SpellFamilyMask);
+                if (!inherited)
+                    return false;
+            }
 
     // check spell type mask (if set)
     if (eventInfo.GetTypeMask() & (SPELL_PROC_FLAG_MASK | PERIODIC_PROC_FLAG_MASK))
@@ -979,6 +993,12 @@ bool SpellMgr::CanSpellTriggerProcOnEvent(SpellProcEntry const& procEntry, ProcE
 
 SpellBonusEntry const* SpellMgr::GetSpellBonusData(uint32 spellId) const
 {
+    if (spellId == 954204 && AscensionFreePick::Enabled())
+    {
+        static SpellBonusEntry const bonus{0.0f, 0.0f, 0.4f, 0.0f};
+        return &bonus;
+    }
+
     // Lookup data
     SpellBonusMap::const_iterator itr = mSpellBonusMap.find(spellId);
     if (itr != mSpellBonusMap.end())
@@ -2332,8 +2352,27 @@ void SpellMgr::LoadSpellProcs()
         ++count;
     }
 
+    RefreshArea52DanceOfDeathProc();
+
     LOG_INFO("server.loading", ">> Generated spell proc data for {} spells in {} ms", count, GetMSTimeDiffToNow(oldMSTime));
     LOG_INFO("server.loading", " ");
+}
+
+void SpellMgr::RefreshArea52DanceOfDeathProc()
+{
+    if (AscensionFreePick::Enabled())
+    {
+        auto found = mSpellProcMap.find(954194);
+        if (found != mSpellProcMap.end())
+        {
+            SpellProcEntry& proc = found->second;
+            proc.ProcFlags = PROC_FLAG_KILL | PROC_FLAG_DONE_SPELL_MELEE_DMG_CLASS;
+            proc.SpellPhaseMask = PROC_SPELL_PHASE_CAST;
+            proc.AttributesMask = 0;
+            proc.DisableEffectsMask = (1u << EFFECT_0) | (1u << EFFECT_2);
+            proc.Cooldown = Milliseconds(5000);
+        }
+    }
 }
 
 void SpellMgr::LoadSpellBonuses()

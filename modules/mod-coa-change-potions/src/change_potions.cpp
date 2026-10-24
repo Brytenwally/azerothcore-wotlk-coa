@@ -139,7 +139,6 @@
 #include "AscensionCustomClassData.h"
 #include "AscensionLiveBaselineData.h"
 #include "AscensionRacialAbilities.h"
-#include "AscensionSpecialization.h"
 #include "AscensionSpellProgressionData.h"
 #include "AscensionTalentReplacementData.h"
 #include "AscensionTaughtAbilityData.h"
@@ -952,7 +951,6 @@ void StripOtherClassSkills(Player* player, ClassKit const& kit, uint32& removed)
 // has and hands out none.
 void ClearTalentState(Player* player)
 {
-    ClearAscensionSpecializationSlots(player);
     auto clear = [player](std::string const& setting) { player->UpdatePlayerSetting(setting, 0, 0); };
 
     clear("core.ascension_active_spec");

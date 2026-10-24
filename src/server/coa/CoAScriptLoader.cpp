@@ -3,6 +3,8 @@
  */
 
 #include "CoAScriptLoader.h"
+void AddSC_AscensionWhiteWalkerSupport();
+
 #include "AscensionReaperDirge.h"
 #include "AscensionTinkerOverload.h"
 #include "AscensionRunemasterGlyphs.h"
@@ -18,39 +20,53 @@
 #include "AscensionVenomancerVenomPayloads.h"
 #include "AscensionTinkerCombatSymbiosis.h"
 
+void AddSC_AscensionSummonAvoidance();
+void AddSC_AscensionWildcardPhysical();
+void AddSC_AscensionTreeOfLife();
+void AddSC_AscensionWildcardSealOfFervor();
+void AddAscensionEldritchKnightScripts();
+void AddAscensionMysticKnightEpicScripts();
+void AddAscensionHopliteScripts();
+void AddAscensionBlademasterScripts();
+void AddAscensionSpartanKickScripts();
+void AddAscensionBulwarkScripts();
+
 void AddAscensionCompatScripts();
+void AddSC_AscensionRunSpeed();
+void AddSC_XPHotspots();
+void AddSC_Area52WorldforgedAcquisition();
 void AddAscensionTravelPermitScripts();
 void AddSC_AscensionRulesets();
 void AddSC_AscensionMercenary();
 void AddSC_AscensionHighRisk();
-void AddSC_AscensionItemScaling();
 void AddSC_AscensionBloodforged();
-void AddAscensionEquippedGearLootScripts();
 void AddSC_AscensionPvpPower();
-void AddSC_AscensionGlory();
-void AddSC_AscensionQuestLog();
 void AddSC_AscensionRestingBuff();
 void AddSC_AscensionClosestResurrection();
 void AddSC_AscensionThreatRedirect();
-void AddSC_AscensionTalentDataProcs();
-void AddSC_CoALfgStartPoint();
 void AddSC_CoABossProbe();
 void AddSC_CoADungeonSpellDamage();
 void AddSC_CoADungeonBossKit();
 void AddSC_CoADungeonBossSpells();
 void AddSC_AscensionKeepersScrollSteadfast();
 void AddSC_AscensionProfessionSpellAffect();
+void AddSC_AscensionTalentDataProcs();
 void AddSC_AscensionPerforatingShots();
 void AddSC_AscensionSummonedEffects();
 void AddSC_AscensionKeepersScrollZoneBuff();
 void AddAscensionStockCoefficientScripts();
 void AddAscensionScalingBaseScripts();
 void AddCoABugReportScripts();
+void AddAscensionArea52BuildScripts();
+void AddArea52ActiveBuildScripts();
 void AddCoAPlayerTicketScripts();
 void AddAscensionWildcardScripts();
-void AddAscensionFreepickScripts();
 void AddAscensionTamingScripts();
+void AddAscensionHeroPetScripts();
+void AddAscensionPlayerComboPointsScripts();
+void AddAscensionVictoryRushScripts();
 void AddAscensionAchievementConditionScripts();
+void AddAscensionArea52AchievementScripts();
 void AddAscensionAccountInfoScripts();
 void AddCoAGameplayTestScripts();
 void AddSC_AscensionResourceTalents();
@@ -250,7 +266,6 @@ void AddSC_AscensionRangerToTheSkies();
 void AddSC_AscensionRunemasterManuscription();
 void AddSC_AscensionRangerTalents();
 void AddSC_AscensionRangerFlowers();
-void AddSC_AscensionDeadminesBosses();
 void AddSC_AscensionRangerPetalkeeper();
 void AddSC_AscensionRangerFalconstrike();
 void AddSC_AscensionRangerArchery();
@@ -265,13 +280,10 @@ void AddSC_AscensionUpgradeKits();
 void AddSC_AscensionProfessionRanks();
 void AddSC_AscensionPrestigiousCache();
 void AddSC_AscensionCallboardCache();
-void AddSC_AscensionFireLordCache();
-void AddSC_AscensionTierTokenVendor();
 void AddSC_AscensionFeatherOfAncients();
 void AddSC_AscensionVultureCultQuests();
 void AddSC_AscensionCaravanCarts();
 void AddSC_AscensionNorthshireRuins();
-void AddSC_AscensionCainManor();
 void AddSC_AscensionInnRest();
 void AddSC_AscensionReaperRuin();
 void AddSC_AscensionReaperRedshade();
@@ -282,7 +294,6 @@ void AddSC_AscensionWisdomball();
 void AddSC_AscensionBloodmageTalents();
 void AddSC_AscensionBloodmageVitality();
 void AddSC_AscensionBloodmageProcs();
-void AddSC_AscensionTierSetHarvest();
 void AddSC_AscensionReaperReflexes();
 void AddSC_AscensionPrimalistMountain();
 void AddSC_AscensionChronomancerRipple();
@@ -310,18 +321,27 @@ void AddSC_AscensionRunemasterElementalTalents();
 void AddSC_AscensionRunemasterTalentProcs();
 void AddSC_AscensionRunemasterTalentMechanics();
 void AddSC_AscensionWelcomeWarchest();
+void AddSC_Area52TesterSupplies();
+void AddSC_Area52ArchetypeVanity();
 void AddSC_AscensionClassBundleStore();
+void AddSC_AscensionMysticEnchant();
+void AddSC_Area52Certification();
 void AddSC_AscensionLfgObjective();
 void AddSC_AscensionBushcraft();
 
 void AddCoAScripts()
 {
+    AddSC_AscensionSummonAvoidance();
+    AddSC_AscensionWildcardPhysical();
+    AddSC_AscensionTreeOfLife();
+    AddSC_AscensionWildcardSealOfFervor();
     AddAscensionStockCoefficientScripts();
     AddAscensionScalingBaseScripts();
     AddAscensionManastormScripts();
     AddSC_AscensionReaperDirge();
     AddAscensionTinkerOverloadScripts();
     AddAscensionCompatScripts();
+    AddSC_AscensionRunSpeed();
     AddAscensionTravelPermitScripts();
     AddAscensionBarbarianCompletionScripts();
     AddAscensionBarbarianEventScripts();
@@ -523,7 +543,6 @@ void AddCoAScripts()
     AddSC_AscensionRunemasterManuscription();
     AddSC_AscensionRangerTalents();
     AddSC_AscensionRangerFlowers();
-    AddSC_AscensionDeadminesBosses();
     AddSC_AscensionRangerPetalkeeper();
     AddSC_AscensionRangerFalconstrike();
     AddSC_AscensionRangerArchery();
@@ -538,13 +557,10 @@ void AddCoAScripts()
     AddSC_AscensionProfessionRanks();
     AddSC_AscensionPrestigiousCache();
     AddSC_AscensionCallboardCache();
-    AddSC_AscensionFireLordCache();
-    AddSC_AscensionTierTokenVendor();
     AddSC_AscensionFeatherOfAncients();
     AddSC_AscensionVultureCultQuests();
     AddSC_AscensionCaravanCarts();
     AddSC_AscensionNorthshireRuins();
-    AddSC_AscensionCainManor();
     AddSC_AscensionInnRest();
     AddSC_AscensionReaperRuin();
     AddSC_AscensionReaperRedshade();
@@ -555,7 +571,6 @@ void AddCoAScripts()
     AddSC_AscensionBloodmageTalents();
     AddSC_AscensionBloodmageVitality();
     AddSC_AscensionBloodmageProcs();
-    AddSC_AscensionTierSetHarvest();
     AddSC_AscensionReaperReflexes();
     AddSC_AscensionPrimalistMountain();
     AddSC_AscensionChronomancerRipple();
@@ -590,39 +605,52 @@ void AddCoAScripts()
     AddAscensionVenomancerVenomPayloadScripts();
     AddAscensionTinkerCombatSymbiosisScripts();
     AddCoABugReportScripts();
+    AddAscensionArea52BuildScripts();
+    AddArea52ActiveBuildScripts();
     AddCoAPlayerTicketScripts();
     AddAscensionWildcardScripts();
-    AddAscensionFreepickScripts();
     AddAscensionTamingScripts();
+    AddAscensionHeroPetScripts();
+    AddAscensionPlayerComboPointsScripts();
+    AddAscensionVictoryRushScripts();
     AddAscensionAchievementConditionScripts();
+    AddAscensionArea52AchievementScripts();
     AddAscensionAccountInfoScripts();
     AddCoAGameplayTestScripts();
     AddSC_AscensionResourceTalents();
     AddSC_AscensionRulesets();
     AddSC_AscensionMercenary();
     AddSC_AscensionHighRisk();
-    AddSC_AscensionItemScaling();
     AddSC_AscensionBloodforged();
-    AddAscensionEquippedGearLootScripts();
     AddSC_AscensionPvpPower();
-    AddSC_AscensionGlory();
-    AddSC_AscensionQuestLog();
     AddSC_AscensionRestingBuff();
     AddSC_AscensionClosestResurrection();
     AddSC_AscensionThreatRedirect();
-    AddSC_AscensionTalentDataProcs();
-    AddSC_CoALfgStartPoint();
     AddSC_CoABossProbe();
     AddSC_CoADungeonSpellDamage();
     AddSC_CoADungeonBossKit();
     AddSC_CoADungeonBossSpells();
     AddSC_AscensionKeepersScrollSteadfast();
     AddSC_AscensionProfessionSpellAffect();
+    AddSC_AscensionTalentDataProcs();
     AddSC_AscensionPerforatingShots();
     AddSC_AscensionSummonedEffects();
     AddSC_AscensionKeepersScrollZoneBuff();
     AddSC_AscensionWelcomeWarchest();
+    AddSC_Area52TesterSupplies();
+    AddSC_Area52ArchetypeVanity();
     AddSC_AscensionClassBundleStore();
     AddSC_AscensionLfgObjective();
     AddSC_AscensionBushcraft();
+    AddSC_AscensionMysticEnchant();
+    AddSC_Area52Certification();
+    AddAscensionEldritchKnightScripts();
+    AddAscensionMysticKnightEpicScripts();
+    AddAscensionHopliteScripts();
+    AddAscensionBlademasterScripts();
+    AddAscensionSpartanKickScripts();
+    AddAscensionBulwarkScripts();
+    AddSC_XPHotspots();
+    AddSC_Area52WorldforgedAcquisition();
+    AddSC_AscensionWhiteWalkerSupport();
 }

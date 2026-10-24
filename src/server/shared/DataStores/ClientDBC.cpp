@@ -33,9 +33,9 @@ uint32 ReadHeaderField(std::vector<uint8> const& data, std::size_t offset)
 }
 }
 
-std::string_view ClientDBC::Record::GetStringAt(uint32 byteOffset) const
+std::string_view ClientDBC::Record::GetString(uint32 dword) const
 {
-    uint32 offset = GetUInt32At(byteOffset);
+    uint32 offset = GetUInt32(dword);
     if (offset >= _file._stringSize)
         return {};
 

@@ -19,7 +19,7 @@ TEST(CoAParse, SplitDropsEmptyFields)
 
     EXPECT_TRUE(Split("", ';').empty());
     EXPECT_EQ(Split("a;", ';').size(), 1u);
-    EXPECT_EQ(Split("a;;b", ';').size(), 2u); // empty middle dropped
+    EXPECT_EQ(Split("a;" ";b", ';').size(), 2u); // empty middle dropped
 }
 
 TEST(CoAParse, SplitKeepEmptyPreservesSlots)

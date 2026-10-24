@@ -42,11 +42,13 @@ TEST(CoAPrestige, StateRoundTripsThroughTheSetting)
     EXPECT_EQ(DecodeState({ 2, 0, 31 }), (State{ 2, false, 31 }));
 }
 
-TEST(CoAPrestige, ActivationNeedsTheLevelAClassAndASpecialization)
+TEST(CoAPrestige, ActivationNeedsTheLevelAndASpecialization)
 {
     ActivationFacts ready;
     ready.level = 60;
     ready.specialization = 25;
+    EXPECT_EQ(CheckActivation(ready), Refusal::None);
+    ready.specialization = 1;
     EXPECT_EQ(CheckActivation(ready), Refusal::None);
 
     ActivationFacts facts = ready;
@@ -60,10 +62,6 @@ TEST(CoAPrestige, ActivationNeedsTheLevelAClassAndASpecialization)
     facts = ready;
     facts.enabled = false;
     EXPECT_EQ(CheckActivation(facts), Refusal::Disabled);
-
-    facts = ready;
-    facts.customClass = false;
-    EXPECT_EQ(CheckActivation(facts), Refusal::NotCustomClass);
 
     facts = ready;
     facts.active = true;
@@ -103,7 +101,7 @@ TEST(CoAPrestige, RefusalsExplainThemselves)
     EXPECT_EQ(RefusalMessage(Refusal::BelowLevel, 60),
         "You must be level 60 or higher to participate in Prestige Mode");
     EXPECT_TRUE(RefusalMessage(Refusal::None, 60).empty());
-    for (Refusal refusal : { Refusal::Disabled, Refusal::NotCustomClass, Refusal::InProgress, Refusal::NoSpecialization,
+    for (Refusal refusal : { Refusal::Disabled, Refusal::InProgress, Refusal::NoSpecialization,
              Refusal::Dead, Refusal::InCombat, Refusal::Travelling, Refusal::NotInOpenWorld })
         EXPECT_FALSE(RefusalMessage(refusal, 60).empty());
 }

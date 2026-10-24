@@ -71,9 +71,9 @@ namespace Trainer
             [[nodiscard]] std::vector<Spell> const& GetSpells() const { return _spells; }
             /// Writes the trainer window. `onlyTrainable` drops the rows of `_spells` the player cannot
             /// buy yet - the upper ranks of a ladder they have not climbed, and every other unavailable
-            /// one - and the ranks they already hold, which the client would redraw as available on the
-            /// next spell learned; it keeps the rest: the steps open to them and the recipes they know.
+            /// one - and keeps the rest: the step they are on and the steps open to them.
             void SendSpells(Creature* npc, Player* player, LocaleConstant locale, bool onlyTrainable = false) const;
+            bool RepublishesAfterPurchase() const;
             bool CanTeachSpell(Player const* player, Spell const* trainerSpell) const;
             void TeachSpell(Creature* npc, Player* player, uint32 spellId);
 
@@ -100,6 +100,8 @@ namespace Trainer
     /// The rows a Wildcard Hero trains: the next rank of each Wildcard ability it knows, set by AscensionWildcard.
     using WildcardRankRows = std::vector<Spell> (*)(Player const* player);
     AC_GAME_API void SetWildcardRankRows(WildcardRankRows rows);
+    using RankTrainerHero = bool (*)(Player const* player);
+    AC_GAME_API void SetRankTrainerHero(RankTrainerHero heroes);
 
     /// The trainer that serves this player at this unit: its own, except that a Wildcard Hero is taught the next rank
     /// of each Wildcard ability it knows at any class trainer or Book of Ascension. Valid until the next call on this

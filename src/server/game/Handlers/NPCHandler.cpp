@@ -103,6 +103,8 @@ void WorldSession::SendTrainerList(Creature* npc, bool onlyTrainable)
         return;
     }
 
+    sScriptMgr->OnPlayerOpenTrainer(_player, npc);
+
     if (!trainer->IsTrainerValidForPlayer(_player))
     {
         LOG_DEBUG("network", "WorldSession: SendTrainerList - trainer {} not valid for player {}", npc->GetGUID().ToString().c_str(), GetPlayerInfo().c_str());
@@ -133,7 +135,10 @@ void WorldSession::HandleTrainerBuySpellOpcode(WorldPackets::NPC::TrainerBuySpel
     if (!trainer)
         return;
 
+    bool const refresh = trainer->RepublishesAfterPurchase();
     trainer->TeachSpell(npc, _player, packet.SpellID);
+    if (refresh)
+        SendTrainerList(npc);
 }
 
 void WorldSession::HandleGossipHelloOpcode(WorldPacket& recvData)

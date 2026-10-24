@@ -118,7 +118,7 @@ void Player::PrepareGossipMenu(WorldObject* source, uint32 menuId /*= 0*/, bool 
                     break;
                 case GOSSIP_OPTION_TRAINER:
                 {
-                    Trainer::Trainer const* trainer = sObjectMgr->GetTrainer(creature->GetEntry());
+                    Trainer::Trainer const* trainer = Trainer::GetTrainerFor(creature, this);
                     if (!trainer || !trainer->IsTrainerValidForPlayer(this))
                     {
                         LOG_ERROR("sql.sql", "GOSSIP_OPTION_TRAINER:: Player {} (GUID: {}) requested wrong gossip menu: {} at Creature: {} (Entry: {})",

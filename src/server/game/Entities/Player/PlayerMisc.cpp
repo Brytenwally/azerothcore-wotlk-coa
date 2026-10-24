@@ -16,6 +16,7 @@
  */
 
 #include "AccountMgr.h"
+#include "DungeonHealth.h"
 #include "GameTime.h"
 #include "InstancePackets.h"
 #include "MapMgr.h"
@@ -208,7 +209,8 @@ void Player::ResetInstances(ObjectGuid guid, uint8 method, bool isRaid)
             {
                 InstanceSave* instanceSave = itr->second.save;
                 MapEntry const* entry = sMapStore.LookupEntry(itr->first);
-                if (!entry || entry->IsRaid() || !instanceSave->CanReset())
+                if (!entry || entry->IsRaid() || !instanceSave->CanReset() ||
+                    (difficulty != DUNGEON_DIFFICULTY_NORMAL && !DungeonHealth::IsVanillaDungeon(instanceSave->GetMapId())))
                 {
                     continue;
                 }

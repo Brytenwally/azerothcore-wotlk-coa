@@ -16,6 +16,7 @@
  */
 
 #include "Group.h"
+#include "DungeonHealth.h"
 #include "AreaDefines.h"
 #include "Battleground.h"
 #include "BattlegroundMgr.h"
@@ -2351,7 +2352,8 @@ void Group::ResetInstances(uint8 method, bool isRaid, Player* leader)
                 {
                     InstanceSave* instanceSave = itr->second.save;
                     MapEntry const* entry = sMapStore.LookupEntry(itr->first);
-                    if (!entry || entry->IsRaid() || !instanceSave->CanReset())
+                    if (!entry || entry->IsRaid() || !instanceSave->CanReset() ||
+                    (difficulty != DUNGEON_DIFFICULTY_NORMAL && !DungeonHealth::IsVanillaDungeon(instanceSave->GetMapId())))
                         continue;
 
                     Map* map = sMapMgr->FindMap(instanceSave->GetMapId(), instanceSave->GetInstanceId());

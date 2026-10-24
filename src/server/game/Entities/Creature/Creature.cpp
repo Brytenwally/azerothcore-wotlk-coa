@@ -558,10 +558,11 @@ bool Creature::InitEntry(uint32 Entry, CreatureData const* data)
 
     CreatureModel model = *ObjectMgr::ChooseDisplayId(cinfo, data);
     CreatureModelInfo const* mInfo = sObjectMgr->GetCreatureModelRandomGender(&model, cinfo);
-    if (!mInfo)
-        LOG_DEBUG("sql.sql",
-                  "No model info for creature (Entry: {}) display {}; loading anyway.",
-                  Entry, model.CreatureDisplayID);
+    if (!mInfo)                                             // Cancel load if no model defined
+    {
+        LOG_ERROR("sql.sql", "Creature (Entry: {}) has no model {} defined in table `creature_template_model`, can't load. ", Entry, model.CreatureDisplayID);
+        return false;
+    }
 
     SetDisplayId(model.CreatureDisplayID, model.DisplayScale);
     SetNativeDisplayId(model.CreatureDisplayID);
@@ -1355,7 +1356,6 @@ void Creature::SetLootRecipient(Unit* unit, bool withGroup)
 
     if (!unit)
     {
-        m_sharedQuestParticipants.clear();
         m_lootRecipient.Clear();
         m_lootRecipientGroup = 0;
         RemoveDynamicFlag(UNIT_DYNFLAG_LOOTABLE | UNIT_DYNFLAG_TAPPED);
@@ -1406,74 +1406,6 @@ void Creature::SetLootRecipient(Unit* unit, bool withGroup)
         m_lootRecipientGroup = 0;
 
     SetDynamicFlag(UNIT_DYNFLAG_TAPPED);
-}
-
-bool Creature::IsSharedQuestTarget() const
-{
-    CreatureTemplate const* creatureTemplate = GetCreatureTemplate();
-    Map const* map = FindMap();
-    return creatureTemplate && (creatureTemplate->type_flags & CREATURE_TYPE_FLAG_QUEST_BOSS)
-        && map && map->IsWorldMap() && !IsControlledByPlayer();
-}
-
-void Creature::RegisterSharedQuestContributor(Unit* attacker)
-{
-    if (!attacker || !IsSharedQuestTarget())
-        return;
-
-    if (Player* player = attacker->GetCharmerOrOwnerPlayerOrPlayerItself())
-        if (m_sharedQuestParticipants.insert(player->GetGUID()).second)
-            ForceValuesUpdateAtIndex(UNIT_DYNAMIC_FLAGS);
-}
-
-bool Creature::IsSharedQuestParticipant(Player const* player) const
-{
-    return m_sharedQuestParticipants.contains(player->GetGUID());
-}
-
-bool Creature::IsSharedQuestItem(uint32 itemId) const
-{
-    if (ItemTemplate const* item = sObjectMgr->GetItemTemplate(itemId))
-        if (item->StartQuest)
-            return true;
-
-    for (ObjectGuid const& guid : m_sharedQuestParticipants)
-        if (Player* player = ObjectAccessor::FindPlayer(guid))
-            if (player->HasQuestForItem(itemId))
-                return true;
-    return false;
-}
-
-void Creature::FinalizeSharedQuestParticipants()
-{
-    GuidSet eligible;
-    for (ObjectGuid const& guid : m_sharedQuestParticipants)
-        if (Player* player = ObjectAccessor::FindPlayer(guid))
-        {
-            if (!player->IsAlive() || !player->IsAtLootRewardDistance(this) || !player->InSamePhase(this))
-                continue;
-            eligible.insert(guid);
-            if (Group* group = player->GetGroup())
-                for (GroupReference* member = group->GetFirstMember(); member; member = member->next())
-                    if (Player* other = member->GetSource())
-                        if (other->IsAlive() && other->IsAtLootRewardDistance(this) && other->InSamePhase(this))
-                            eligible.insert(other->GetGUID());
-        }
-    m_sharedQuestParticipants = std::move(eligible);
-}
-
-void Creature::RewardSharedQuestParticipants(ObjectGuid rewardedPlayer, ObjectGuid rewardedGroup)
-{
-    for (ObjectGuid const& guid : m_sharedQuestParticipants)
-        if (Player* player = ObjectAccessor::FindPlayer(guid))
-        {
-            if (guid == rewardedPlayer)
-                continue;
-            if (Group* group = player->GetGroup())
-                if (group->GetGUID() == rewardedGroup)
-                    continue;
-            player->KilledMonster(GetCreatureTemplate(), GetGUID());
-        }
 }
 
 // return true if this creature is tapped by the player or by a member of his group.
@@ -1620,7 +1552,7 @@ void Creature::SelectLevel(bool changelevel)
     // Vanilla dungeons on Heroic/Mythic are level 60 content. A creature without its own difficulty
     // template would keep its Normal level there (Defias Miner: 17), and a level-17 creature is then
     // scaled up again by per-character views on top of the health from coa_dungeon_health.
-    if (!IsPet() && cInfo->Entry == GetEntry() && DungeonHealth::IsVanillaDungeon(GetMapId())
+    if (!IsPet() && !IsCharmedOwnedByPlayerOrPlayer() && cInfo->Entry == GetEntry() && DungeonHealth::IsVanillaDungeon(GetMapId())
         && (GetMap()->GetSpawnMode() == 1 || GetMap()->GetSpawnMode() == 2))
         level = std::max<uint8>(level, rank == CREATURE_ELITE_WORLDBOSS ? 62 : 60);
 
@@ -1635,7 +1567,7 @@ void Creature::SelectLevel(bool changelevel)
     uint32 basehp = std::max<uint32>(1, stats->GenerateHealth(cInfo));
     uint32 health = uint32(basehp * healthmod);
     uint32 heroicHealth = health;
-    if (!IsPet() && GetMap()->GetSpawnMode() == 2 && DungeonHealth::IsVanillaDungeon(GetMapId()))
+    if (!IsPet() && !IsCharmedOwnedByPlayerOrPlayer() && GetMap()->GetSpawnMode() == 2 && DungeonHealth::IsVanillaDungeon(GetMapId()))
     {
         CreatureTemplate const* normalInfo = sObjectMgr->GetCreatureTemplate(GetEntry());
         if (normalInfo && normalInfo->DifficultyEntry[0])
@@ -1647,7 +1579,8 @@ void Creature::SelectLevel(bool changelevel)
             }
     }
     health = DungeonHealth::Resolve(dungeonHealthOverrides, GetMapId(), uint8(GetMap()->GetSpawnMode()),
-        GetEntry(), health, heroicHealth, cInfo->Entry != GetEntry(), IsPet(), cInfo->rank == CREATURE_ELITE_WORLDBOSS);
+        GetEntry(), health, heroicHealth, cInfo->Entry != GetEntry(), IsPet() || IsCharmedOwnedByPlayerOrPlayer(),
+        cInfo->rank == CREATURE_ELITE_WORLDBOSS);
 
     SetCreateHealth(health);
     SetMaxHealth(health);
@@ -2097,14 +2030,15 @@ void Creature::setDeathState(DeathState state, bool despawn)
 {
     Unit::setDeathState(state, despawn);
 
+    if (IsInWorld() && !IsAlive())
+        GetMap()->AddObjectToPendingUpdateList(this);
+
     if (state == DeathState::JustDied)
     {
         m_corpseRemoveTime = GameTime::GetGameTime().count() + m_corpseDelay;
         bool const respawnTimerFromDeath = IsRespawnTimerFromDeath();
         uint32 dynamicRespawnDelay = GetMap()->ApplyDynamicModeRespawnScaling(this,
             CreatureRespawnClock::DelayAtDeath(m_respawnDelay, respawnTimerFromDeath));
-        if (IsSharedQuestTarget() && !isWorldBoss())
-            dynamicRespawnDelay = std::min<uint32>(dynamicRespawnDelay, 30);
         m_respawnTime = CreatureRespawnClock::RespawnTimeAtDeath(GameTime::GetGameTime().count(), dynamicRespawnDelay,
             m_corpseDelay, respawnTimerFromDeath);
 
@@ -2815,7 +2749,7 @@ void Creature::SaveRespawnTime()
 bool Creature::IsRespawnTimerFromDeath() const
 {
     return m_spawnId && !IsSummon() && (!m_creatureData || m_creatureData->dbData)
-        && ((IsSharedQuestTarget() && !isWorldBoss()) || sWorld->getBoolConfig(CONFIG_RESPAWN_TIMER_STARTS_AT_DEATH));
+        && sWorld->getBoolConfig(CONFIG_RESPAWN_TIMER_STARTS_AT_DEATH);
 }
 
 bool Creature::CanCreatureAttack(Unit const* victim, bool skipDistCheck) const
@@ -4113,6 +4047,9 @@ std::string Creature::GetDebugInfo() const
 // Note: This is called in a tight (heavy) loop, is it critical that all checks are FAST and are hopefully only simple conditionals.
 bool Creature::IsUpdateNeeded()
 {
+    if (!IsAlive())
+        return true;
+
     if (WorldObject::IsUpdateNeeded())
         return true;
 

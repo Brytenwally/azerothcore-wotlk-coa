@@ -296,7 +296,7 @@ def semicolon_check(file: io, file_path: str) -> None:
         # Remove inline comments after SQL (ignoring "--" inside string literals)
         stripped_line = strip_inline_comment(stripped_line)
 
-        if not query_open and stripped_line.upper().startswith("SET") and not stripped_line.endswith(";"):
+        if stripped_line.upper().startswith("SET") and not stripped_line.endswith(";"):
             print(f"❌ Missing semicolon in {file_path} at line {line_number}")
             check_failed = True
 
@@ -409,7 +409,9 @@ def backtick_check(file: io, file_path: str) -> None:
                                     "BEGIN", "COMMIT", "ROLLBACK", "SAVEPOINT", "LOCK", "UNLOCK",
                                     "WITH", "RECURSIVE", "COLUMN", "ENGINE", "CHARSET", "COLLATE",
                                     "IF", "ELSEIF", "LOOP", "WHILE", "DO", "HANDLER", "LEAVE",
-                                    "ITERATE", "DECLARE", "CURSOR", "FETCH", "OPEN", "CLOSE"}:
+                                    "ITERATE", "DECLARE", "CURSOR", "FETCH", "OPEN", "CLOSE",
+                                    "FOR", "HEX", "CAST", "JSON_OBJECT", "CHAR", "CHARACTER",
+                                    "CONVERT", "USING", "UTF8MB4", "COUNT"}:
                     continue
 
                 # Make sure the word is enclosed in backticks

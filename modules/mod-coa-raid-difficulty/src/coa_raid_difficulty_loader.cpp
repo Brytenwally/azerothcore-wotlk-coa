@@ -11,22 +11,11 @@
  */
 void AddCoaBossAIScripts();
 void AddCoaFlexHealthScripts();
-void AddCoaFlexLootScripts();
-void AddCoaFlexItemsScripts();
 void AddCoaOnyxiaScripts();
 void AddCoaSpellFixScripts();
-void AddCoaDamageInfoScripts();
 void AddCoaRazorgoreScripts();
 void AddCoaVaelastraszScripts();
 void AddCoaBroodlordScripts();
-void AddCoaGarrScripts();
-void AddCoaSonOfFlameScripts();
-void AddCoaSulfuronDisciplesScripts();
-void AddCoaLucifronScripts();
-void AddCoaMagmadarScripts();
-void AddCoaGolemaggScripts();
-void AddCoaGeddonScripts();
-void AddCoaShazzrahScripts();
 void AddCoaDrakeScripts();
 void AddCoaChromaggusScripts();
 void AddCoaNefarianScripts();
@@ -53,28 +42,16 @@ void AddCoaCThunScripts();
 void AddCoaWorldBossScripts();
 void AddCoaEmeraldDragonScripts();
 void AddCoaCustomWorldBossScripts();
-void AddCoaSacrificialChainsScripts();
 
 void Addmod_coa_raid_difficultyScripts()
 {
     AddCoaBossAIScripts();
     AddCoaFlexHealthScripts();
-    AddCoaFlexLootScripts();
-    AddCoaFlexItemsScripts();
     AddCoaOnyxiaScripts();
     AddCoaSpellFixScripts();
-    AddCoaDamageInfoScripts();
     AddCoaRazorgoreScripts();
     AddCoaVaelastraszScripts();
     AddCoaBroodlordScripts();
-    AddCoaGarrScripts();
-    AddCoaSonOfFlameScripts();
-    AddCoaSulfuronDisciplesScripts();
-    AddCoaLucifronScripts();
-    AddCoaMagmadarScripts();
-    AddCoaGolemaggScripts();
-    AddCoaGeddonScripts();
-    AddCoaShazzrahScripts();
     AddCoaDrakeScripts();
     AddCoaChromaggusScripts();
     AddCoaNefarianScripts();
@@ -101,5 +78,4 @@ void Addmod_coa_raid_difficultyScripts()
     AddCoaWorldBossScripts();
     AddCoaEmeraldDragonScripts();
     AddCoaCustomWorldBossScripts();
-    AddCoaSacrificialChainsScripts();
 }

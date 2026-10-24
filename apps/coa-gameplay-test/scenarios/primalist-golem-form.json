@@ -36,9 +36,9 @@
   ],
   "steps": [
     {
-      "action": "specialization",
+      "action": "command",
       "actor": "base",
-      "id": 95
+      "command": ".localspec 95"
     },
     {
       "action": "learn",

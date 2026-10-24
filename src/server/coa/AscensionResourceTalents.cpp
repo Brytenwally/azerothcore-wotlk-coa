@@ -15,7 +15,6 @@ enum ResourceTalentSpells : uint32
     Felfury = 800058,
     RecklessAbandon = 504252,
     Thirst = 706613,
-    ThirstCastSpeed = 300796,
     Insatiable = 706621,
     InsatiablePenalty = 706663,
     DeepSecrets = 582307,
@@ -106,7 +105,7 @@ class aura_ascension_resource_talent_refresh : public AuraScript
 
     bool Validate(SpellInfo const* info) override
     {
-        return info->Id != Thirst || ValidateSpellInfo({Insatiable, InsatiablePenalty, ThirstCastSpeed});
+        return info->Id != Thirst || ValidateSpellInfo({Insatiable, InsatiablePenalty});
     }
 
     void RefreshTalentBonusForResourceStacks(uint32 stacks)
@@ -134,17 +133,6 @@ class aura_ascension_resource_talent_refresh : public AuraScript
     {
         RefreshTalentBonusForResourceStacks(GetStackAmount());
         ApplyInsatiableWithoutResettingPenaltyTimer(GetTarget());
-        Unit* owner = GetTarget();
-        if (GetId() == Thirst && owner->IsPlayer() && owner->getClass() == CLASS_SON_OF_ARUGAL)
-        {
-            if (!owner->HasAura(ThirstCastSpeed, owner->GetGUID()))
-                owner->AddAura(sSpellMgr->GetSpellInfo(ThirstCastSpeed), 1 << EFFECT_2, owner);
-            if (Aura* castSpeed = owner->GetAura(ThirstCastSpeed, owner->GetGUID()))
-            {
-                castSpeed->SetStackAmount(GetStackAmount());
-                castSpeed->SetDuration(GetDuration());
-            }
-        }
     }
 
     void Remove(AuraEffect const*, AuraEffectHandleModes)
@@ -153,7 +141,6 @@ class aura_ascension_resource_talent_refresh : public AuraScript
         Unit* owner = GetTarget();
         if (GetId() == Thirst && owner->IsPlayer() && owner->getClass() == CLASS_SON_OF_ARUGAL)
         {
-            owner->RemoveAurasDueToSpell(ThirstCastSpeed, owner->GetGUID());
             owner->RemoveAurasDueToSpell(Insatiable, owner->GetGUID());
             owner->RemoveAurasDueToSpell(InsatiablePenalty, owner->GetGUID());
         }

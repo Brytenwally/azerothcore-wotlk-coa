@@ -183,13 +183,6 @@ struct Database
         return success;
     }
 } CharacterDatabase;
-struct AuraEffect
-{
-    uint32 GetId() const
-    {
-        return 0;
-    }
-};
 struct Player
 {
     ObjectGuid guid;
@@ -205,16 +198,10 @@ struct Player
     {
         return level;
     }
-    bool GetsRecruitAFriendBonus(bool forXP)
-    {
-        assert(forXP);
-        return false;
-    }
-    float GetTotalAuraMultiplier(uint32 aura, std::function<bool(AuraEffect const*)> const& predicate) const
+    float GetTotalAuraMultiplier(uint32 aura) const
     {
         assert(aura == SPELL_AURA_MOD_XP_PCT);
-        AuraEffect const effect;
-        return predicate(&effect) ? xpMultiplier : 1.0f;
+        return xpMultiplier;
     }
     bool HasSpell(uint32 id) const
     {

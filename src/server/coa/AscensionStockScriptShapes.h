@@ -121,9 +121,6 @@ constexpr Restore RESTORES[] = {
     Aura(51689, 0, AURA_PERIODIC_DUMMY, 2000),
     Aura(59088, 1, AURA_DUMMY), Aura(59089, 1, AURA_DUMMY),
 
-    DrainSoulShard(1120), DrainSoulShard(8288), DrainSoulShard(8289), DrainSoulShard(11675), DrainSoulShard(27217),
-    DrainSoulShard(47855),
-
     PartyBuff(24604, 0), PartyBuff(24604, 1), PartyBuff(53434, 0), PartyBuff(53434, 1), PartyBuff(64491, 0),
     PartyBuff(64491, 1), PartyBuff(64492, 0), PartyBuff(64492, 1), PartyBuff(64493, 0), PartyBuff(64493, 1),
     PartyBuff(64494, 0), PartyBuff(64494, 1), PartyBuff(64495, 0), PartyBuff(64495, 1),
@@ -192,14 +189,12 @@ constexpr Restore DEAD_CATALOG_SLOTS[] = {
     { 65139, 1, { EFFECT_NONE, ANY, ANY }, { EFFECT_LEARN_SPELL, KEEP, TARGET_UNIT_CASTER, KEEP, KEEP, KEEP, KEEP, KEEP,
         KEEP, KEEP, 5420 } },
     { 19387, 0, { EFFECT_NONE, ANY, ANY }, { EFFECT_APPLY_AURA } },
-    { 19387, 1, { EFFECT_NONE, ANY, ANY }, { EFFECT_APPLY_AURA } },
     { 853512, 0, { ANY, AURA_DUMMY, ANY }, { KEEP, AURA_MOD_SPELL_HEALING_OF_ATTACK_POWER } },
     { 853512, 1, { ANY, AURA_DUMMY, ANY }, { KEEP, AURA_MOD_WEAPON_CRIT_PERCENT } },
     { 853512, 2, { ANY, AURA_DUMMY, ANY }, { KEEP, AURA_PROC_TRIGGER_SPELL, KEEP, KEEP, KEEP, KEEP, KEEP, KEEP, KEEP,
         KEEP, 853513 } },
     { 760100, 0, { EFFECT_DUMMY, ANY, ANY }, { EFFECT_TRIGGER_SPELL, KEEP, KEEP, KEEP, KEEP, KEEP, KEEP, KEEP, KEEP,
         KEEP, 760101 } },
-    { 57340, 0, { EFFECT_APPLY_AURA, AURA_DUMMY, ANY }, { KEEP, AURA_MOD_THREAT } },
 };
 
 constexpr bool Matches(Shape const& broken, std::int32_t effect, std::int32_t aura, std::int32_t targetA)

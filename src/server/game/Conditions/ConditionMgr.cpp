@@ -16,6 +16,9 @@
  */
 
 #include "ConditionMgr.h"
+#include "../../coa/Area52CompanionTraining.h"
+#include "../../coa/AscensionFreePick.h"
+#include "Trainer.h"
 #include "AchievementMgr.h"
 #include "GameEventMgr.h"
 #include "GameObject.h"
@@ -133,6 +136,17 @@ bool Condition::Meets(ConditionSourceInfo& sourceInfo)
     {
         if (Unit* unit = object->ToUnit())
             condMeets = unit->getClassMask() & ConditionValue1;
+        if (ConditionTarget == 0 && (SourceType == CONDITION_SOURCE_TYPE_GOSSIP_MENU ||
+            SourceType == CONDITION_SOURCE_TYPE_GOSSIP_MENU_OPTION) &&
+            (ConditionValue1 == 128 || ConditionValue1 == 1407))
+            if (Player* player = object->ToPlayer(); player && AscensionFreePick::Applies(player))
+                if (WorldObject* source = sourceInfo.mConditionTargets[1])
+                    if (Creature* npc = source->ToCreature(); npc &&
+                        npc->GetCreatureTemplate()->GossipMenuId == SourceGroup)
+                        if (auto const* trainer = sObjectMgr->GetTrainer(npc->GetEntry()); trainer &&
+                            std::any_of(trainer->GetSpells().begin(), trainer->GetSpells().end(),
+                                [](auto const& spell) { return Area52CompanionTraining::Contains(spell.SpellId); }))
+                            condMeets = player->HasSpell(Area52CompanionTraining::Mastery) == (ConditionValue1 == 128);
         break;
     }
     case CONDITION_RACE:

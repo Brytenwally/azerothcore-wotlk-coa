@@ -1,2 +1,0 @@
--- Dungeon spawns removed on Heroic and Mythic. Normal stays: spawns that
--- also stood on Normal now apply to Normal only; spawns only for Heroic/Mythic are deleted.

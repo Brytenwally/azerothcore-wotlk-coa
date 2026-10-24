@@ -16,6 +16,8 @@
  */
 
 #include "SpellAuraEffects.h"
+#include "../../../coa/AscensionFreePick.h"
+#include "Item.h"
 #include "AreaDefines.h"
 #include "BattlefieldMgr.h"
 #include "Battleground.h"
@@ -856,6 +858,10 @@ void AuraEffect::HandleEffect(AuraApplication* aurApp, uint8 mode, bool apply)
            || mode == AURA_EFFECT_HANDLE_REAPPLY
            || mode == (AURA_EFFECT_HANDLE_CHANGE_AMOUNT | AURA_EFFECT_HANDLE_REAPPLY));
 
+    if ((mode & AURA_EFFECT_HANDLE_REAL) && !apply && GetEffIndex() == EFFECT_0 &&
+        GetId() >= 954192 && GetId() <= 954194 && AscensionFreePick::Applies(aurApp->GetTarget()->ToPlayer()))
+        aurApp->GetTarget()->RemoveAurasDueToSpell(954205, GetCasterGUID());
+
     // register/unregister effect in lists in case of real AuraEffect apply/remove
     // registration/unregistration is done always before real effect handling (some effect handlers code is depending on this)
     if (mode & AURA_EFFECT_HANDLE_REAL)
@@ -1174,6 +1180,16 @@ void AuraEffect::UpdatePeriodic(Unit* caster)
 
 float AuraEffect::CalcPeriodicCritChance(Unit const* caster, Unit const* target) const
 {
+    if (GetId() == 12721 && caster && AscensionFreePick::Applies(caster->ToPlayer()))
+    {
+        Player const* player = caster->ToPlayer();
+        Item* weapon = player->GetWeaponForAttack(BASE_ATTACK, true);
+        if (!target || !target->IsCreature() || target->GetCharmerOrOwnerPlayerOrPlayerItself() ||
+            !weapon || weapon->GetTemplate()->InventoryType != INVTYPE_2HWEAPON ||
+            player->GetWeaponForAttack(OFF_ATTACK, true))
+            return 0.0f;
+        return std::max(0.0f, caster->GetUnitCriticalChance(BASE_ATTACK, target));
+    }
     float critChance = 0.0f;
     if (caster)
     {
@@ -1305,6 +1321,18 @@ bool AuraEffect::CheckEffectProc(AuraApplication* aurApp, ProcEventInfo& eventIn
     if (!result)
         return false;
 
+    if (GetId() == 954194 && AscensionFreePick::Applies(aurApp->GetTarget()->ToPlayer()))
+    {
+        Player* player = aurApp->GetTarget()->ToPlayer();
+        if (GetEffIndex() != EFFECT_1 || eventInfo.GetActor() != player || !player->HasSpell(954194))
+            return false;
+        if (eventInfo.GetTypeMask() & PROC_FLAG_KILL)
+            return eventInfo.GetActionTarget() && player->isHonorOrXPTarget(eventInfo.GetActionTarget());
+        SpellInfo const* spell = eventInfo.GetSpellInfo();
+        return spell && sSpellMgr->GetFirstSpellInChain(spell->Id) == 954876 &&
+            (eventInfo.GetSpellPhaseMask() & PROC_SPELL_PHASE_CAST);
+    }
+
     SpellInfo const* spellInfo = eventInfo.GetSpellInfo();
     switch (GetAuraType())
     {
@@ -1344,7 +1372,7 @@ bool AuraEffect::CheckEffectProc(AuraApplication* aurApp, ProcEventInfo& eventIn
         {
             // Skip melee hits and spells with wrong school or zero cost
             if (!spellInfo || !(spellInfo->GetSchoolMask() & GetMiscValue())
-                    || !spellInfo->ManaCost || !spellInfo->ManaCostPercentage)
+                    || (!spellInfo->ManaCost && !spellInfo->ManaCostPercentage))
                 return false;
             break;
         }
@@ -2174,7 +2202,10 @@ void AuraEffect::HandleAuraModShapeshift(AuraApplication const* aurApp, uint8 mo
                         player->SetCanTeleport(true);
                     }
                     // remove movement affects
-                    target->RemoveAurasByShapeShift();
+                    if (!AscensionFreePick::Applies(target->ToPlayer()) ||
+                        (form != FORM_BEAR && form != FORM_DIREBEAR) ||
+                        target->ToPlayer()->HasSpell(84864) || target->ToPlayer()->HasSpell(84865))
+                        target->RemoveAurasByShapeShift();
 
                     // and polymorphic affects
                     if (target->IsPolymorphed())
@@ -2197,9 +2228,15 @@ void AuraEffect::HandleAuraModShapeshift(AuraApplication const* aurApp, uint8 mo
         if (PowerType != POWER_MANA)
         {
             uint32 oldPower = target->GetPower(PowerType);
+            bool const powerAlreadyActive = target->IsPlayer() &&
+                target->ToPlayer()->HasActivePowerType(PowerType);
             // reset power to default values only at power change
             if (target->getPowerType() != PowerType)
+            {
                 target->setPowerType(PowerType);
+                if (powerAlreadyActive)
+                    target->SetPower(PowerType, oldPower);
+            }
 
             switch (form)
             {
@@ -2216,6 +2253,8 @@ void AuraEffect::HandleAuraModShapeshift(AuraApplication const* aurApp, uint8 mo
                         {
                             case FORM_CAT:
                                 {
+                                    if (powerAlreadyActive)
+                                        break;
                                     int32 basePoints = int32(std::min(oldPower, FurorChance));
                                     target->SetPower(POWER_ENERGY, 0);
                                     target->CastCustomSpell(target, 17099, &basePoints, nullptr, nullptr, true, nullptr, this);
@@ -2293,6 +2332,9 @@ void AuraEffect::HandleAuraModShapeshift(AuraApplication const* aurApp, uint8 mo
             case FORM_DEFENSIVESTANCE:
             case FORM_BERSERKERSTANCE:
                 {
+                    if (AscensionFreePick::Applies(target->ToPlayer()))
+                        break;
+
                     uint32 Rage_val = 0;
                     // Defensive Tactics
                     if (form == FORM_DEFENSIVESTANCE)
@@ -6192,6 +6234,14 @@ void AuraEffect::HandlePeriodicDummyAuraTick(Unit* target, Unit* caster) const
 
 void AuraEffect::HandlePeriodicTriggerSpellAuraTick(Unit* target, Unit* caster) const
 {
+    if (GetId() == 954507 && AscensionFreePick::Applies(caster ? caster->ToPlayer() : nullptr))
+    {
+        if (GetEffIndex() == EFFECT_1 && !caster->HasAura(954646))
+            return;
+        if (GetEffIndex() == EFFECT_2 && !caster->HasAura(283456) && !caster->HasAura(1584669))
+            return;
+    }
+
     // generic casting code with custom spells and target/caster customs
     uint32 triggerSpellId = GetSpellInfo()->Effects[GetEffIndex()].TriggerSpell;
 
@@ -6435,6 +6485,18 @@ void AuraEffect::HandlePeriodicTriggerSpellAuraTick(Unit* target, Unit* caster) 
 
 void AuraEffect::HandlePeriodicTriggerSpellWithValueAuraTick(Unit* target, Unit* caster) const
 {
+    if (GetId() >= 954192 && GetId() <= 954194 && AscensionFreePick::Applies(target->ToPlayer()))
+    {
+        if (!target->IsAlive() || !target->HealthBelowPct(75) || !target->ToPlayer()->HasSpell(GetId()))
+        {
+            target->RemoveAurasDueToSpell(954205, GetCasterGUID());
+            return;
+        }
+        int32 amount = GetAmount();
+        target->CastCustomSpell(target, 954205, &amount, &amount, nullptr, true, nullptr, this);
+        return;
+    }
+
     uint32 triggerSpellId = GetSpellInfo()->Effects[m_effIndex].TriggerSpell;
     if (SpellInfo const* triggeredSpellInfo = sSpellMgr->GetSpellInfo(triggerSpellId))
     {
@@ -6828,7 +6890,10 @@ void AuraEffect::HandlePeriodicHealAurasTick(Unit* target, Unit* caster) const
             if (AuraEffect* aurEff = caster->GetAuraEffect(SPELL_AURA_ADD_PCT_MODIFIER, SPELLFAMILY_WARLOCK, 89, 0))
                 AddPct(TakenTotalMod, aurEff->GetAmount());
 
-        damage = uint32(target->CountPctFromMaxHealth(damage));
+        bool secondWindBaseHealth = GetMiscValue() == 1 &&
+            (GetId() == 29841 || GetId() == 29842 || GetId() == 829839);
+        damage = secondWindBaseHealth ? CalculatePct(target->GetCreateHealth(), damage) :
+            target->CountPctFromMaxHealth(damage);
         damage = uint32(damage * TakenTotalMod);
     }
     else
@@ -6840,7 +6905,6 @@ void AuraEffect::HandlePeriodicHealAurasTick(Unit* target, Unit* caster) const
         if (caster && GetBase()->GetType() == UNIT_AURA_TYPE &&
             !(GetSpellInfo()->AscensionInheritsResolvedAmount &&
               ((GetSpellInfo()->SpellFamilyName == 31 && GetSpellInfo()->Id == 520497) ||
-               (GetSpellInfo()->SpellFamilyName == 26 && GetSpellInfo()->Id == 680693) ||
                (GetSpellInfo()->SpellFamilyName == 34 && GetSpellInfo()->Id == 706255) ||
                (GetSpellInfo()->SpellFamilyName == 28 && GetSpellInfo()->Id == 561231))))
             damage = int32(float(damage) * caster->GetTotalAuraMultiplier(SPELL_AURA_MOD_HEALING_DONE_PERCENT));
@@ -7106,13 +7170,38 @@ void AuraEffect::HandleBreakableCCAuraProc(AuraApplication* aurApp, ProcEventInf
     int32 const damageLeft = GetAmount() - static_cast<int32>(eventInfo.GetDamageInfo()->GetDamage());
 
     if (damageLeft <= 0)
-        aurApp->GetTarget()->RemoveAura(aurApp);
+    {
+        Unit* caster = GetCaster();
+        bool const massEntanglement = GetId() == 954507 &&
+            AscensionFreePick::Applies(caster ? caster->ToPlayer() : nullptr);
+        aurApp->GetTarget()->RemoveAura(aurApp,
+            massEntanglement ? AURA_REMOVE_BY_ENEMY_SPELL : AURA_REMOVE_BY_DEFAULT);
+    }
     else
         SetAmount(damageLeft);
 }
 
 void AuraEffect::HandleProcTriggerSpellAuraProc(AuraApplication* aurApp, ProcEventInfo& eventInfo)
 {
+    if (GetId() == 954194 && AscensionFreePick::Applies(aurApp->GetTarget()->ToPlayer()))
+    {
+        if (GetEffIndex() != EFFECT_1)
+            return;
+        Player* player = aurApp->GetTarget()->ToPlayer();
+        player->CastSpell(player, 954204, true, nullptr, this);
+        for (auto const& known : player->GetSpellMap())
+        {
+            uint32 root = sSpellMgr->GetFirstSpellInChain(known.first);
+            if (root != 20252 && root != 271897)
+                continue;
+            player->RemoveSpellCooldown(known.first, true);
+            if (SpellInfo const* spell = sSpellMgr->GetSpellInfo(known.first))
+                if (uint32 category = spell->GetCategory())
+                    player->RemoveCategoryCooldown(category);
+        }
+        return;
+    }
+
     Unit* triggerCaster = aurApp->GetTarget();
     Unit* triggerTarget = triggerCaster == eventInfo.GetActor() ? eventInfo.GetActionTarget() : eventInfo.GetActor();
 

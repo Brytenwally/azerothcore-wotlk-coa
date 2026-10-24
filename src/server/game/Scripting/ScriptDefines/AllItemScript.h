@@ -26,6 +26,9 @@ protected:
     AllItemScript(char const* name);
 
 public:
+    [[nodiscard]] virtual bool OnItemCombatSpell(Player* /*player*/, Unit* /*victim*/,
+        SpellInfo const* /*spellInfo*/, Item* /*item*/) { return true; }
+
     // Called when a player accepts a quest from the item.
     [[nodiscard]] virtual bool CanItemQuestAccept(Player* /*player*/, Item* /*item*/, Quest const* /*quest*/) { return true; }
 

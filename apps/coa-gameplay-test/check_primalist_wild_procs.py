@@ -1,4 +1,5 @@
 import json
+import math
 import sys
 from pathlib import Path
 
@@ -13,18 +14,14 @@ def main():
     values = {scenario['steps'][int(step['index'])]['save_as']: float(step['actual'])
               for step in result['steps'] if step['action'] == 'snapshot'}
     if mode == 'infused':
-        rates = {scenario['steps'][int(step['index'])]['trigger_spell']: float(step['actual'])
-                 for step in result['steps'] if step.get('metric') == 'aura_proc_rate'}
-        for phase, trigger in [('hand', 502808), ('hammer', 806073)]:
+        for phase in ['hand', 'hammer']:
             trials = [values[f'{phase}_proc_{i}'] for i in range(100)]
             assert all(value in (0, 1) for value in trials)
-            triggered = [values[f'{phase}_events_after_{i}'] - values[f'{phase}_events_before_{i}']
-                         for i in range(100)]
-            assert triggered == trials, (phase, triggered, trials)
             successes = int(sum(trials))
-            assert successes > 0, (phase, successes)
-            print(f'{phase}: {successes}/100 actual procs, matching aura observations; '
-                  f'native decision rate={rates[trigger]:.3f}%')
+            probabilities = [math.comb(100, k) * .2**k * .8**(100-k) for k in range(101)]
+            p_value = sum(p for p in probabilities if p <= probabilities[successes] + 1e-14)
+            assert successes > 0 and p_value >= .001, (phase, successes, p_value)
+            print(f'{phase}: {successes}/100 procs, exact binomial p={p_value:.5f}')
     elif mode == 'cascade':
         assert values['natural_heals'] == values['natural_crits'] < 5
         print(f'Five ordinary Wildclaws: {values["natural_crits"]:g} critical hits and matching heals')

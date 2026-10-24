@@ -15,8 +15,8 @@ AzerothCore is a C++ MMORPG server emulator for World of Warcraft 3.3.5a (WotLK)
   are separate scopes. Repeat passing checks only after changes or a specific unresolved concern.
 - In CoA-owned code, express intent through names, structure and tests; do not add explanatory comments or
   docstrings. Preserve legal notices, tool directives and test generator markers. Scope is
-  `src/server/coa/`, `apps/coa-tests/`, `apps/coa-bugreport/`,
-  `apps/coa-{dbc,gameplay-test,mechanics,world-content}/`, `tools/` and `.github/scripts/`.
+  `src/server/coa/`, `apps/coa-tests/`, `apps/coa-bugreport/`, `apps/coa-{dbc,gameplay-test,mechanics}/`,
+  `tools/` and `.github/scripts/`.
   The `source` stage of `tools/verify_all.py` enforces this for C++ and Python; without `--base` it audits the
   full scope.
 - In inherited AzerothCore source, keep existing comments so upstream merges stay clean; change a comment only
@@ -34,10 +34,9 @@ Follow this sequence within the task's authorized scope:
 - Before changing gameplay, classify the finding as **confirmed defect**, **already works**, **incorrect test**,
   or **uncertain expectation**. Correct a faulty test; preserve evidence of working behavior; keep unresolved
   expectations explicit. Apply a gameplay fix only to an established defect.
-- Add a focused regression for the fix and verify that it passes through `tools/verify_all.py`. Do not rebuild
-  or run the pre-fix tree or `main` to show the regression failing, or to rerun tests the change did not add or
-  touch. State when runtime verification is unavailable (an `unavailable` gameplay stage); explain the missing
-  prerequisites and complete the remaining stages. Report their actual scope.
+- Seek a focused reproduction and a regression that fails before the fix and passes after it, both run through
+  `tools/verify_all.py`. State when runtime reproduction is unavailable (an `unavailable` gameplay stage);
+  explain the missing prerequisites and complete the remaining stages. Report their actual scope.
 - Review the final diff. Continue to a PR when publication is part of the requested workflow; a local edit alone
   does not authorize a push or PR. Use the issue-to-PR skill for an explicitly requested issue queue workflow.
 - In existing task/PR results, summarize available time from investigation start to verified outcome, observed
@@ -46,36 +45,21 @@ Follow this sequence within the task's authorized scope:
 
 ## Verification
 
-- Freeze the fetched `origin/main` revision when starting PR qualification and record the tested base and
-  candidate. Keep the checkout stable while checks run. Review later main changes for relevance before
-  integrating them: rebuild or repeat verification only when they affect the changed behavior, its callers,
-  build interfaces or effective data, or when an actual failure requires it. Unrelated main updates do not
-  restart qualification or delay publication. Finish in-flight checks before integrating relevant updates,
-  reuse existing build artifacts, and reverify the affected scope. After required checks pass, publish against
-  the recorded base instead of repeatedly chasing the newest main revision. If the user requests publication
-  while checks remain pending, open a draft PR and state the pending verification explicitly.
-- When resuming an empty unpublished branch, advance its ref to the fetched base before switching, after
-  checking ancestry and preserving stashes, or create a fresh branch at that base. Avoid checking out an old
-  tree and then fast-forwarding: that touches unchanged source and headers and invalidates incremental builds.
 - Verify changes only with `python -B tools/verify_all.py` ([guide](docs/coa/verification.md)). It runs the
   source checks, build, unit tests, Python test scripts, `apps/coa-tests` harnesses and gameplay scenarios. Do not
   run `check_source.py`, `ctest`, test scripts, harnesses, `run.py run` or `batch.py` yourself; where a guide
   names one, use the matching selection (`--stages harness --harness <name>`, `--stages source`).
-- Verify the tests the change adds or modifies: pair `--stages` with a focus filter
-  (`--scenario`/`--spell`/`--quest`/`--query`, `--harness`) and include `build` whenever sources changed. Before a
-  PR, also run `python -B tools/verify_all.py --stages source --base origin/main`. Run every stage
-  (`python -B tools/verify_all.py --base origin/main`) only when full verification is explicitly requested.
+- While iterating, pair `--stages` with a focus filter (`--scenario`/`--spell`/`--quest`/`--query`, `--harness`)
+  and include `build` whenever sources changed. Before a PR, or when full verification is requested, run every
+  stage with the PR base: `python -B tools/verify_all.py --base origin/main`.
 - The `codestyle-cpp.py`/`codestyle-sql.py --files` linters are separate; still run them on changed C++ and SQL.
 - Report the final `VERIFY ALL: PASSED|FAILED|INCOMPLETE` line with its `report.json`, the stages that ran,
   unavailable or blocked scope with reasons, and any `batch_sensitive` scenarios. Only `PASSED` is a pass, and
   only for what ran. A full run is not yet all green on any setup; classify each failure or unavailable item as a
   documented prerequisite, pre-existing on the base, acceleration-specific (a real-clock reference run passes it)
   or new ([full runs](docs/coa/verification.md#full-runs)). A new failure blocks a PR.
-- Gameplay verification runs accelerated only by default: fix fast failures before accepting a batch.
-  Slower same-server retries require `--gameplay-real-pace-rerun`; report their `acceleration_sensitive` ids as
-  diagnostic-only passes. A passing retry alone does not prove a clock dependency. Confirm a repeatable timing
-  defect with a focused `--gameplay-clock real` reference while repairing it, then use accelerated verification
-  ([accelerated mode](docs/coa/verification.md#accelerated-single-server-mode)).
+- Gameplay runs on a simulated clock by default: also report `acceleration_sensitive` ids, and confirm timing
+  results with `--gameplay-clock real` ([accelerated mode](docs/coa/verification.md#accelerated-single-server-mode)).
 - `run.py validate`, `catalog.py` and `workflow.py` remain authoring and discovery tools, not verification.
 
 ## Task references
@@ -90,8 +74,7 @@ Read the relevant sections when needed for the work. Do not read every guide or 
   - SmartAI work (`smart_scripts` data) → also `.agents/docs/cpp-scripts.md`
 - Reviewing a changeset or PR → `.agents/docs/code-review.md`
 - Preparing an actual PR → `.agents/docs/self-review-rules.md`
-- Requested issue queue or topic fixes (class mechanics, quests, crashes, etc.) →
-  `.agents/skills/coa-fix-issues/SKILL.md` (topic requests default to 32 issues and one PR per batch)
+- Requested issue queue / issue-to-PR workflow → `.agents/skills/coa-fix-issues/SKILL.md`
 - Subsystem-specific questions → the relevant section in `.agents/docs/systems/`
 - Ascension damage/healing, AP/RAP/SP coefficients, triggered spells or tooltip parity →
   `.agents/docs/systems/ascension-spell-parity.md`
@@ -138,3 +121,11 @@ repository. Fetching upstream is separate from reviewing, merging, building or d
 
 Keep only stable conventions and essential routing here. Update guidance when requested or when a durable
 correction is needed; do not automatically offer lesson capture, install skills, or append task histories.
+
+## Owner policy: accepted packages integrate into our main — October 23, 2026
+
+This section supersedes earlier blanket instructions to keep gameplay/status changes off main. Once the owner confirms that an activated package passes its intended in-game acceptance tests, that confirmation authorizes integrating its final deployed source changes into CWO4PapaBear/azerothcore-wotlk-coa main without another merge-permission question. Reconcile exact deployed hashes and publication receipts; preserve unrelated pending/unactivated work; review conflicts and run applicable offline checks before a non-forced, reviewed integration PR/merge. A frozen patch file alone is not source integration. Record the package, acceptance confirmation, integration commit and PR. If testing fails or scope is ambiguous, retain the feature branch and resolve the specific issue rather than merging unfinished work.
+
+Jealous Sound upstream PRs remain separate, feature-scoped and based on upstream main. This policy does not authorize merging upstream PRs or pushing directly to upstream main. Activation, live SQL, restarts, client/DLL installation and distribution retain their separate permission boundaries. In-game package acceptance does not automatically change ability/talent/enchant Certified labels; tester records remain authoritative.
+
+For the current reconciliation, the owner explicitly authorized beginning integration of the active server into our main and preserving old branch tips as annotated archive tags. Reconstruct reproducible source and ordered migrations, exclude secrets/binaries/private data, and validate before merging. Preserve open PR branches and unresolved local/pending work. Archive old redundant branches only after verifying the tag resolves to the exact current tip and their unique work is preserved. Never force-push or delete a branch whose tip changed since review.

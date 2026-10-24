@@ -128,9 +128,6 @@ struct npc_ascension_guardian_standard : ScriptedAI
         ownerGuid = owner->GetGUID();
         me->SetOwnerGUID(ownerGuid);
         me->SetFaction(owner->GetFaction());
-        me->m_ControlledByPlayer = true;
-        me->SetUnitFlag(UNIT_FLAG_PLAYER_CONTROLLED);
-        me->SetByteValue(UNIT_FIELD_BYTES_2, 1, owner->GetByteValue(UNIT_FIELD_BYTES_2, 1));
         me->SetLevel(owner->GetLevel());
         me->SetReactState(REACT_PASSIVE);
         me->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
@@ -162,7 +159,6 @@ struct npc_ascension_guardian_standard : ScriptedAI
                 me->DespawnOrUnsummon();
                 return;
             }
-            me->SetByteValue(UNIT_FIELD_BYTES_2, 1, owner->GetByteValue(UNIT_FIELD_BYTES_2, 1));
             RefreshTalents(owner);
             events.ScheduleEvent(STANDARD_OWNER_CHECK, Milliseconds(STANDARD_OWNER_CHECK_MS));
         }

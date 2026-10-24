@@ -169,11 +169,6 @@ bool ScriptMgr::OnPlayerHasNoBonusExperience(Player* player)
     return suppress;
 }
 
-void ScriptMgr::OnPlayerHonorableKillingBlow(Player* killer, Player* victim)
-{
-    CALL_ENABLED_HOOKS(PlayerScript, PLAYERHOOK_ON_HONORABLE_KILLING_BLOW, script->OnPlayerHonorableKillingBlow(killer, victim));
-}
-
 bool ScriptMgr::OnPlayerReputationChange(Player* player, uint32 factionID, int32& standing, bool incremental)
 {
     CALL_ENABLED_BOOLEAN_HOOKS(PlayerScript, PLAYERHOOK_ON_REPUTATION_CHANGE, !script->OnPlayerReputationChange(player, factionID, standing, incremental));
@@ -689,12 +684,6 @@ void ScriptMgr::OnPlayerApplyItemModsBefore(Player* player, uint8 slot, bool app
     CALL_ENABLED_HOOKS(PlayerScript, PLAYERHOOK_ON_APPLY_ITEM_MODS_BEFORE, script->OnPlayerApplyItemModsBefore(player, slot, apply, itemProtoStatNumber, statType, val));
 }
 
-void ScriptMgr::OnPlayerAfterApplyItemMods(Player* player, Item* item, uint8 slot, bool apply)
-{
-    CALL_ENABLED_HOOKS(PlayerScript, PLAYERHOOK_ON_AFTER_APPLY_ITEM_MODS,
-        script->OnPlayerAfterApplyItemMods(player, item, slot, apply));
-}
-
 void ScriptMgr::OnPlayerApplyEnchantmentItemModsBefore(Player* player, Item* item, EnchantmentSlot slot, bool apply, uint32 enchant_spell_id, uint32& enchant_amount)
 {
     CALL_ENABLED_HOOKS(PlayerScript, PLAYERHOOK_ON_APPLY_ENCHANTMENT_ITEM_MODS_BEFORE, script->OnPlayerApplyEnchantmentItemModsBefore(player, item, slot, apply, enchant_spell_id, enchant_amount));
@@ -1067,6 +1056,11 @@ void ScriptMgr::OnPlayerSpellCooldownCalculated(Player* player, SpellInfo const*
 void ScriptMgr::OnPlayerLearnPetTalent(Player* player, Pet* pet, uint32 spellId)
 {
     CALL_ENABLED_HOOKS(PlayerScript, PLAYERHOOK_ON_LEARN_PET_TALENT, script->OnPlayerLearnPetTalent(player, pet, spellId));
+}
+
+void ScriptMgr::OnPlayerOpenTrainer(Player* player, Creature* trainer)
+{
+    CALL_ENABLED_HOOKS(PlayerScript, PLAYERHOOK_ON_OPEN_TRAINER, script->OnPlayerOpenTrainer(player, trainer));
 }
 
 void ScriptMgr::OnPlayerLearnTrainerSpell(Player* player, Creature* trainer, uint32 spellId)

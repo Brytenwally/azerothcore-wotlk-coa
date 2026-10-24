@@ -1,6 +1,7 @@
 /* Copyright (C) 2016+ AzerothCore, GNU AGPL v3. */
 
 #include "AscensionSummonedEffects.h"
+#include "AscensionFreePick.h"
 #include "CellImpl.h"
 #include "Creature.h"
 #include "DBCStores.h"
@@ -698,6 +699,50 @@ public:
     }
 };
 
+class Area52MassEntanglement : public UnitScript
+{
+public:
+    Area52MassEntanglement() : UnitScript("Area52MassEntanglement", true, { UNITHOOK_ON_AURA_REMOVE }) { }
+
+    void OnAuraRemove(Unit* target, AuraApplication* application, AuraRemoveMode mode) override
+    {
+        Aura* aura = application->GetBase();
+        Unit* caster = aura->GetCaster();
+        if (aura->GetId() != 954507 || !target->IsAlive() ||
+            !AscensionFreePick::Applies(caster ? caster->ToPlayer() : nullptr) ||
+            (mode != AURA_REMOVE_BY_EXPIRE && mode != AURA_REMOVE_BY_ENEMY_SPELL))
+            return;
+        caster->CastSpell(target, 954499, true);
+    }
+};
+
+void RefreshArea52DruidControlContracts()
+{
+    if (!AscensionFreePick::Enabled())
+        return;
+    if (SpellInfo* info = const_cast<SpellInfo*>(sSpellMgr->GetSpellInfo(954507)))
+        info->AttributesEx7 |= SPELL_ATTR7_NO_ATTACK_MISS;
+    if (SpellInfo* info = const_cast<SpellInfo*>(sSpellMgr->GetSpellInfo(954499)))
+        info->AttributesEx4 &= ~SPELL_ATTR4_NO_CAST_LOG;
+}
+
+class Area52DruidControlContracts : public GlobalScript
+{
+public:
+    Area52DruidControlContracts() : GlobalScript("Area52DruidControlContracts",
+        { GLOBALHOOK_ON_LOAD_SPELL_CUSTOM_ATTR }) { }
+
+    void OnLoadSpellCustomAttr(SpellInfo* info) override
+    {
+        if (!AscensionFreePick::Enabled())
+            return;
+        if (info->Id == 954507)
+            info->AttributesEx7 |= SPELL_ATTR7_NO_ATTACK_MISS;
+        if (info->Id == 954499)
+            info->AttributesEx4 &= ~SPELL_ATTR4_NO_CAST_LOG;
+    }
+};
+
 void AddSC_AscensionSummonedEffects()
 {
     RegisterCreatureAI(npc_ascension_summoned_effect);
@@ -711,4 +756,6 @@ void AddSC_AscensionSummonedEffects()
     RegisterSpellScript(spell_ascension_summoned_effect_summon);
     RegisterSpellScript(spell_ascension_summoned_effect_ally_area);
     new AscensionCloudburstStorage();
+    new Area52MassEntanglement();
+    new Area52DruidControlContracts();
 }

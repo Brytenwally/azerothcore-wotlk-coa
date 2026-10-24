@@ -9,11 +9,6 @@
 #include <algorithm>
 #include <cmath>
 
-namespace
-{
-constexpr uint32 SPELL_RECENTLY_PARRIED_OR_DODGED = 681170;
-}
-
 namespace AscensionTemplar
 {
 void ApplyContracts(SpellInfo* info)
@@ -67,9 +62,7 @@ void ApplyContracts(SpellInfo* info)
     if (id == 92109 || id == 803149)
     {
         for (auto& effect : info->Effects)
-            if (effect.ApplyAuraName != SPELL_AURA_PROC_TRIGGER_SPELL ||
-                effect.TriggerSpell != SPELL_RECENTLY_PARRIED_OR_DODGED)
-                effect.Effect = 0;
+            effect.Effect = 0;
         auto& effect = info->Effects[0];
         effect.Effect = SPELL_EFFECT_APPLY_AURA;
         effect.ApplyAuraName = SPELL_AURA_SCHOOL_ABSORB;

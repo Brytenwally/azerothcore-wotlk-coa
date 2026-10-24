@@ -178,9 +178,9 @@
       "value": 90000
     },
     {
-      "action": "specialization",
+      "action": "command",
       "actor": "primalist",
-      "id": 60
+      "command": ".localspec 60"
     },
     {
       "action": "unlearn",

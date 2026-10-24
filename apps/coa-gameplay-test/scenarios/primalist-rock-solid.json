@@ -26,9 +26,9 @@
   "timeout_ms": 180000,
   "steps": [
     {
-      "action": "specialization",
+      "action": "command",
       "actor": "primalist",
-      "id": 60
+      "command": ".localspec 60"
     },
     {
       "action": "unlearn",

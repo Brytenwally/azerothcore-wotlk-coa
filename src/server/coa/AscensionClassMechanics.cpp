@@ -41,6 +41,7 @@
 #include "Cell.h"
 #include "CellImpl.h"
 #include "ClientDBC.h"
+#include "Config.h"
 #include "DBCStores.h"
 #include "GridNotifiers.h"
 #include "GridNotifiersImpl.h"
@@ -1062,11 +1063,18 @@ uint32 ChargeRankRoot(uint32 spellId)
 void ApplyClientSpellCharges(SpellInfo* spellInfo)
 {
     auto charge = ClientSpellCharges().find(spellInfo->Id);
-    if (charge == ClientSpellCharges().end() || spellInfo->IsDeprecatedForPlayers ||
-        !IsCustomClassFamily(spellInfo->SpellFamilyName))
+    if (charge == ClientSpellCharges().end() || spellInfo->IsDeprecatedForPlayers)
         return;
 
-    uint32 const root = ChargeRankRoot(spellInfo->Id);
+    bool const area52Charge = (spellInfo->Id == 6178 || spellInfo->Id == 11578 || spellInfo->Id == 18562) &&
+        sConfigMgr->GetOption<bool>("CoA.Enable", true) &&
+        sConfigMgr->GetOption<std::string>("CoA.ClassModel", "coa") == "hero" &&
+        sConfigMgr->GetOption<std::string>("CoA.RealmType", "live") == "live" &&
+        (sConfigMgr->GetOption<uint32>("CoA.GameModeMask", 0) & ~0x400u) == 0;
+    if (!area52Charge && !IsCustomClassFamily(spellInfo->SpellFamilyName))
+        return;
+
+    uint32 const root = area52Charge && spellInfo->Id != 18562 ? 100 : ChargeRankRoot(spellInfo->Id);
     uint32 recoveryMs = charge->second.RecoveryMs;
     if (root == 707141 && charge->second.Category == 110 && charge->second.Maximum == 3 && recoveryMs == 5000)
         recoveryMs = 6000;

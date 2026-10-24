@@ -38,8 +38,6 @@ def main():
                                      mechanics, re.M))
     correction = method(mechanics, "if (spellInfo->Id == SPELL_GUARDIAN_RAISE_SHIELD_ENERGIZE)")
     callback = method(mechanics, "void HandleAscensionClassMechanicsBlock(")
-    constants = "\n".join(line for line in constants.splitlines()
-                          if re.search(r"\b" + line.split()[2] + r"\b", correction + callback))
     raw = args.dbc_dir.joinpath("Spell.dbc").read_bytes()
     magic, count, fields, size, _ = struct.unpack_from("<4s4I", raw)
     assert (magic, fields, size) == (b"WDBC", 234, 936)

@@ -31,9 +31,6 @@ enum ChronomancerSecondarySpells : uint32
     SPELL_ARC_COLLISION = 524853,
     SPELL_ECHO_DURATION = 807711,
     SPELL_UNMAKE = 804418,
-    SPELL_ANOMALY_SPIKE = 503826,
-    SPELL_CHROMATIC_SHARD = 801292,
-    SPELL_CHROMATIC_SHARD_CAST_TIME = 503829,
     SPELL_INFINITE_KEEPER = 806312,
     SPELL_INFINITE_KEEPER_TRIGGER = 806314,
     SPELL_SHIFTING_CHAOS = 706059,
@@ -384,8 +381,6 @@ public:
         if (!player || !target || target == player || miss != SPELL_MISS_NONE || !target->IsInWorld())
             return;
         SpellInfo const* info = spell->GetSpellInfo();
-        if (damage && info->Id == SPELL_ANOMALY_SPIKE && player->HasSpell(SPELL_CHROMATIC_SHARD))
-            player->CastSpell(player, SPELL_CHROMATIC_SHARD_CAST_TIME, true);
         if (sSpellMgr->GetFirstSpellInChain(info->Id) == SPELL_UNMAKE)
             EruptInfiniteKeeper(player, target);
         else if (damage && IsChromaticShardOrAnomalySpike(info))

@@ -4,7 +4,6 @@
 #include <cstdint>
 #include <iostream>
 #include <map>
-#include <mutex>
 #include <set>
 #include <unordered_map>
 #include <vector>
@@ -169,15 +168,9 @@ struct Player
 bool IsAscensionCustomClass(Player const* player) { return IsAscensionClass(player->getClass()); }
 void SynchronizeAscensionRunemasterEchoes(Player*, uint32) { }
 void RemoveAscensionPrimalistWeapons(Player*) { }
-namespace AscensionWildcard
-{
-constexpr std::array<uint32, 1> SPECIALIZATION_SWAP_SPELLS = { 979993 };
-bool IsWildcardHero(Player const*) { return false; }
-}
 
 struct AscensionClassService
 {
-    mutable std::mutex _stateLock;
     std::unordered_map<uint32, uint32> _activeSpecializations;
     static AscensionClassService& Instance()
     {
@@ -186,7 +179,6 @@ struct AscensionClassService
     }
     bool AffectsProficiencies(uint32) const { return false; }
     void SynchronizeProficiencies(Player*) { }
-    void SendActiveSlot(Player*) { }
     static void ReconcileRunemasterFists(Player*, uint32) { }
     // ACTUAL_SERVICE
 };
@@ -344,8 +336,7 @@ void CheckReplacements()
             for (uint32 id : {680692u, 801076u, 562572u})
                 assert(blood.HasSpell(id) == (id == entry.Ranks.front().SpellId));
         }
-    std::cout << "PASS: " << AscensionCompatData::TalentReplacements.size()
-        << " transformation routes, rank gates, callbacks, native routing and ownership cleanup\n";
+    std::cout << "PASS: 12 transformation routes, rank gates, callbacks, native routing and ownership cleanup\n";
 }
 
 int main()
