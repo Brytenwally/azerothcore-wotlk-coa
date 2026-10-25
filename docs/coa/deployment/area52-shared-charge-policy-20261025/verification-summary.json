@@ -1,0 +1,30 @@
+{
+  "reports": {
+    "build-final": "95219aa09bd0069719a99278a9e9d972ac6cd5b4bc12721c61dd63c2dc84cd92",
+    "source-final": "e4d859b9d1ea1e661fe56d70df26b75d1b066b6dd514baad74be0efa4d3c6cfa",
+    "focused-coverage": "28d20c565316982d5080f358fce29c0033836d76b950a0cb0efe01c5f2b48916"
+  },
+  "binary_sha256": "e79025ea3fcddc7cdaf415f2012072539b157e0f21dc5f90d6504e7e4bb0e711",
+  "baseline_binary_sha256": "4929aced741b55c0701815b949b0aead550f1054ca65ff3678f3366640ac83aa",
+  "scope": "Shared Area52 charge-loading policy; 26 spell/rank records and independent Shred/Ironfur client counters",
+  "source": [
+    {
+      "path": "src/server/coa/AscensionClassMechanics.cpp",
+      "sha256": "a1deb2c65bfaf24447e7a401bfca40e45a2c5859e11a4158ce5743bb854f0ae7"
+    },
+    {
+      "path": "src/server/coa/AscensionClassMechanics.h",
+      "sha256": "c33cff2ecb54d464b32598dd7b329662dfe23562f23c6562904a9056a9c19295"
+    },
+    {
+      "path": "src/server/coa/AscensionFreePick.cpp",
+      "sha256": "3c642011886063a091e034be587f6bd17ccd6e3c89d972cca5faf1b27d71d13f"
+    },
+    {
+      "path": "src/server/game/Entities/Player/Player.cpp",
+      "sha256": "8631b452e164eb7bd69089eda44e2d86c536f1504d8f2dec9c08c8a675ea61c4"
+    }
+  ],
+  "source_publication": "Scoped frozen patch against the qualified deployed baseline; not integration into main",
+  "status_changes": false
+}
