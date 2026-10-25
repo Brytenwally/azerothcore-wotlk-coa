@@ -1,0 +1,59 @@
+{
+  "reports": {
+    "build-final-refresh": "bc597103e533b3b42852cf29d312cfd69ca141d87208cce5c6466660457882d4",
+    "source-final-refresh": "c5ca7c0274bf41b14ed033ee64b113e75a30664fa81abd32c46f074bafe71a1c",
+    "focused-final-refresh": "9c67b27e488b64f76f8034101ca3a7934042fda7bad94ad650e4526710e36612",
+    "sql-checks-current": "ab3a500e57cb1a51018db1964cae64abbd06aa15bc6335bf1b70b1495eb72be7"
+  },
+  "binary_sha256": "4929aced741b55c0701815b949b0aead550f1054ca65ff3678f3366640ac83aa",
+  "baseline_binary_sha256": "b50ed34ac294b0c895b6cb1b2231858b7f1cbf0bfa853eca059979587370f7c3",
+  "sql_sha256": "0b2fc55bcc27e48fc1aeb0cba40319a5341f49cc6f400940123e75931d792cee",
+  "scope": "Four Holy talent paths and active Exorcist Slash with documented dependencies; inactive variant not enabled",
+  "source": [
+    {
+      "path": "src/server/coa/Area52HolyContracts.h",
+      "sha256": "98347d02a5d0e3938f918c6684c5bdf872d6925c94ab888520d5d2ff1b705fb2"
+    },
+    {
+      "path": "src/server/coa/AscensionMysticKnightEpics.cpp",
+      "sha256": "baa382de2ce39880159d02a887e6a80fabe90d54122a231b34e7523f999e4330"
+    },
+    {
+      "path": "src/server/scripts/Spells/spell_mage.cpp",
+      "sha256": "1fa550c0295e3f01031a286a93a9cceecda2e47c505a1b174536a6bbb88cc2d0"
+    },
+    {
+      "path": "src/server/scripts/Spells/spell_paladin.cpp",
+      "sha256": "74ea96a3e4d1b8b8926bb3698ba1b62bb3deafd0b98dc67b03715797982866ac"
+    },
+    {
+      "path": "src/server/game/Spells/Spell.cpp",
+      "sha256": "4e295116e1cc409daa2224b7a621b3685a538525f9046e4f313d9592697b7e62"
+    },
+    {
+      "path": "src/server/game/Spells/Spell.h",
+      "sha256": "2302f6b9796b8b19ba5bf58e0aba747046e2eb6781f9fd278606599ddc705c68"
+    },
+    {
+      "path": "src/server/game/Spells/SpellEffects.cpp",
+      "sha256": "e144b317e49368dc1e32aea21540ccaeb7f2316f3680307bd7dc46712cc64afc"
+    },
+    {
+      "path": "src/server/game/Spells/SpellInfo.cpp",
+      "sha256": "81d6f2444a4e8a04df2125bea0b3e57382ab41d0c1e30b9c2936c717833b85b3"
+    },
+    {
+      "path": "src/server/game/Spells/Auras/SpellAuraEffects.cpp",
+      "sha256": "af8ab14b9c31544163cdadb82f8766183c6fec1c4c78494cef2acd1ec24bd7ed"
+    },
+    {
+      "path": "src/server/game/Entities/Player/Player.cpp",
+      "sha256": "1168c76968eb96c2e50d260ab96e394da3d3f87442da6794dc623b209f9d45f2"
+    },
+    {
+      "path": "src/server/game/Entities/Unit/Unit.cpp",
+      "sha256": "f0c63ca1d64c1ed9265ab0520ecc4ab88ad5895fcb7cc36a36813cb8302632e2"
+    }
+  ],
+  "source_publication": "Scoped frozen patch against deployed source, not a merge into main"
+}

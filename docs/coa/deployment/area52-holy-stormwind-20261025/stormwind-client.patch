@@ -1,0 +1,20 @@
+--- a/client/Interface/FrameXML/Ascension_POI/StaticPOIs/GameObjectPOIs.lua
++++ b/client/Interface/FrameXML/Ascension_POI/StaticPOIs/GameObjectPOIs.lua
+@@ -4338,3 +4338,17 @@
+     end
+ end
+ C_Hook:Register(Area52OrgrimmarRuneforgePOI, "PLAYER_ENTERING_WORLD")
++
++local Area52StormwindRuneforgePOI = {}
++function Area52StormwindRuneforgePOI:PLAYER_ENTERING_WORLD()
++    local realm = string.lower(GetRealmName() or "")
++    DB_MapPOI.RemovePOIByID("area52-stormwind-runeforge")
++    if string.find(realm, "area 52", 1, true) or string.find(realm, "area-52", 1, true) then
++        DB_MapPOI.CreatePOI("area52-stormwind-runeforge", "Runeforge",
++            "Stormwind Runeforge", -8526.57421875, 786.2462158203125, 81.61534881591797,
++            Enum.POIType.Townsfolk,
++            EnumUtil.CombineMasks(Enum.POIFlags.ShowOnMinimap, Enum.POIFlags.HasTooltip),
++            188, 1.5, nil, 0)
++    end
++end
++C_Hook:Register(Area52StormwindRuneforgePOI, "PLAYER_ENTERING_WORLD")
