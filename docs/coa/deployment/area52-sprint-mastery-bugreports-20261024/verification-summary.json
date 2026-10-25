@@ -1,0 +1,32 @@
+{
+  "scope": [
+    "Improved Sprint 3/3 capstone",
+    "base movement speed tooltip wording",
+    "preserved Mastery member gem display and Fire Totem note removal"
+  ],
+  "binary_sha256": "245051cb13cd51dd27bae59cb8fc41aa834da3e331ec8ff8907721594dcef3c1",
+  "baseline": {
+    "source": {
+      "src/server/coa/Area52Dependencies.inc": {
+        "target": "/home/dml/games/ascension-freepick-test/private/active-build-source/src/server/coa/Area52Dependencies.inc",
+        "before": "cfdb2517380191d2faf26e5aa01e49cbe3385ab58f5c318e56923ac587ef5378",
+        "after": "7cbd541ac71d8ab9863c5380b8a203c956b318a16d6073d72577e970e72ab181"
+      },
+      "src/server/coa/AscensionMysticEnchant.cpp": {
+        "target": "/home/dml/games/ascension-freepick-test/private/active-build-source/src/server/coa/AscensionMysticEnchant.cpp",
+        "before": "f50cdc1d5e694c4c29033e82cec79fbb985f752dcfc5374e4a4accfbbb2228fb",
+        "after": "3ac1473b053d3243d0b6ae542743d992b4b40462e83f1eeea75c54e2601beccd"
+      }
+    }
+  },
+  "checks": [
+    "build",
+    "unit",
+    "focused",
+    "source-checks",
+    "matching Mastery UI evidence"
+  ],
+  "no_sql": true,
+  "no_status_changes": true,
+  "no_dll": true
+}

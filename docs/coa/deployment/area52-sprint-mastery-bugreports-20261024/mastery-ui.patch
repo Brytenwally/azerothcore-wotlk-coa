@@ -1,0 +1,64 @@
+--- a/Interface/AddOns/Ascension_CharacterAdvancementSeason9/Templates/CASpellButton.lua
++++ b/Interface/AddOns/Ascension_CharacterAdvancementSeason9/Templates/CASpellButton.lua
+@@ -1,24 +1,3 @@
+-local function AddArea52FireTotemCost(tooltip, entry)
+-    if GetRealmName() ~= "Area 52 - Free-Pick" or not C_Player or not C_Player:IsHero()
+-        or not entry or (BuildCreatorUtil and BuildCreatorUtil.IsPickingSpells()) then return end
+-    local mastery = entry.ID == 1316
+-    local member = entry.ID == 2833 or entry.ID == 2903 or entry.ID == 2905
+-        or entry.ID == 2906 or entry.ID == 3475
+-    if not mastery and not member then return end
+-    tooltip:AddLine(" ")
+-    tooltip:AddLine("Fire Totem Mastery purchase costs", 1, 0.82, 0, true)
+-    if mastery then
+-        tooltip:AddLine("Mastery: 1 Ability Essence + 2 blue gems.", 1, 1, 1, true)
+-        tooltip:AddLine("Each member totem: 1 Ability Essence; no additional gems.", 1, 1, 1, true)
+-    else
+-        tooltip:AddLine("This totem: 1 Ability Essence; no additional gems with Fire Totem Mastery.", 1, 1, 1, true)
+-        tooltip:AddLine("Its standalone gem price above is not an additional Mastery cost.", 1, 1, 1, true)
+-        if not C_CharacterAdvancement.IsKnownID(1316) then
+-            tooltip:AddLine("Mastery + first totem: 2 Ability Essence + 2 blue gems total.", 1, 1, 1, true)
+-        end
+-    end
+-end
+-
+ CASpellButtonBaseMixin = {}
+ CASpellButtonBaseMixin.OnEvent = OnEventToMethod
+ 
+@@ -280,7 +259,6 @@
+     end
+ 
+     GameTooltip:SetHyperlink(LinkUtil:GetSpellLink(self.spellID))
+-    AddArea52FireTotemCost(GameTooltip, self.entry)
+     if self.cannotLearn then
+         GameTooltip:AddLine(CA_CANNOT_LEARN_S:format(self.cannotLearn), RED_FONT_COLOR.r , RED_FONT_COLOR.g, RED_FONT_COLOR.b, true)
+     elseif self.cannotUnlearn then
+--- a/Interface/FrameXML/Util/GlobalOverwrites.lua
++++ b/Interface/FrameXML/Util/GlobalOverwrites.lua
+@@ -402,6 +402,15 @@
+ 
+ 	local quality, qualityCount = C_CharacterAdvancement_GetQualityInfo(spellID)
+ 	quality = quality and Enum.SpellQuality[quality] or quality
++	-- Area 52 charges rarity gems on the required Mastery, not its members.
++	-- Preserve rarity itself for icon colors and all non-cost consumers.
++	if GetRealmName() == "Area 52 - Free-Pick" and C_Player and C_Player:IsHero() then
++		local entry = C_CharacterAdvancement.GetEntryBySpellID(spellID)
++		if entry and entry.Masteries and next(entry.Masteries)
++			and not C_CharacterAdvancement.IsMastery(spellID) then
++			qualityCount = 0
++		end
++	end
+ 	return quality, qualityCount
+ end
+ 
+--- a/Interface/FrameXML/SpellListItem.lua
++++ b/Interface/FrameXML/SpellListItem.lua
+@@ -368,7 +368,7 @@
+ 
+ function SpellListItemMixin:SetQuality()
+     local quality, qualityCost = C_CharacterAdvancement.GetQualityInfo(self.spellID)
+-    if (quality > Enum.SpellQuality.Common) and C_Config.GetBoolConfig("CONFIG_CHARACTER_ADVANCEMENT_QUALITIES_ENABLED") then
++    if qualityCost and qualityCost > 0 and (quality > Enum.SpellQuality.Common) and C_Config.GetBoolConfig("CONFIG_CHARACTER_ADVANCEMENT_QUALITIES_ENABLED") then
+         if AccessibilityUtil.IsColorBlind() then
+             self.RarityGemContainer:SetNumGems(0, 0)
+             self.RarityGemText:SetFormattedText("%d %s", qualityCost, _G["ITEM_QUALITY" .. quality .. "_DESC"])

@@ -1,0 +1,80 @@
+--- a/src/server/coa/Area52Dependencies.inc
++++ b/src/server/coa/Area52Dependencies.inc
+@@ -460,3 +460,67 @@
+     Position Previous;
+     std::set<ObjectGuid> Hit;
+ };
++
++class area52_improved_sprint : public UnitScript
++{
++public:
++    area52_improved_sprint() : UnitScript("area52_improved_sprint", true,
++        {UNITHOOK_ON_AURA_APPLY, UNITHOOK_ON_AURA_REMOVE}) { }
++
++    static bool IsSprint(Player* player, Aura const* aura)
++    {
++        return aura->GetCasterGUID() == player->GetGUID() &&
++            player->MatchesSpellInteraction(aura->GetId(), 2983);
++    }
++
++    static void Synchronize(Player* player, bool cleanse)
++    {
++        Aura* sprint = nullptr;
++        if (player->IsAlive() && player->HasSpell(813875) && player->HasAura(813875))
++            for (auto const& [id, application] : player->GetAppliedAuras())
++            {
++                Aura* aura = application->GetBase();
++                if (!application->GetRemoveMode() && IsSprint(player, aura) &&
++                    (!sprint || aura->GetDuration() > sprint->GetDuration()))
++                    sprint = aura;
++            }
++
++        if (!sprint)
++        {
++            player->RemoveAurasDueToSpell(81089, player->GetGUID());
++            return;
++        }
++
++        if (cleanse)
++            player->CastSpell(player, 806693, true);
++
++        Aura* protection = player->GetAura(81089, player->GetGUID());
++        if (!protection)
++            protection = player->AddAura(81089, player);
++        if (protection)
++        {
++            protection->SetMaxDuration(sprint->GetMaxDuration());
++            protection->SetDuration(sprint->GetDuration());
++        }
++    }
++
++    void OnAuraApply(Unit* unit, Aura* aura) override
++    {
++        Player* player = unit->ToPlayer();
++        if (!aura || !AscensionFreePick::Applies(player))
++            return;
++        bool const sprint = IsSprint(player, aura);
++        if (sprint || aura->GetId() == 813875 || aura->GetId() == 81089)
++            Synchronize(player, sprint);
++    }
++
++    void OnAuraRemove(Unit* unit, AuraApplication* application, AuraRemoveMode) override
++    {
++        Player* player = unit->ToPlayer();
++        if (!application || !AscensionFreePick::Applies(player))
++            return;
++        Aura* aura = application->GetBase();
++        if (aura->GetId() == 813875 || IsSprint(player, aura))
++            Synchronize(player, false);
++    }
++};
+--- a/src/server/coa/AscensionMysticEnchant.cpp
++++ b/src/server/coa/AscensionMysticEnchant.cpp
+@@ -1343,6 +1343,7 @@
+     RegisterSpellScript(aura_area52_siegebreaker_collision);
+     new area52_dependency_damage();
+     new area52_dependency_metadata();
++    new area52_improved_sprint();
+     new area52_dependency_casts();
+     RegisterSpellScript(spell_area52_corrupted_bear_instant);
+     new area52_corrupted_bear_casts();
