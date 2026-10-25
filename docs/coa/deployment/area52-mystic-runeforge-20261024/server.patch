@@ -1,0 +1,40 @@
+--- a/src/server/coa/AscensionMysticEnchant.cpp
++++ b/src/server/coa/AscensionMysticEnchant.cpp
+@@ -80,7 +80,7 @@
+ std::atomic<std::uint64_t> NextGeneration{0};
+ constexpr char StateKey[] = "coa.freepick.mystic";
+ constexpr std::array<std::uint32_t, 6> Prices = {0, 0, 300000, 600000, 1000000, 2500000};
+-constexpr std::array<std::uint32_t, 6> Tokens = {0, 0, 500, 1000, 2500, 5000};
++constexpr std::array<std::uint32_t, 6> Tokens = {0, 0, 250, 500, 1000, 2000};
+ struct State : DataMap::Base
+ {
+     std::set<std::uint32_t> Known;
+@@ -817,7 +817,7 @@
+         {"CONFIG_MAX_RARE_RANDOM_ENCHANTS", 17}, {"CONFIG_MAX_EPIC_RANDOM_ENCHANTS", 4},
+         {"CONFIG_MAX_LEGENDARY_RANDOM_ENCHANTS", 1}, {"CONFIG_MAX_ARTIFACT_RANDOM_ENCHANTS", 0}};
+     values["CONFIG_MYSTIC_ENCHANT_REFORGE_TOKEN_COST"] =
+-        sConfigMgr->GetOption<uint32>("CoA.FreePickMysticEnchants.ReforgeRuneCost", 250);
++        sConfigMgr->GetOption<uint32>("CoA.FreePickMysticEnchants.ReforgeRuneCost", 50);
+     values["CONFIG_MYSTIC_ENCHANT_REFORGE_MONEY_COST"] =
+         sConfigMgr->GetOption<uint32>("CoA.FreePickMysticEnchants.ReforgeMoneyCost", 25000);
+     for (char const* quality : {"UNCOMMON", "RARE", "EPIC", "LEGENDARY", "ARTIFACT"})
+--- a/src/server/coa/Area52MysticScrolls.inc
++++ b/src/server/coa/Area52MysticScrolls.inc
+@@ -88,8 +88,6 @@
+     uint32 const spell = found->second;
+     if (state->Known.contains(spell))
+         return "RE_DISENCHANT_ALREADY_KNOWN_ENCHANTMENT";
+-    if (!NearAltar(player))
+-        return "RE_DISENCHANT_NO_MYSTIC_ALTAR";
+     auto transaction = CharacterDatabase.BeginTransaction();
+     auto* statement = CharacterDatabase.GetPreparedStatement(CHAR_INS_FREEPICK_MYSTIC_COLLECTION);
+     statement->SetData(0, player->GetSession()->GetAccountId());
+@@ -186,7 +184,7 @@
+         result = "RE_REFORGE_UNKNOWN";
+     else
+     {
+-        uint32 runes = sConfigMgr->GetOption<uint32>("CoA.FreePickMysticEnchants.ReforgeRuneCost", 250);
++        uint32 runes = sConfigMgr->GetOption<uint32>("CoA.FreePickMysticEnchants.ReforgeRuneCost", 50);
+         uint32 money = sConfigMgr->GetOption<uint32>("CoA.FreePickMysticEnchants.ReforgeMoneyCost", 25000);
+         if (runes && player->HasItemCount(MysticRuneItem, runes))
+             money = 0;
