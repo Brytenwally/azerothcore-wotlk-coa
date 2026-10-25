@@ -1,0 +1,25 @@
+{
+  "status": "staged_verified",
+  "promoted_catalog_entries": [
+    {
+      "kind": "mystic",
+      "id": 986280
+    }
+  ],
+  "tooltip_records": [
+    986280,
+    986281,
+    986347,
+    986348,
+    986349,
+    986350,
+    986351,
+    986352,
+    986353,
+    986354,
+    986355
+  ],
+  "certified_records_preserved": true,
+  "tester_snapshot_sha256": "c3d184adb1f0f16ab71f7b94eb2d8d391a55b4fd157a17263c01a01986464001",
+  "applied_live": false
+}
