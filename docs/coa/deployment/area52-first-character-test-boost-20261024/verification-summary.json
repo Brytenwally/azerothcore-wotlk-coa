@@ -1,0 +1,26 @@
+{
+  "scope": [
+    "First Character Test Boost item9900060",
+    "separate once-per-account delivery",
+    "legacy account next-new-character delivery",
+    "independent delivery/use controls"
+  ],
+  "binary_sha256": "b2f89a3771f7fe08620932f99a0b6451e0b5531f6fc162af3564b440b7359a0b",
+  "baseline": {
+    "source": {
+      "src/server/coa/Area52TesterSupplies.cpp": {
+        "before": "bad0161ae7c48668d8b1eb3eb96c61472792f76983f678270633329274ec60a1",
+        "after": "5f3778afa3d2c0a7532ac71adce9e7c339418e9387c7b3e7bbbbddddaa9f3a3c",
+        "target": "/home/dml/games/ascension-freepick-test/private/active-build-source/src/server/coa/Area52TesterSupplies.cpp"
+      }
+    }
+  },
+  "checks": [
+    "build-final",
+    "focused-current",
+    "source-current",
+    "sql-checks"
+  ],
+  "no_status_changes": true,
+  "no_dll": true
+}
