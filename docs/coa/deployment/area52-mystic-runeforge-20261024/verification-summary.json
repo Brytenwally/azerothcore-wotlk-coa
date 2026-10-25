@@ -1,0 +1,9 @@
+{
+  "scope": "Mystic free learning, no altar, prices, Orgrimmar Runeforge directions and half-size191748",
+  "reused_mystic_build": "../mystic-scroll-no-altar-20261024/build-prices/report.json",
+  "reused_native_and_lua": "focused-funds and focused-prices reports",
+  "guard_sql": "production-schema MySQL backup/apply/retry/rollback/drift passed",
+  "no_dll": true,
+  "no_status_changes": true,
+  "size_already_applied": true
+}
