@@ -1,0 +1,43 @@
+{
+  "scope": [
+    "Invocation/Barrier full-mana absorption and zero cost",
+    "Fire Totem Mastery contextual price display",
+    "Raid Warning server command and previously installed manager selector"
+  ],
+  "binary_sha256": "08ae4124660e04703bfec5e2087a39115102a0cb85e090f7cfb2fc2fbcf52441",
+  "baseline": {
+    "source": {
+      "src/server/coa/Area52Dependencies.inc": {
+        "target": "/home/dml/games/ascension-freepick-test/private/active-build-source/src/server/coa/Area52Dependencies.inc",
+        "before": "b87f6e3bd8a174bf36e5ab4614c85104a31d6141dd40b1e2abe55892dcc2ac45",
+        "after": "cfdb2517380191d2faf26e5aa01e49cbe3385ab58f5c318e56923ac587ef5378"
+      },
+      "src/server/coa/Area52DependencyRules.h": {
+        "target": "/home/dml/games/ascension-freepick-test/private/active-build-source/src/server/coa/Area52DependencyRules.h",
+        "before": "cf27da008459f258884a15dc3914d33dfcf92b1ecc540e384fb8f736ffed1236",
+        "after": "23ffd34dd2f4df6c4b62b3d1a93e7372e19b9bea71c42d6b330ce94153159abe"
+      },
+      "src/server/game/Entities/Unit/Unit.cpp": {
+        "target": "/home/dml/games/ascension-freepick-test/private/active-build-source/src/server/game/Entities/Unit/Unit.cpp",
+        "before": "70782ae079e3f899aef9a38eb345065ef411b24935956f2f4f2146a3b1ce6f46",
+        "after": "c94c1e979ebf9a697549313d19cc4da62c0475131f4d716348bfa848033039a6"
+      },
+      "src/server/scripts/Commands/cs_message.cpp": {
+        "target": "/home/dml/games/ascension-freepick-test/private/active-build-source/src/server/scripts/Commands/cs_message.cpp",
+        "before": "40d5b4fec883cca5dd3bbf9bc14faa6b286347fd9cefb0030faa7c42787e4f5b",
+        "after": "0822d3791aec3e6eb778839059f1b1c3a60bad36661cba1a34ac26fe590297d4"
+      }
+    }
+  },
+  "checks": [
+    "build",
+    "focused",
+    "source-checks",
+    "Fire Totem verification-final",
+    "Raid Warning matching prior checks"
+  ],
+  "no_sql": true,
+  "no_status_changes": true,
+  "no_dll": true,
+  "manager": "existing installed verified selector preserved"
+}
