@@ -1,0 +1,18 @@
+{
+  "status": "mechanics_staged_verification_pending",
+  "changed_spell_ids": [
+    35395,
+    35601,
+    35602,
+    35603,
+    35604,
+    35605,
+    35606,
+    35607
+  ],
+  "promoted_catalog_entries": [],
+  "certified_preserved": true,
+  "unchanged_spell_records": 239057,
+  "archive_readback": "passed",
+  "installed": false
+}
