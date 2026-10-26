@@ -2036,8 +2036,9 @@ CharacterCreating.Disabled.RaceMask = 0
 #                     128  - (Disabled, Mage)
 #                     256  - (Disabled, Warlock)
 #                     1024 - (Disabled, Druid)
+#                     4294966783 - (Area 52 Freepick: every class except the Hero, class 10 = 512)
 
-CharacterCreating.Disabled.ClassMask = 0
+CharacterCreating.Disabled.ClassMask = 4294966783
 
 #
 #    CharactersPerAccount
