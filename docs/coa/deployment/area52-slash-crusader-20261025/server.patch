@@ -1,0 +1,136 @@
+--- /dev/null
++++ b/data/sql/updates/pending_db_world/2026_10_25_04_area52_exorcist_cooldowns.sql
+@@ -0,0 +1,4 @@
++DELETE FROM `spell_script_names` WHERE `spell_id` IN (986284, 986285) AND `ScriptName` = 'spell_area52_exorcist_cooldown';
++INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`) VALUES
++(986284, 'spell_area52_exorcist_cooldown'),
++(986285, 'spell_area52_exorcist_cooldown');
+--- a/src/server/coa/AscensionMysticKnightEpics.cpp
++++ b/src/server/coa/AscensionMysticKnightEpics.cpp
+@@ -1,5 +1,6 @@
+ /* Copyright (C) 2016+ AzerothCore, GNU AGPL v3. */
+ #include "Config.h"
++#include "DBCStores.h"
+ #include "Area52HolyContracts.h"
+ #include "AscensionMysticEnchantCatalog.h"
+ #include "MotionMaster.h"
+@@ -67,9 +68,7 @@
+         AscensionMysticEnchant::SetGrantedSpell(player, Exorcist, id, id == selected);
+     for (uint32 id : HeroicStrike)
+     {
+-        if (selected && player->HasActiveSpell(id))
+-            player->SetTemporarySpellReplacement(id, selected);
+-        else if (std::find(ExorcistSlash.begin(), ExorcistSlash.end(),
++        if (std::find(ExorcistSlash.begin(), ExorcistSlash.end(),
+             player->GetTemporarySpellReplacement(id)) != ExorcistSlash.end())
+             player->SetTemporarySpellReplacement(id, 0);
+     }
+@@ -111,7 +110,7 @@
+             return;
+         if (info->Id == 986281 || (info->Id >= 986347 && info->Id <= 986355))
+         {
+-            info->SchoolMask = SPELL_SCHOOL_MASK_HOLY;
++            info->SchoolMask = SPELL_SCHOOL_MASK_NORMAL | SPELL_SCHOOL_MASK_HOLY;
+             info->CasterAuraSpell = 0;
+         }
+         if (info->Id == 965983)
+@@ -308,6 +307,59 @@
+             SPELL_EFFECT_ASCENSION_TRIGGER_RANDOM_SPELL);
+     }
+ };
++class spell_area52_exorcist_cooldown : public SpellScript
++{
++    PrepareSpellScript(spell_area52_exorcist_cooldown);
++    bool handled = false;
++    bool Load() override { return Applies(GetCaster()->ToPlayer()); }
++    void Reduce(SpellEffIndex index)
++    {
++        PreventHitDefaultEffect(index);
++        if (handled)
++            return;
++        handled = true;
++        Player* player = GetCaster()->ToPlayer();
++        int32 delta = GetEffectValue();
++        if (!player || delta >= 0)
++            return;
++        uint32 root = GetSpellInfo()->Id == 986284 ? 53385 : 20271;
++        SpellInfo const* original = sSpellMgr->GetSpellInfo(root);
++        if (!original)
++            return;
++        std::set<uint32> spells = {root};
++        auto category = sSpellsByCategoryStore.find(original->GetCategory());
++        if (category != sSpellsByCategoryStore.end())
++            for (auto const& [item, id] : category->second)
++                if (!item)
++                    if (SpellInfo const* info = sSpellMgr->GetSpellInfo(id))
++                        if (info->SpellFamilyName == original->SpellFamilyName)
++                            spells.insert(id);
++        for (auto const& [id, entry] : player->GetSpellMap())
++        {
++            if (entry->State == PLAYERSPELL_REMOVED)
++                continue;
++            auto origins = player->GetSpellInteractionOrigins(id);
++            if (std::any_of(origins.begin(), origins.end(),
++                [&spells](uint32 origin) { return spells.contains(origin); }))
++                spells.insert(id);
++        }
++        for (uint32 id : spells)
++        {
++            uint32 remaining = player->GetSpellCooldownDelay(id);
++            if (!remaining)
++                continue;
++            if (uint64(-int64(delta)) >= remaining)
++                player->RemoveSpellCooldown(id, true);
++            else
++                player->ModifySpellCooldown(id, delta);
++        }
++    }
++    void Register() override
++    {
++        OnEffectHitTarget += SpellEffectFn(spell_area52_exorcist_cooldown::Reduce, EFFECT_ALL,
++            SPELL_EFFECT_ASCENSION_MODIFY_COOLDOWN);
++    }
++};
+ class spell_area52_exorcist_slash : public SpellScript
+ {
+     PrepareSpellScript(spell_area52_exorcist_slash);
+@@ -503,6 +555,7 @@
+     RegisterSpellScript(aura_area52_ghostly_blow);
+     RegisterSpellScript(aura_area52_epic_equipment);
+     RegisterSpellScript(spell_area52_exorcist_boon);
++    RegisterSpellScript(spell_area52_exorcist_cooldown);
+     RegisterSpellScript(aura_area52_lights_grace);
+     RegisterSpellScript(aura_area52_focus_immunity);
+     RegisterSpellScript(spell_area52_sanctity_trigger);
+@@ -532,6 +585,8 @@
+     if (spell == Exorcist)
+     {
+         required.emplace_back(986282, "spell_area52_exorcist_boon");
++        required.emplace_back(986284, "spell_area52_exorcist_cooldown");
++        required.emplace_back(986285, "spell_area52_exorcist_cooldown");
+         for (uint32 id : ExorcistSlash)
+             required.emplace_back(id, "spell_area52_exorcist_slash");
+     }
+--- a/src/server/game/Spells/SpellEffects.cpp
++++ b/src/server/game/Spells/SpellEffects.cpp
+@@ -4077,12 +4077,18 @@
+ 
+     weaponDamagePercentMod *= m_scriptWeaponDamageMultiplier;
+ 
+-    // Sequence is important
++    bool const area52CrusaderStrike = AscensionFreePick::Applies(m_caster->ToPlayer()) &&
++        sSpellMgr->GetFirstSpellInChain(m_spellInfo->Id) == 35395 &&
++        m_spellInfo->Effects[EFFECT_0].Effect == SPELL_EFFECT_NORMALIZED_WEAPON_DMG &&
++        m_spellInfo->Effects[EFFECT_1].Effect == SPELL_EFFECT_WEAPON_PERCENT_DAMAGE;
++
++    // Crusader Strike adds its flat bonus after its weapon percentage, as described by its tooltip.
++    // Preserve the authored effect indices for spell modifiers and other spells.
+     for (int j = 0; j < MAX_SPELL_EFFECTS; ++j)
+     {
+         // We assume that a spell have at most one fixed_bonus
+         // and at most one weaponDamagePercentMod
+-        switch (m_spellInfo->Effects[j].Effect)
++        switch (m_spellInfo->Effects[area52CrusaderStrike && j < 2 ? 1 - j : j].Effect)
+         {
+             case SPELL_EFFECT_WEAPON_DAMAGE:
+             case SPELL_EFFECT_WEAPON_DAMAGE_NOSCHOOL:

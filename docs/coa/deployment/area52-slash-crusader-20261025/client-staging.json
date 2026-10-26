@@ -1,0 +1,34 @@
+{
+  "status": "staged_pending_package_qualification",
+  "changed_spell_ids": [
+    35395,
+    35601,
+    35602,
+    35603,
+    35604,
+    35605,
+    35606,
+    35607,
+    986280,
+    986281,
+    986347,
+    986348,
+    986349,
+    986350,
+    986351,
+    986352,
+    986353,
+    986354,
+    986355
+  ],
+  "promoted_catalog_entries": [
+    {
+      "kind": "advancement",
+      "id": 3594
+    }
+  ],
+  "certified_preserved": true,
+  "unchanged_spell_records": 239054,
+  "archive_readback": "passed",
+  "installed": false
+}

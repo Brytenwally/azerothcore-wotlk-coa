@@ -1,0 +1,29 @@
+{
+  "reports": {
+    "build-candidate": "5227f20e4470ffc592a9072571a82fec837b18b3c352a7ec2f9106885ab20ae5",
+    "source-candidate": "781100a7f025051f151343b3ec5fc6fb7760a9b37475060d666758d29acdb4f2",
+    "focused-packets": "2db55c3d59a9b222d1cbda452e670387e0defe612bed7bc7e29b119d8b8dcc1a",
+    "sql-checks": "74b1a6f21b1f0d4cf57e48c8f9505d8036d693bdad3e2df97586a9231694e18d"
+  },
+  "binary_sha256": "00c3d9e69f7d7a9a924917393dcbe91fba2585bda6b5741766b3c8394c495fc6",
+  "baseline_binary_sha256": "c30ed9cc2626145ec886a2e2ae2cb0525f31bfa105dafafdd413d16c4ac9ccbb",
+  "scope": "Exorcist Slash independent grant and Holystrike school; rank/category-aware bonus cooldowns; Crusader Strike damage order. Current charge evidence reconciled separately.",
+  "source": [
+    {
+      "path": "src/server/coa/AscensionMysticKnightEpics.cpp",
+      "sha256": "aca2117b9f9522a22faef9fc72bbcf704d62ac3827883e24b1b7834dc4ebcab9"
+    },
+    {
+      "path": "src/server/game/Spells/SpellEffects.cpp",
+      "sha256": "dbd10e5c44b1104a1c7ce2e97e8e9a8d6542dd2e1854222dc90a94dff2860c1a"
+    }
+  ],
+  "source_publication": "Scoped frozen patch against qualified deployed baseline; not integration into main",
+  "status_changes": [
+    {
+      "kind": "advancement",
+      "id": 3594,
+      "status": "VERIFIED"
+    }
+  ]
+}
