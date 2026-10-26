@@ -1,0 +1,17 @@
+{
+  "status": "staged_verified",
+  "changed_spell_ids": [
+    84506,
+    965501
+  ],
+  "promoted_catalog_entries": [
+    {
+      "kind": "mystic",
+      "id": 84506
+    }
+  ],
+  "certified_preserved": true,
+  "unchanged_spell_records": 239063,
+  "archive_readback": "passed",
+  "installed": false
+}

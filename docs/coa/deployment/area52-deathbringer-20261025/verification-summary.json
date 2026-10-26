@@ -1,0 +1,33 @@
+{
+  "reports": {
+    "build-final": "1ccef086d3e1b57630cf3c0682279afc465988ec21047ebba330fbc30b8bd09c",
+    "source-final": "162a46e02cd333a511cdfdf24d67cb505212c2e1ca768aad2636e04133a34acc",
+    "focused-final-r2": "e7687d4c7eea1e6160e6607d40c2210662f87e691c70ba81dbb8ed5810b06071",
+    "sql-checks-r2": "db2d9bfe19a3afe281d8ae3efe69dc620a045c2ef0e58d1ab981b2dc66eafae0"
+  },
+  "binary_sha256": "c30ed9cc2626145ec886a2e2ae2cb0525f31bfa105dafafdd413d16c4ac9ccbb",
+  "baseline_binary_sha256": "e79025ea3fcddc7cdaf415f2012072539b157e0f21dc5f90d6504e7e4bb0e711",
+  "scope": "Deathbringer and Unbounded Deathbringer proc policy, runtime cooldown/splash enforcement and startup connection; original damage/healing formulas retained",
+  "source": [
+    {
+      "path": "src/server/coa/Area52LegendaryProcs.inc",
+      "sha256": "d46ae9fc69642d84d61def4eeb07a6e8c56b6e7bd472be81dc8930fb3802dd87"
+    },
+    {
+      "path": "src/server/coa/Area52LegendaryRules.h",
+      "sha256": "4a013e03eed0387e0de18fa74c31fc527b6a996bc9b24f0716848e3c67692d26"
+    },
+    {
+      "path": "src/server/coa/AscensionMysticEnchant.cpp",
+      "sha256": "555b60553c95002f05e0fba5882989184962473f1fe9e401ce471abc64b816e6"
+    }
+  ],
+  "source_publication": "Scoped frozen patch against qualified deployed baseline; not integration into main",
+  "status_changes": [
+    {
+      "kind": "mystic",
+      "id": 84506,
+      "status": "VERIFIED"
+    }
+  ]
+}
