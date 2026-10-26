@@ -90,7 +90,7 @@ class aura_area52_everliving_stacks : public AuraScript
 
     void Modifier(AuraEffect const*, SpellModifier*& modifier)
     {
-        Player* player = GetTarget()->ToPlayer();
+        Player* player = GetUnitOwner() ? GetUnitOwner()->ToPlayer() : nullptr;
         if (player && AscensionMysticEnchant::Applies(player) && modifier)
             modifier->value = 0;
     }
