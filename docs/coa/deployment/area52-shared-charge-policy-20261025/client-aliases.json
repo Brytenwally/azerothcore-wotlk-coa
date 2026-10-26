@@ -1,0 +1,29 @@
+{
+  "aliases": [
+    {
+      "id": 760100,
+      "key": 760100,
+      "category": 4,
+      "client_category": 661,
+      "maximum": 3,
+      "recovery_ms": 10000
+    }
+  ],
+  "before_dbc_hashes": {
+    "SpellCharges.dbc": "9a55f883c64fc86f60f8c68af963c7677cce5081e5738f0a0e849c3057805e44",
+    "SpellChargesCategory.dbc": "23e31c4beb74761a55d009ba89f9069dbc2cf5940b18426e03524b4f7b463f3d"
+  },
+  "after_dbc_hashes": {
+    "SpellCharges.dbc": "e331cb920f466d57a27316533195e2861a5b333dec430b8c9ce3b106c7b35ab8",
+    "SpellChargesCategory.dbc": "f9c4096fae9f0bcaf7a1d76c966739390f9d4e2c2d03aea986aa1103a32e3ab1"
+  },
+  "status": "staged_readback_passed",
+  "changed_members": [
+    "DBFilesClient\\SpellCharges.dbc",
+    "DBFilesClient\\SpellChargesCategory.dbc"
+  ],
+  "unchanged_members": 24,
+  "preserved_spell_dbc": true,
+  "server_charge_categories_unchanged": true,
+  "installed": false
+}
