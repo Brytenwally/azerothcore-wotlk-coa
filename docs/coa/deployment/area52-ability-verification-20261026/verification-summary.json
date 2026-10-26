@@ -1,0 +1,94 @@
+{
+  "reports": [
+    "build-login-kick/report.json",
+    "source-login-kick/report.json"
+  ],
+  "binary_sha256": "e1a7eab21cce89584a0f15551cae0782d7afef1e93ad8f579c322b578e2b5b41",
+  "baseline_binary_sha256": "00c3d9e69f7d7a9a924917393dcbe91fba2585bda6b5741766b3c8394c495fc6",
+  "scope": [
+    "Holy Strike",
+    "Crusader Strike",
+    "Anomaly combat-exit persistence",
+    "Poisons application ability grants",
+    "Critical Block - any Tank Stance",
+    "Hoplite Impaled target-only elapsed counter",
+    "Icy Veins temporary haste nonstacking",
+    "Mastery prompt only after final member removal",
+    "Sinister Flurry",
+    "Sweeping Strikes excludes primary",
+    "Angelic Feather single pickup",
+    "Preserve completed Riding on login",
+    "Preserve Spartan Kick replacement during login restoration"
+  ],
+  "source": [
+    {
+      "path": "src/server/coa/AscensionBulwark.cpp",
+      "sha256": "8a2f94d0f422a21aa4242eb3a7b8654f425ec53338ad36f21bbd69330c6703f6"
+    },
+    {
+      "path": "src/server/coa/AscensionCompat.cpp",
+      "sha256": "a7e5cb1f0fa30ae175a5718f3d153c4612426897276aa88f5860bebc88b9e1c2"
+    },
+    {
+      "path": "src/server/coa/AscensionFreePick.cpp",
+      "sha256": "88a583b1dbbae9b23b74430dbde72ba34cd32dd2e322558aa806f3f5a15257e8"
+    },
+    {
+      "path": "src/server/coa/AscensionFreePickLinkedSpells.h",
+      "sha256": "eb51f45f55f9ba9ec28f7099c0ec79fdb3cf93bdc0b3632d2c2098dda8de25e9"
+    },
+    {
+      "path": "src/server/coa/AscensionHoplite.cpp",
+      "sha256": "ee3eddb457bb77ae1d666efee5655cdb60156f46e33692598d5d42db5ca9e823"
+    },
+    {
+      "path": "src/server/coa/AscensionMysticEnchant.cpp",
+      "sha256": "e1c57f9848a6b0bf62ede2886694957dbca5a7e69fbdf8a2cf597b54bc0fc189"
+    },
+    {
+      "path": "src/server/coa/AscensionMysticEnchantCatalog.h",
+      "sha256": "c4ec2256b1e49d8c71c52b4f9ac7faa102273e9f9e77509036ea3c2819ec5b74"
+    },
+    {
+      "path": "src/server/coa/AscensionMysticKnightEpics.cpp",
+      "sha256": "d1f8dca1c9968c54e733ea49b72bda5b2562bb3344168f4f8586a8252f9608bf"
+    },
+    {
+      "path": "src/server/coa/AscensionSpartanKick.cpp",
+      "sha256": "0e600237f61de93f8029990af9c44836aa043ded0e22a46acb4bba59f891b1b7"
+    },
+    {
+      "path": "src/server/coa/AscensionSummonedEffects.cpp",
+      "sha256": "f909619e3fb16cb498d5f6ceb1612be285798070645acf6f5f3bb27e4e509655"
+    },
+    {
+      "path": "src/server/game/Spells/Spell.cpp",
+      "sha256": "a09beebcf6af0990ec5b0d6f5d4064c33ca3f5b78adceb000a1822a74ecdcbcc"
+    },
+    {
+      "path": "src/server/game/Spells/SpellInfo.cpp",
+      "sha256": "23a7c5e33496055337a13a9faabfc2ddaa3a0223e39b7017d63ff5bf8038c585"
+    },
+    {
+      "path": "src/server/game/Spells/Auras/SpellAuras.cpp",
+      "sha256": "5296cf7cf1a27ef5e21538772bcf3de5e53a00fc5e6934ed15f90dd956bed3d8"
+    },
+    {
+      "path": "src/server/game/Entities/Unit/Unit.cpp",
+      "sha256": "1672d5e873648788ed03c6b4fa1abca35c1f4171eddce27f3fb020d7bf8852c9"
+    }
+  ],
+  "source_publication": "Scoped frozen patch against qualified deployed baseline; not integration into main",
+  "status_changes": [
+    {
+      "kind": "advancement",
+      "id": 10001,
+      "status": "VERIFIED"
+    },
+    {
+      "kind": "mystic",
+      "id": 965303,
+      "status": "VERIFIED"
+    }
+  ]
+}

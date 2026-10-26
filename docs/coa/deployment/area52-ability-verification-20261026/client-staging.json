@@ -1,0 +1,198 @@
+{
+  "passed": true,
+  "spell_changes": [
+    {
+      "id": 2842,
+      "allowed_fields": [
+        170
+      ],
+      "before_description": "With this ability you can use all poisons.\n\n@ext:|cff00ff00CERTIFIED|r:ext@",
+      "after_description": "Automatically unlocks poison applications as you level. No additional Ability Essence is required.\n\nLevel 20: Instant Poison\nLevel 20: Crippling Poison\nLevel 24: Mind-numbing Poison\nLevel 30: Deadly Poison\nLevel 32: Wound Poison\nLevel 60: Anesthetic Poison\n\n@ext:|cff00ff00CERTIFIED|r:ext@"
+    },
+    {
+      "id": 12328,
+      "allowed_fields": [
+        170
+      ],
+      "before_description": "While active, casting a melee ability that deals damage will cause a Sweeping Strike, dealing 40% weapon damage to 5 nearby enemies, further increased by attack power. Lasts $d.\n\n@ext:This ability shares a cooldown with Bloodbath, and Blade Flurry.\n\nThis ability is usable while shapeshifted.\n\n|cffffff00VERIFIED|r:ext@",
+      "after_description": "While active, casting a melee ability that deals damage will cause a Sweeping Strike, dealing 40% weapon damage to up to 5 other nearby enemies, further increased by attack power. Lasts $d.\n\n@ext:This ability shares a cooldown with Bloodbath, and Blade Flurry.\n\nThis ability is usable while shapeshifted.\n\n|cffffff00VERIFIED|r:ext@\n\nThe triggering attack's primary target is not hit by Sweeping Strike."
+    },
+    {
+      "id": 35395,
+      "allowed_fields": [
+        170,
+        225
+      ],
+      "before_description": "An instant strike that causes $m2% weapon damage plus $s1.\r\n\r\nMax 3 charges. 4 seconds recharge timer.\n\n@ext:|cffffff00VERIFIED|r:ext@",
+      "after_description": "An instant strike that causes $m2% weapon damage plus $s1 as Holystrike (Physical and Holy) damage.\r\n\r\nMax 3 charges. 4 seconds recharge timer.\n\n@ext:|cffffff00VERIFIED|r:ext@"
+    },
+    {
+      "id": 35512,
+      "allowed_fields": [
+        170
+      ],
+      "before_description": "An instant strike that causes $m2% holy weapon damage plus ${$m3+$ppl3}.\n\n@ext:|cffff0000NOT VERIFIED|r:ext@",
+      "after_description": "An instant strike that causes $m2% weapon damage as Holystrike (Physical and Holy) plus ${$m3+$ppl3}.\n\n@ext:|cffffff00VERIFIED|r:ext@"
+    },
+    {
+      "id": 35601,
+      "allowed_fields": [
+        170,
+        225
+      ],
+      "before_description": "An instant strike that causes $m2% weapon damage plus $s1.\r\n\r\nMax 3 charges. 4 seconds recharge timer.\n\n@ext:|cffffff00VERIFIED|r:ext@",
+      "after_description": "An instant strike that causes $m2% weapon damage plus $s1 as Holystrike (Physical and Holy) damage.\r\n\r\nMax 3 charges. 4 seconds recharge timer.\n\n@ext:|cffffff00VERIFIED|r:ext@"
+    },
+    {
+      "id": 35602,
+      "allowed_fields": [
+        170,
+        225
+      ],
+      "before_description": "An instant strike that causes $m2% weapon damage plus $s1.\r\n\r\nMax 3 charges. 4 seconds recharge timer.\n\n@ext:|cffffff00VERIFIED|r:ext@",
+      "after_description": "An instant strike that causes $m2% weapon damage plus $s1 as Holystrike (Physical and Holy) damage.\r\n\r\nMax 3 charges. 4 seconds recharge timer.\n\n@ext:|cffffff00VERIFIED|r:ext@"
+    },
+    {
+      "id": 35603,
+      "allowed_fields": [
+        170,
+        225
+      ],
+      "before_description": "An instant strike that causes $m2% weapon damage plus $s1.\r\n\r\nMax 3 charges. 4 seconds recharge timer.\n\n@ext:|cffffff00VERIFIED|r:ext@",
+      "after_description": "An instant strike that causes $m2% weapon damage plus $s1 as Holystrike (Physical and Holy) damage.\r\n\r\nMax 3 charges. 4 seconds recharge timer.\n\n@ext:|cffffff00VERIFIED|r:ext@"
+    },
+    {
+      "id": 35604,
+      "allowed_fields": [
+        170,
+        225
+      ],
+      "before_description": "An instant strike that causes $m2% weapon damage plus $s1.\r\n\r\nMax 3 charges. 4 seconds recharge timer.\n\n@ext:|cffffff00VERIFIED|r:ext@",
+      "after_description": "An instant strike that causes $m2% weapon damage plus $s1 as Holystrike (Physical and Holy) damage.\r\n\r\nMax 3 charges. 4 seconds recharge timer.\n\n@ext:|cffffff00VERIFIED|r:ext@"
+    },
+    {
+      "id": 35605,
+      "allowed_fields": [
+        170,
+        225
+      ],
+      "before_description": "An instant strike that causes $m2% weapon damage plus $s1.\r\n\r\nMax 3 charges. 4 seconds recharge timer.\n\n@ext:|cffffff00VERIFIED|r:ext@",
+      "after_description": "An instant strike that causes $m2% weapon damage plus $s1 as Holystrike (Physical and Holy) damage.\r\n\r\nMax 3 charges. 4 seconds recharge timer.\n\n@ext:|cffffff00VERIFIED|r:ext@"
+    },
+    {
+      "id": 35606,
+      "allowed_fields": [
+        170,
+        225
+      ],
+      "before_description": "An instant strike that causes $m2% weapon damage plus $s1.\r\n\r\nMax 3 charges. 4 seconds recharge timer.\n\n@ext:|cffffff00VERIFIED|r:ext@",
+      "after_description": "An instant strike that causes $m2% weapon damage plus $s1 as Holystrike (Physical and Holy) damage.\r\n\r\nMax 3 charges. 4 seconds recharge timer.\n\n@ext:|cffffff00VERIFIED|r:ext@"
+    },
+    {
+      "id": 35607,
+      "allowed_fields": [
+        170,
+        225
+      ],
+      "before_description": "An instant strike that causes $m2% weapon damage plus $s1.\r\n\r\nMax 3 charges. 4 seconds recharge timer.\n\n@ext:|cffffff00VERIFIED|r:ext@",
+      "after_description": "An instant strike that causes $m2% weapon damage plus $s1 as Holystrike (Physical and Holy) damage.\r\n\r\nMax 3 charges. 4 seconds recharge timer.\n\n@ext:|cffffff00VERIFIED|r:ext@"
+    },
+    {
+      "id": 47294,
+      "allowed_fields": [
+        12,
+        170
+      ],
+      "before_description": "Your successful blocks now further reduce the damage you take from the blocked hit by $s3%.  \r\n\r\nIncreases your chance to critically hit with your Shield Slam ability by $s2%.\n\n@ext:This effect does not work against players.\n\nDoes not work with Touched by the Light.\n\n|cffffff00VERIFIED|r:ext@",
+      "after_description": "While in any Tank Stance:\n\nYour successful blocks now further reduce the damage you take from the blocked hit by $s3%.  \r\n\r\nIncreases your chance to critically hit with your Shield Slam ability by $s2%.\n\n@ext:This effect does not work against players.\n\nDoes not work with Touched by the Light.\n\n|cffffff00VERIFIED|r:ext@"
+    },
+    {
+      "id": 47295,
+      "allowed_fields": [
+        12,
+        170
+      ],
+      "before_description": "Your successful blocks now further reduce the damage you take from the blocked hit by $s3%.  \r\n\r\nIncreases your chance to critically hit with your Shield Slam ability by $s2%.\n\n@ext:This effect does not work against players.\n\nDoes not work with Touched by the Light.\n\n|cffffff00VERIFIED|r:ext@",
+      "after_description": "While in any Tank Stance:\n\nYour successful blocks now further reduce the damage you take from the blocked hit by $s3%.  \r\n\r\nIncreases your chance to critically hit with your Shield Slam ability by $s2%.\n\n@ext:This effect does not work against players.\n\nDoes not work with Touched by the Light.\n\n|cffffff00VERIFIED|r:ext@"
+    },
+    {
+      "id": 47296,
+      "allowed_fields": [
+        12,
+        170
+      ],
+      "before_description": "Your successful blocks now further reduce the damage you take from the blocked hit by $s3%.  \r\n\r\nIncreases your chance to critically hit with your Shield Slam ability by $s2%.\n\n@ext:This effect does not work against players.\n\nDoes not work with Touched by the Light.\n\n|cffffff00VERIFIED|r:ext@",
+      "after_description": "While in any Tank Stance:\n\nYour successful blocks now further reduce the damage you take from the blocked hit by $s3%.  \r\n\r\nIncreases your chance to critically hit with your Shield Slam ability by $s2%.\n\n@ext:This effect does not work against players.\n\nDoes not work with Touched by the Light.\n\n|cffffff00VERIFIED|r:ext@"
+    },
+    {
+      "id": 760053,
+      "allowed_fields": [
+        170
+      ],
+      "before_description": "Place a feather at the target location, lasting for $d. If allies walk through it, they gain $760055s1% increased movement speed for $760055d.\n\nMax 3 charges. 20 second recharge timer.\n\n@ext:|cffffff00VERIFIED|r:ext@",
+      "after_description": "Place a feather at the target location, lasting for $d. The first allied player to walk through it gains $760055s1% increased movement speed for $760055d, consuming the feather.\n\nMax 3 charges. 20 second recharge timer.\n\n@ext:|cffffff00VERIFIED|r:ext@"
+    },
+    {
+      "id": 965303,
+      "allowed_fields": [
+        170
+      ],
+      "before_description": "@req:1752@\nYour Sinister Strike ability has a chance to deal additional damage when it strikes. This strike generates an additional combo point.\n\n@ext:|cffff0000NOT VERIFIED|r:ext@",
+      "after_description": "@req:1752@\nYour Sinister Strike has a 33% chance to trigger an additional strike for 50% weapon damage against its target. This strike generates one additional combo point.\n\n@ext:|cffffff00VERIFIED|r:ext@"
+    },
+    {
+      "id": 965304,
+      "allowed_fields": [
+        170
+      ],
+      "before_description": "An instant strike that causes $m1 damage in addition to $<percent>% of your normal weapon damage (80% if a Two-Handed weapon is equipped).  Awards $s2 combo $lpoint:points;.",
+      "after_description": "An additional strike that deals 50% weapon damage and awards one combo point."
+    },
+    {
+      "id": 983723,
+      "allowed_fields": [
+        32,
+        170
+      ],
+      "before_description": "Something stirs within.",
+      "after_description": "Something stirs within."
+    },
+    {
+      "id": 997604,
+      "allowed_fields": [
+        170
+      ],
+      "before_description": "Deals 40% weapon damage to up to 5 nearby enemies.",
+      "after_description": "Deals 40% weapon damage to up to up to 5 other nearby enemies.\n\nThe triggering attack's primary target is not hit by Sweeping Strike."
+    }
+  ],
+  "archive_readback": "passed",
+  "certified_preserved": true,
+  "files": [
+    {
+      "target": "D:\\DML WOTLK Client Side\\Ascension A52 Free Pick\\ascension-live\\ascension-live\\Data\\area-52\\patch-D.MPQ",
+      "artifact": "candidate/patch-D.MPQ",
+      "before_sha256": "112f957c5e33af9c8642c405211c24db6952dbc1341064721652a9da26273f85",
+      "after_sha256": "d8f0ca22003c78b8aeca4baf7e8397c71643303b4c421b0405889d487dadcf53"
+    },
+    {
+      "target": "D:\\DML WOTLK Client Side\\Ascension A52 Free Pick\\ascension-live\\ascension-live\\Data\\area-52\\patch-E.MPQ",
+      "artifact": "candidate/patch-E.MPQ",
+      "before_sha256": "b783c5b318e8028d0023f116b05dc5d1c43c51bf00a8cc0b98d47351fd2359d8",
+      "after_sha256": "494e69d7e3ec55e5cb0b17b0878257a7dbf09248365548985a895af3308a1730"
+    },
+    {
+      "target": "D:\\DML WOTLK Client Side\\Ascension A52 Free Pick\\ascension-live\\ascension-live\\Interface\\AddOns\\Area52MysticRules\\GrantedAbilities.lua",
+      "artifact": "ui-candidate/Interface/AddOns/Area52MysticRules/GrantedAbilities.lua",
+      "before_sha256": "e776d44198cfc7140cb2f52e9b3093ab35a3da45e0e9c3709337d948a4ba9a44",
+      "after_sha256": "afc86e28e6eb188fdcad09f4de2b893aab03f66801163f7d0bbd122e1eb0bef5"
+    },
+    {
+      "target": "D:\\DML WOTLK Client Side\\Ascension A52 Free Pick\\ascension-live\\ascension-live\\Interface\\AddOns\\Area52MysticRules\\GrantedAbilityCatalog.lua",
+      "artifact": "ui-candidate/Interface/AddOns/Area52MysticRules/GrantedAbilityCatalog.lua",
+      "before_sha256": "a889c17ccd0a364fcc08ee60ec782a7dbeb4ee0c18338f78316fb9e667122cc2",
+      "after_sha256": "fd3a499c1025a56ea62f6961d8e00891e61ae7ead5147f40991281f1ea1529b3"
+    }
+  ],
+  "installed": false
+}
