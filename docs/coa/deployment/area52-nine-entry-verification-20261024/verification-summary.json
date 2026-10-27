@@ -1,0 +1,88 @@
+{
+  "package": "area52-nine-entry-verification-20261024",
+  "status": "engineering_verified_packaging_preflight_pending",
+  "entries": [
+    684,
+    755,
+    876,
+    1135,
+    1301,
+    2425,
+    2720,
+    3342,
+    5950
+  ],
+  "reports": {
+    "build-qualified": "c2b69a460ec638df523e0826d6eb9eb518e4cea1f20fe4d3c0b19f90862846b6",
+    "source-qualified": "3a12cfe891dfec01f7c178dc3893e9bc70d8544b9ab82655a08fc7b837bd92c7",
+    "focused-qualified": "087bc7827b765694907d59b8b79e296c3883b056f736a61c2c84224a1edc8ccb"
+  },
+  "sql_qualification_sha256": "8d7a4b336d98a30a4f9351b363791b2a685bd4e4a391fd87d7235abd0dbef150",
+  "binary_sha256": "19c4a4f2e34d31f48d118bfe3d0708158e741d72e884e4ba9c71ea0c8496bff4",
+  "baseline_binary_sha256": "b2f89a3771f7fe08620932f99a0b6451e0b5531f6fc162af3564b440b7359a0b",
+  "source": [
+    {
+      "path": "src/server/coa/AscensionMageTalentTargets.h",
+      "baseline_sha256": "c2f69bc43ef077e3790235f26e4cee481b2902637139262d9046da012f0e8f74",
+      "candidate_sha256": "f0431441f63589a6fb39a03b4efe4bddda975a763b1e4d64202863d9d29d9ddd"
+    },
+    {
+      "path": "src/server/game/Entities/GameObject/GameObject.cpp",
+      "baseline_sha256": "345d711b1c0b0cda82f6d934549fbac50aaeead8b8a1587928d012914363da22",
+      "candidate_sha256": "6e33994cdcb823b65c292721d2ed15c0e724396ffd7271411df6a29871b68bb3"
+    },
+    {
+      "path": "src/server/game/Entities/Player/Player.cpp",
+      "baseline_sha256": "4bd23acca06be5fe27bb665ddfe0fd76b3510ff2faa1da430a32b6d2a0a24be0",
+      "candidate_sha256": "e653837c0544be496f82d825f2e1c2af5f204b5196c84c5317db3f157dfb9e83"
+    },
+    {
+      "path": "src/server/game/Entities/Player/Player.h",
+      "baseline_sha256": "c589880e9a00f592fdba9488ff74e8e3bbee7a30562fd850142e78c5244cc2e5",
+      "candidate_sha256": "48af8c27f916a5e8c0e2ea4764e62fca8b176b61b360f9f9d5e049315a9b4217"
+    },
+    {
+      "path": "src/server/game/Entities/Unit/Unit.cpp",
+      "baseline_sha256": "c94c1e979ebf9a697549313d19cc4da62c0475131f4d716348bfa848033039a6",
+      "candidate_sha256": "33e57264e138ad6d38a2dcaa2b0a3c4e467ecb5720858e0ae1920acd4d2be265"
+    },
+    {
+      "path": "src/server/game/Spells/Auras/SpellAuras.cpp",
+      "baseline_sha256": "27684cd3707b782dcca9a05b8e6dd6b4476a283173026dc731f758fd1c9bc4e1",
+      "candidate_sha256": "a27e87dca18e789a8384d596cddba8b753ff0ee9b87d40cdda544774c8c6e1c9"
+    },
+    {
+      "path": "src/server/game/Spells/Spell.cpp",
+      "baseline_sha256": "d855d5ea091782d3d357440986b0db9dfa42996a285d9d7c99bd0b53d0731d08",
+      "candidate_sha256": "4ee4398e57b50bd1c141d83aceff028e89463490521027d2d50c1a51f05e04d7"
+    },
+    {
+      "path": "src/server/game/Spells/SpellEffects.cpp",
+      "baseline_sha256": "793506a60015956dc2fe2e11565eeb4ea32b8bfd5173462e5f5a0fa5fc4fa4f4",
+      "candidate_sha256": "68de6b376308ba808cd5d089e6cb6c8fda90d8cdbabd8f2fe3819699cadf0d86"
+    },
+    {
+      "path": "src/server/game/Spells/SpellInfo.cpp",
+      "baseline_sha256": "458cbc294637bab5a699900e61443023806b979bdaaf990ab6d5e1cda2dff725",
+      "candidate_sha256": "46c7d196f4d2414592edddbf309513689b94c63929e1fa59d376eaf27d65cf1a"
+    },
+    {
+      "path": "src/server/scripts/Spells/spell_generic.cpp",
+      "baseline_sha256": "d5d084391790e840942f3f64571c8d6fd73bae7dec7bc65998d0e26c7eec7a3a",
+      "candidate_sha256": "5fd7aaa251496f4b695331c0c79ed639d7280d100fc5d8a6dab313d7037f08b1"
+    },
+    {
+      "path": "src/server/scripts/Spells/spell_paladin.cpp",
+      "baseline_sha256": "6d9f7c3df5a5fe06a1b6219330f3c93f7044b1e78b9fe23710cd367f9cb206a4",
+      "candidate_sha256": "2f5fb92fc0924a6659bc8bfb99392c30e0a3e2214307f2dd9b0d885d49c923f3"
+    },
+    {
+      "path": "src/server/scripts/Spells/spell_rogue.cpp",
+      "baseline_sha256": "00897d67ea3fe28a0173141bcad3561b3241036386ad45703979f26b5a33fced",
+      "candidate_sha256": "8058e2e82abb32a372014f6f9fa55127113afabed52ec9d699cc7f15f2b57cda"
+    }
+  ],
+  "client_qualification_sha256": "fbaec8b8e6ff6137accacd816dbd63015d76ea707dc3f2c51cf3ead8b6357e74",
+  "release_qualification_sha256": "0999d56b4b99371a45910ba656dd6b0f26fd12b33e80bc87a1654ced4cc32859",
+  "limits": "Offline production-extracted functions with explicit engine adapters; exact isolated MySQL apply/rollback; no gameplay certification. Existing shared meeting-stone ritual helpers follow the Area52 High-Risk guard. Client publication and activation remain unperformed."
+}

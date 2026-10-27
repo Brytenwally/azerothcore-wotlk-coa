@@ -1,0 +1,46 @@
+--- a/Interface/FrameXML/Util/EnchantCollectionUtil.lua
++++ b/Interface/FrameXML/Util/EnchantCollectionUtil.lua
+@@ -971,12 +971,18 @@
+ 	return true
+ end
+ 
++local function HandleCollectionCheck(self, checkFunc, args, success, errorStr, ...)
++    if checkFunc == "CanDisenchantItem" and not success
++        and (errorStr == "RE_DISENCHANT_NO_MYSTIC_ALTAR"
++            or errorStr == "RE_DISENCHANT_NO_MONEY")
++        and MysticEnchantUtil.IsCollectionLearningFree() then
++        return true
++    end
++    return not self:HandleError(checkFunc, args, success, errorStr, ...)
++end
++
+ function EnchantCollectionUtil:HandleCheck(checkFunc, ...)
+-	if self:HandleError(checkFunc, {...}, C_MysticEnchant[checkFunc](...)) then
+-		return false
+-	end
+-
+-	return true
++    return HandleCollectionCheck(self, checkFunc, {...}, C_MysticEnchant[checkFunc](...))
+ end
+ 
+ function EnchantCollectionUtil:AttemptOperation(func, checkFunc, ...)
+--- a/Interface/FrameXML/Ascension_POI/StaticPOIs/GameObjectPOIs.lua
++++ b/Interface/FrameXML/Ascension_POI/StaticPOIs/GameObjectPOIs.lua
+@@ -4324,3 +4324,17 @@
+ )
+ 
+ 
++
++local Area52OrgrimmarRuneforgePOI = {}
++function Area52OrgrimmarRuneforgePOI:PLAYER_ENTERING_WORLD()
++    local realm = string.lower(GetRealmName() or "")
++    DB_MapPOI.RemovePOIByID("area52-orgrimmar-runeforge")
++    if string.find(realm, "area 52", 1, true) or string.find(realm, "area-52", 1, true) then
++        DB_MapPOI.CreatePOI("area52-orgrimmar-runeforge", "Runeforge",
++            "Orgrimmar Runeforge", 1898.15, -4139.91, 41.1577,
++            Enum.POIType.Townsfolk,
++            EnumUtil.CombineMasks(Enum.POIFlags.ShowOnMinimap, Enum.POIFlags.HasTooltip),
++            188, 1.5, nil, 1)
++    end
++end
++C_Hook:Register(Area52OrgrimmarRuneforgePOI, "PLAYER_ENTERING_WORLD")

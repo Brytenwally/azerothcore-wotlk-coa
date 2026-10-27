@@ -1,0 +1,92 @@
+--- a/Interface/SharedXML/C_Hook.lua
++++ b/Interface/SharedXML/C_Hook.lua
+@@ -10,6 +10,7 @@
+ }
+ 
+ local issecure = issecure
++local DispatchEvent
+ local playerName = UnitName and UnitName("player")
+ 
+ local HookHandler = CreateFrame("Frame")
+@@ -86,7 +87,7 @@
+ end
+ 
+ function HookHandler:EVENT_Update(data)
+-	C_Hook:SendEvent(unpack(data))
++	DispatchEvent(C_Hook, unpack(data))
+ end
+ 
+ function HookHandler:BLIZZEVENT_Update(data)
+@@ -400,7 +401,7 @@
+ end
+ 
+ -- Send an event for all registered callbacks
+-function C_Hook:SendEvent(event, ...)
++DispatchEvent = function(self, event, ...)
+ 	local t
+ 	if self.EVENT_TIMES and issecure() then
+ 		self.EVENT_TIMES[event] = self.EVENT_TIMES[event] or {0, 0, event}
+@@ -408,10 +409,6 @@
+ 		t = TimeSince:Now()
+ 	end
+ 	if next(self.allListener) then
+-		if not issecure() then
+-			HookHandler:SecureSetValues("event", event, ...)
+-			return
+-		end
+ 
+ 		for ref, callback in pairs(self.allListener) do
+ 			securecall(HandleCallback, ref, event, callback, ...)
+@@ -424,10 +421,6 @@
+ 
+ 	if not self.events[event] then return end
+ 
+-	if not issecure() then
+-		HookHandler:SecureSetValues("event", event, ...)
+-		return
+-	end
+ 
+ 	for ref, callback in pairs(self.events[event]) do
+ 		-- handle buckets
+@@ -442,6 +435,15 @@
+ 	end
+ end
+ 
++function C_Hook:SendEvent(event, ...)
++	if not next(self.allListener) and not self.events[event] then return end
++	if not issecure() then
++		HookHandler:SecureSetValues("event", event, ...)
++		return
++	end
++	DispatchEvent(self, event, ...)
++end
++
+ local function SendBlizzardEvent(frame, event, ...)
+ 	if frame.CallScript then
+ 		local ok, error = pcall(frame.CallScript, frame, "OnEvent", event, ...)
+--- a/Interface/FrameXML/Util/MysticEnchantUtil.lua
++++ b/Interface/FrameXML/Util/MysticEnchantUtil.lua
+@@ -82,6 +82,14 @@
+ 	return true
+ end 
+ 
++function MysticEnchantUtil.IsCollectionLearningFree()
++    local realm = GetRealmName()
++    return (realm == "Area 52 - Free-Pick" or realm == "Area-52")
++        and C_Player and C_Player:IsHero() and C_Config
++        and C_Config.GetIntConfig("CONFIG_MYSTIC_ENCHANT_EXTRACT_RARE_TOKEN_COST") == 0
++end
++
+ function MysticEnchantUtil.NeedsToPurchaseExtract()
++    if MysticEnchantUtil.IsCollectionLearningFree() then return false end
+ 	return GetItemCount(ItemData.MYSTIC_EXTRACT) <= 0
+ end --- a/Interface/FrameXML/Util/EnchantCollectionUtil.lua
++++ b/Interface/FrameXML/Util/EnchantCollectionUtil.lua
+@@ -1361,6 +1361,7 @@
+ end
+ 
+ function EnchantCollectionUtil:CalculateExtractCost(SpellID)
++	if MysticEnchantUtil.IsCollectionLearningFree() then return {} end
+ 	local items = {
+ 		[Enum.UnlearnCost.MysticExtract] = GetItemCount(ItemData.MYSTIC_EXTRACT),
+ 		[Enum.UnlearnCost.MarksOfAscension] = GetItemCount(ItemData.MARK_OF_ASCENSION),

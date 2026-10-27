@@ -1,0 +1,33 @@
+{
+  "reports": [
+    "build-dummy-rotation/report.json",
+    "source-dummy-rotation/report.json"
+  ],
+  "binary_sha256": "2c45b011e6d75e15c9d618373aa1661c2ca742d9428b4943ec0c76780921d0e6",
+  "baseline_binary_sha256": "e1a7eab21cce89584a0f15551cae0782d7afef1e93ad8f579c322b578e2b5b41",
+  "scope": [
+    "Physical-only Crusader Strike, all eight ranks",
+    "Permanent non-boss training-dummy CC immunity",
+    "Boss counter window ->10second immunity ->immediate Shadow Bolt rotation"
+  ],
+  "source": [
+    {
+      "path": "src/server/coa/AscensionMysticKnightEpics.cpp",
+      "sha256": "6e853533244f4dcdf5857c5f151ae5c9b9bd0e4329af67ba16e12ba42877d6b7"
+    },
+    {
+      "path": "src/server/scripts/World/npcs_special.cpp",
+      "sha256": "656bb52bf2bd6c1dcfe91b8e30fb1346169dcc15298a013c6fcc2c8bc3c80713"
+    },
+    {
+      "path": "src/server/scripts/World/npc_advanced_training_dummy.cpp",
+      "sha256": "4b03812e56de3d5fc542befe5ee498e9b1e8a117d56d15e2784f42aa5500c52a"
+    },
+    {
+      "path": "src/server/scripts/World/TrainingDummyImmunities.h",
+      "sha256": "4071e38eedec5ad89cd92b0fe2ca0e31920d002d06248c78e74da3c54a3dfed2"
+    }
+  ],
+  "source_publication": "Scoped frozen patch against qualified deployed baseline; not integration into main",
+  "status_changes": []
+}

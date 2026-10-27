@@ -1,0 +1,41 @@
+--- a/src/server/coa/AscensionMysticEnchant.cpp
++++ b/src/server/coa/AscensionMysticEnchant.cpp
+@@ -821,7 +821,7 @@
+     values["CONFIG_MYSTIC_ENCHANT_REFORGE_MONEY_COST"] =
+         sConfigMgr->GetOption<uint32>("CoA.FreePickMysticEnchants.ReforgeMoneyCost", 25000);
+     for (char const* quality : {"UNCOMMON", "RARE", "EPIC", "LEGENDARY", "ARTIFACT"})
+-        values[std::string("CONFIG_MYSTIC_ENCHANT_EXTRACT_") + quality + "_TOKEN_COST"] = 1;
++        values[std::string("CONFIG_MYSTIC_ENCHANT_EXTRACT_") + quality + "_TOKEN_COST"] = 0;
+     constexpr std::array<char const*, 4> names = {"UNCOMMON", "RARE", "EPIC", "LEGENDARY"};
+     for (std::size_t i = 0; i < names.size(); ++i)
+     {
+--- a/src/server/coa/Area52MysticScrolls.inc
++++ b/src/server/coa/Area52MysticScrolls.inc
+@@ -76,7 +76,7 @@
+     return true;
+ }
+ 
+-char const* CollectMysticScroll(Player* player, State* state, Item* item, bool buyExtract)
++char const* CollectMysticScroll(Player* player, State* state, Item* item, bool)
+ {
+     if (!CanChange(player, state))
+         return "RE_DISENCHANT_UNKNOWN";
+@@ -90,10 +90,6 @@
+         return "RE_DISENCHANT_ALREADY_KNOWN_ENCHANTMENT";
+     if (!NearAltar(player))
+         return "RE_DISENCHANT_NO_MYSTIC_ALTAR";
+-    bool const heldExtract = player->HasItemCount(MysticExtractItem, 1);
+-    uint32 const price = heldExtract ? 0 : ScrollExtractPrice(player);
+-    if (!heldExtract && (!buyExtract || !player->HasItemCount(MysticRuneItem, price)))
+-        return "RE_DISENCHANT_NO_MONEY";
+     auto transaction = CharacterDatabase.BeginTransaction();
+     auto* statement = CharacterDatabase.GetPreparedStatement(CHAR_INS_FREEPICK_MYSTIC_COLLECTION);
+     statement->SetData(0, player->GetSession()->GetAccountId());
+@@ -101,7 +97,6 @@
+     transaction->Append(statement);
+     uint32 one = 1;
+     player->DestroyItemCount(item, one, true);
+-    player->DestroyItemCount(heldExtract ? MysticExtractItem : MysticRuneItem, heldExtract ? 1 : price, true);
+     player->SaveInventoryAndGoldToDB(transaction);
+     CharacterDatabase.CommitTransaction(transaction);
+     state->Known.insert(spell);

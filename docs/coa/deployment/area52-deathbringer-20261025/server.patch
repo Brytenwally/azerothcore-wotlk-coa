@@ -1,0 +1,183 @@
+--- /dev/null
++++ b/data/sql/updates/pending_db_world/rev_20261025000000_area52_deathbringer.sql
+@@ -0,0 +1,6 @@
++UPDATE `spell_proc` SET `ProcFlags` = 332116 WHERE `SpellId` = 965501;
++DELETE FROM `spell_proc` WHERE `SpellId` = 84506;
++INSERT INTO `spell_proc` (`SpellId`, `SchoolMask`, `SpellFamilyName`, `SpellFamilyMask0`, `SpellFamilyMask1`, `SpellFamilyMask2`, `ProcFlags`, `SpellTypeMask`, `SpellPhaseMask`, `HitMask`, `AttributesMask`, `DisableEffectsMask`, `ProcsPerMinute`, `Chance`, `Cooldown`, `Charges`) VALUES
++(84506, 0, 0, 0, 0, 0, 69972, 1, 2, 0, 0, 0, 0, 100, 0, 0);
++DELETE FROM `spell_script_names` WHERE `spell_id` = 84506 AND `ScriptName` = 'spell_area52_unbounded_deathbringer';
++INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`) VALUES (84506, 'spell_area52_unbounded_deathbringer');
+--- a/src/server/coa/Area52LegendaryProcs.inc
++++ b/src/server/coa/Area52LegendaryProcs.inc
+@@ -12,6 +12,10 @@
+     {
+         Player* player = GetTarget()->ToPlayer();
+         SpellInfo const* spell = event.GetSpellInfo();
++        if (GetId() == Area52Legendary::Deathbringer && spell &&
++            (spell->Id == 983902 || spell->Id == 983904 || spell->Id == 983905 ||
++            spell->Id == 983906 || spell->Id == 983907))
++            return false;
+         return Area52Legendary::Accept(GetId(), player && AscensionFreePick::Applies(player),
+             event.GetActor() == player && event.GetActionTarget() && event.GetActionTarget() != player,
+             event.GetDamageInfo() && event.GetDamageInfo()->GetDamage() > 0,
+@@ -24,6 +28,91 @@
+     }
+ };
+ 
++class spell_area52_unbounded_deathbringer : public AuraScript
++{
++    PrepareAuraScript(spell_area52_unbounded_deathbringer);
++
++    std::map<ObjectGuid, TimePoint> _targetCooldowns;
++
++    bool Load() override
++    {
++        return GetUnitOwner() && AscensionFreePick::Applies(GetUnitOwner()->ToPlayer());
++    }
++
++    bool Validate(SpellInfo const*) override
++    {
++        return ValidateSpellInfo({983905, 983906, 983907});
++    }
++
++    bool CheckProc(ProcEventInfo& event)
++    {
++        Player* player = GetTarget()->ToPlayer();
++        SpellInfo const* spell = event.GetSpellInfo();
++        if (spell && (spell->Id == 983902 || spell->Id == 983904 || spell->Id == 983905 ||
++            spell->Id == 983906 || spell->Id == 983907))
++            return false;
++        return Area52Legendary::Accept(GetId(), player && AscensionFreePick::Applies(player),
++            event.GetActor() == player && event.GetActionTarget() && event.GetActionTarget() != player,
++            event.GetDamageInfo() && event.GetDamageInfo()->GetDamage() > 0,
++            (event.GetTypeMask() & PROC_FLAG_DONE_PERIODIC) != 0, spell && spell->IsAffectingArea());
++    }
++
++    void Proc(ProcEventInfo& event)
++    {
++        PreventDefaultAction();
++        Player* player = GetTarget()->ToPlayer();
++        Unit* center = event.GetActionTarget();
++        if (!player || !center || !center->IsInWorld())
++            return;
++
++        TimePoint const now = GameTime::SteadyNow();
++        for (auto it = _targetCooldowns.begin(); it != _targetCooldowns.end();)
++            if (it->second <= now)
++                it = _targetCooldowns.erase(it);
++            else
++                ++it;
++
++        std::list<Unit*> targets;
++        Acore::AnyUnfriendlyUnitInObjectRangeCheck check(center, player, 8.0f);
++        Acore::UnitListSearcher<Acore::AnyUnfriendlyUnitInObjectRangeCheck> searcher(center, targets, check);
++        Cell::VisitObjects(center, searcher, 8.0f);
++        targets.push_front(center);
++        for (Unit* target : targets)
++        {
++            if (!target || !target->IsAlive() || !player->IsValidAttackTarget(target) ||
++                !center->IsWithinDistInMap(target, 8.0f) || !center->IsWithinLOSInMap(target) ||
++                _targetCooldowns.count(target->GetGUID()))
++                continue;
++            _targetCooldowns.emplace(target->GetGUID(), now + Milliseconds(4000));
++            player->CastSpell(target, 983905, true, nullptr, GetEffect(EFFECT_0));
++            player->CastSpell(target, 983906, true, nullptr, GetEffect(EFFECT_0));
++            player->CastSpell(player, 983907, true, nullptr, GetEffect(EFFECT_0));
++        }
++    }
++
++    void Register() override
++    {
++        DoCheckProc += AuraCheckProcFn(spell_area52_unbounded_deathbringer::CheckProc);
++        OnProc += AuraProcFn(spell_area52_unbounded_deathbringer::Proc);
++    }
++};
++
++bool HasArea52UnboundedDeathbringerHandler()
++{
++    for (uint32 child : {983905u, 983906u, 983907u})
++        if (!sSpellMgr->GetSpellInfo(child))
++            return false;
++    std::list<AuraScript*> scripts;
++    sScriptMgr->CreateAuraScripts(Area52Legendary::UnboundedDeathbringer, scripts);
++    bool found = false;
++    for (AuraScript* script : scripts)
++    {
++        found |= *script->_GetScriptName() == "spell_area52_unbounded_deathbringer";
++        delete script;
++    }
++    return found;
++}
++
+ class area52_legendary_metadata : public GlobalScript
+ {
+ public:
+--- a/src/server/coa/Area52LegendaryRules.h
++++ b/src/server/coa/Area52LegendaryRules.h
+@@ -8,16 +8,21 @@
+ enum Spells : std::uint32_t
+ {
+     Purification = 84508, Exorcism = 84509, Consecration = 84759, Vulnerability = 984961,
+-    Curse = 84512, MaledictionDamage = 84760, Stormbringer = 965500, Deathbringer = 965501,
++    Curse = 84512, MaledictionDamage = 84760, Stormbringer = 965500, Deathbringer = 965501, UnboundedDeathbringer = 84506,
+     Zealot = 965502, Smite = 965508
+ };
+ 
+ inline bool Accept(std::uint32_t enchant, bool area52, bool owner, bool damage, bool periodic, bool area)
+ {
+-    if (!area52 || !owner || !damage || periodic)
++    if (!area52 || !owner || !damage)
+         return false;
+-    return enchant == Purification || enchant == Curse || enchant == Stormbringer || enchant == Zealot ||
+-        (enchant == Deathbringer && !area);
++    if (enchant == Deathbringer)
++        return !area;
++    if (periodic)
++        return false;
++    if (enchant == UnboundedDeathbringer)
++        return true;
++    return enchant == Purification || enchant == Curse || enchant == Stormbringer || enchant == Zealot;
+ }
+ 
+ inline std::int32_t ZealotAmount(std::int32_t amount, bool playerTarget)
+--- a/src/server/coa/AscensionMysticEnchant.cpp
++++ b/src/server/coa/AscensionMysticEnchant.cpp
+@@ -51,14 +51,15 @@
+ #include "Creature.h"
+ #include "Area52FollowupProcs.inc"
+ #include "Area52LegendaryRules.h"
++#include "GameTime.h"
++#include "CellImpl.h"
++#include "GridNotifiersImpl.h"
+ #include "Area52BattlemageRules.h"
+ #include "Area52LegendaryProcs.inc"
+ #include "Area52Battlemage.inc"
+ #include "Area52LegendaryBatchRules.h"
+ #include "Area52LegendaryBatch.inc"
+ #include "Area52Felfire.inc"
+-#include "CellImpl.h"
+-#include "GridNotifiersImpl.h"
+ #include "Area52CorruptedBear.inc"
+ #include "Area52CastMovement.inc"
+ #include "Area52Dependencies.inc"
+@@ -723,6 +724,12 @@
+         if (entry.Quality < 2 || entry.Quality > 5 || !info || !info->IsPassive() ||
+             info->HasAttribute(SPELL_ATTR0_CU_FORCE_AURA_SAVING))
+             continue;
++        if (spell == Area52Legendary::UnboundedDeathbringer)
++        {
++            if (HasArea52UnboundedDeathbringerHandler())
++                Connected.emplace(spell, 1);
++            continue;
++        }
+         if (spell == 81248 || spell == 81501 || spell == 415012)
+         {
+             if (HasEpicDruidHandlers(spell))
+@@ -1363,6 +1370,7 @@
+     RegisterSpellScript(spell_area52_battlemage);
+     RegisterSpellScript(spell_area52_battlemage_damage);
+     RegisterSpellScript(spell_area52_legendary_proc);
++    RegisterSpellScript(spell_area52_unbounded_deathbringer);
+     new area52_legendary_metadata();
+     new area52_cast_movement_metadata();
+     RegisterSpellScript(spell_area52_purification_hit);

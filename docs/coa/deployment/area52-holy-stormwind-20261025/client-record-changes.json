@@ -1,0 +1,92 @@
+[
+  {
+    "id": 986281,
+    "before_school": 1,
+    "after_school": 2,
+    "before_description": "Strikes the target, dealing $s1% weapon damage plus $s2 and triggering one of these effects:\r\n\r\n- |cFFFFFFFFDivine Storm|r cooldown reduced by $/1000;986284s1 sec.\r\n- |cFFFFFFFFJudgement|r cooldown reduced by  $/1000;986285s1 sec.\r\n- |cFFFFFFFFCrusader Strike|r regains $986283s1 charge. \r\n\r\nThis ability requires Art of War to be used and scales with modifiers to Exorcism. It can trigger Sanctity of Battle and Righteous Vengeance. Its cooldown is doubled when used versus players.",
+    "after_description": "Strikes the target, dealing $s1% weapon damage plus $s2 as Holy and triggering one of these effects:\r\n\r\n- |cFFFFFFFFDivine Storm|r cooldown reduced by $/1000;986284s1 sec.\r\n- |cFFFFFFFFJudgement|r cooldown reduced by  $/1000;986285s1 sec.\r\n- |cFFFFFFFFCrusader Strike|r regains $986283s1 charge. \r\n\r\nThis instant ability requires an active Art of War proc of any rank to be used and scales with modifiers to Exorcism. It can trigger Sanctity of Battle and Righteous Vengeance. Its cooldown is doubled when used versus players.",
+    "before_caster_aura": 853489,
+    "after_caster_aura": 0
+  },
+  {
+    "id": 986347,
+    "before_school": 1,
+    "after_school": 2,
+    "before_description": "Strikes the target, dealing $s1% weapon damage plus $s2 and triggering one of these effects:\r\n\r\n- |cFFFFFFFFDivine Storm|r cooldown reduced by $/1000;986284s1 sec.\r\n- |cFFFFFFFFJudgement|r cooldown reduced by  $/1000;986285s1 sec.\r\n- |cFFFFFFFFCrusader Strike|r regains $986283s1 charge. \r\n\r\nThis ability requires Art of War to be used and scales with modifiers to Exorcism. It can trigger Sanctity of Battle and Righteous Vengeance. Its cooldown is doubled when used versus players.",
+    "after_description": "Strikes the target, dealing $s1% weapon damage plus $s2 as Holy and triggering one of these effects:\r\n\r\n- |cFFFFFFFFDivine Storm|r cooldown reduced by $/1000;986284s1 sec.\r\n- |cFFFFFFFFJudgement|r cooldown reduced by  $/1000;986285s1 sec.\r\n- |cFFFFFFFFCrusader Strike|r regains $986283s1 charge. \r\n\r\nThis instant ability requires an active Art of War proc of any rank to be used and scales with modifiers to Exorcism. It can trigger Sanctity of Battle and Righteous Vengeance. Its cooldown is doubled when used versus players.",
+    "before_caster_aura": 853489,
+    "after_caster_aura": 0
+  },
+  {
+    "id": 986348,
+    "before_school": 1,
+    "after_school": 2,
+    "before_description": "Strikes the target, dealing $s1% weapon damage plus $s2 and triggering one of these effects:\r\n\r\n- |cFFFFFFFFDivine Storm|r cooldown reduced by $/1000;986284s1 sec.\r\n- |cFFFFFFFFJudgement|r cooldown reduced by  $/1000;986285s1 sec.\r\n- |cFFFFFFFFCrusader Strike|r regains $986283s1 charge. \r\n\r\nThis ability requires Art of War to be used and scales with modifiers to Exorcism. It can trigger Sanctity of Battle and Righteous Vengeance. Its cooldown is doubled when used versus players.",
+    "after_description": "Strikes the target, dealing $s1% weapon damage plus $s2 as Holy and triggering one of these effects:\r\n\r\n- |cFFFFFFFFDivine Storm|r cooldown reduced by $/1000;986284s1 sec.\r\n- |cFFFFFFFFJudgement|r cooldown reduced by  $/1000;986285s1 sec.\r\n- |cFFFFFFFFCrusader Strike|r regains $986283s1 charge. \r\n\r\nThis instant ability requires an active Art of War proc of any rank to be used and scales with modifiers to Exorcism. It can trigger Sanctity of Battle and Righteous Vengeance. Its cooldown is doubled when used versus players.",
+    "before_caster_aura": 853489,
+    "after_caster_aura": 0
+  },
+  {
+    "id": 986349,
+    "before_school": 1,
+    "after_school": 2,
+    "before_description": "Strikes the target, dealing $s1% weapon damage plus $s2 and triggering one of these effects:\r\n\r\n- |cFFFFFFFFDivine Storm|r cooldown reduced by $/1000;986284s1 sec.\r\n- |cFFFFFFFFJudgement|r cooldown reduced by  $/1000;986285s1 sec.\r\n- |cFFFFFFFFCrusader Strike|r regains $986283s1 charge. \r\n\r\nThis ability requires Art of War to be used and scales with modifiers to Exorcism. It can trigger Sanctity of Battle and Righteous Vengeance. Its cooldown is doubled when used versus players.",
+    "after_description": "Strikes the target, dealing $s1% weapon damage plus $s2 as Holy and triggering one of these effects:\r\n\r\n- |cFFFFFFFFDivine Storm|r cooldown reduced by $/1000;986284s1 sec.\r\n- |cFFFFFFFFJudgement|r cooldown reduced by  $/1000;986285s1 sec.\r\n- |cFFFFFFFFCrusader Strike|r regains $986283s1 charge. \r\n\r\nThis instant ability requires an active Art of War proc of any rank to be used and scales with modifiers to Exorcism. It can trigger Sanctity of Battle and Righteous Vengeance. Its cooldown is doubled when used versus players.",
+    "before_caster_aura": 853489,
+    "after_caster_aura": 0
+  },
+  {
+    "id": 986350,
+    "before_school": 1,
+    "after_school": 2,
+    "before_description": "Strikes the target, dealing $s1% weapon damage plus $s2 and triggering one of these effects:\r\n\r\n- |cFFFFFFFFDivine Storm|r cooldown reduced by $/1000;986284s1 sec.\r\n- |cFFFFFFFFJudgement|r cooldown reduced by  $/1000;986285s1 sec.\r\n- |cFFFFFFFFCrusader Strike|r regains $986283s1 charge. \r\n\r\nThis ability requires Art of War to be used and scales with modifiers to Exorcism. It can trigger Sanctity of Battle and Righteous Vengeance. Its cooldown is doubled when used versus players.",
+    "after_description": "Strikes the target, dealing $s1% weapon damage plus $s2 as Holy and triggering one of these effects:\r\n\r\n- |cFFFFFFFFDivine Storm|r cooldown reduced by $/1000;986284s1 sec.\r\n- |cFFFFFFFFJudgement|r cooldown reduced by  $/1000;986285s1 sec.\r\n- |cFFFFFFFFCrusader Strike|r regains $986283s1 charge. \r\n\r\nThis instant ability requires an active Art of War proc of any rank to be used and scales with modifiers to Exorcism. It can trigger Sanctity of Battle and Righteous Vengeance. Its cooldown is doubled when used versus players.",
+    "before_caster_aura": 853489,
+    "after_caster_aura": 0
+  },
+  {
+    "id": 986351,
+    "before_school": 1,
+    "after_school": 2,
+    "before_description": "Strikes the target, dealing $s1% weapon damage plus $s2 and triggering one of these effects:\r\n\r\n- |cFFFFFFFFDivine Storm|r cooldown reduced by $/1000;986284s1 sec.\r\n- |cFFFFFFFFJudgement|r cooldown reduced by  $/1000;986285s1 sec.\r\n- |cFFFFFFFFCrusader Strike|r regains $986283s1 charge. \r\n\r\nThis ability requires Art of War to be used and scales with modifiers to Exorcism. It can trigger Sanctity of Battle and Righteous Vengeance. Its cooldown is doubled when used versus players.",
+    "after_description": "Strikes the target, dealing $s1% weapon damage plus $s2 as Holy and triggering one of these effects:\r\n\r\n- |cFFFFFFFFDivine Storm|r cooldown reduced by $/1000;986284s1 sec.\r\n- |cFFFFFFFFJudgement|r cooldown reduced by  $/1000;986285s1 sec.\r\n- |cFFFFFFFFCrusader Strike|r regains $986283s1 charge. \r\n\r\nThis instant ability requires an active Art of War proc of any rank to be used and scales with modifiers to Exorcism. It can trigger Sanctity of Battle and Righteous Vengeance. Its cooldown is doubled when used versus players.",
+    "before_caster_aura": 853489,
+    "after_caster_aura": 0
+  },
+  {
+    "id": 986352,
+    "before_school": 1,
+    "after_school": 2,
+    "before_description": "Strikes the target, dealing $s1% weapon damage plus $s2 and triggering one of these effects:\r\n\r\n- |cFFFFFFFFDivine Storm|r cooldown reduced by $/1000;986284s1 sec.\r\n- |cFFFFFFFFJudgement|r cooldown reduced by  $/1000;986285s1 sec.\r\n- |cFFFFFFFFCrusader Strike|r regains $986283s1 charge. \r\n\r\nThis ability requires Art of War to be used and scales with modifiers to Exorcism. It can trigger Sanctity of Battle and Righteous Vengeance. Its cooldown is doubled when used versus players.",
+    "after_description": "Strikes the target, dealing $s1% weapon damage plus $s2 as Holy and triggering one of these effects:\r\n\r\n- |cFFFFFFFFDivine Storm|r cooldown reduced by $/1000;986284s1 sec.\r\n- |cFFFFFFFFJudgement|r cooldown reduced by  $/1000;986285s1 sec.\r\n- |cFFFFFFFFCrusader Strike|r regains $986283s1 charge. \r\n\r\nThis instant ability requires an active Art of War proc of any rank to be used and scales with modifiers to Exorcism. It can trigger Sanctity of Battle and Righteous Vengeance. Its cooldown is doubled when used versus players.",
+    "before_caster_aura": 853489,
+    "after_caster_aura": 0
+  },
+  {
+    "id": 986353,
+    "before_school": 1,
+    "after_school": 2,
+    "before_description": "Strikes the target, dealing $s1% weapon damage plus $s2 and triggering one of these effects:\r\n\r\n- |cFFFFFFFFDivine Storm|r cooldown reduced by $/1000;986284s1 sec.\r\n- |cFFFFFFFFJudgement|r cooldown reduced by  $/1000;986285s1 sec.\r\n- |cFFFFFFFFCrusader Strike|r regains $986283s1 charge. \r\n\r\nThis ability requires Art of War to be used and scales with modifiers to Exorcism. It can trigger Sanctity of Battle and Righteous Vengeance. Its cooldown is doubled when used versus players.",
+    "after_description": "Strikes the target, dealing $s1% weapon damage plus $s2 as Holy and triggering one of these effects:\r\n\r\n- |cFFFFFFFFDivine Storm|r cooldown reduced by $/1000;986284s1 sec.\r\n- |cFFFFFFFFJudgement|r cooldown reduced by  $/1000;986285s1 sec.\r\n- |cFFFFFFFFCrusader Strike|r regains $986283s1 charge. \r\n\r\nThis instant ability requires an active Art of War proc of any rank to be used and scales with modifiers to Exorcism. It can trigger Sanctity of Battle and Righteous Vengeance. Its cooldown is doubled when used versus players.",
+    "before_caster_aura": 853489,
+    "after_caster_aura": 0
+  },
+  {
+    "id": 986354,
+    "before_school": 1,
+    "after_school": 2,
+    "before_description": "Strikes the target, dealing $s1% weapon damage plus $s2 and triggering one of these effects:\r\n\r\n- |cFFFFFFFFDivine Storm|r cooldown reduced by $/1000;986284s1 sec.\r\n- |cFFFFFFFFJudgement|r cooldown reduced by  $/1000;986285s1 sec.\r\n- |cFFFFFFFFCrusader Strike|r regains $986283s1 charge. \r\n\r\nThis ability requires Art of War to be used and scales with modifiers to Exorcism. It can trigger Sanctity of Battle and Righteous Vengeance. Its cooldown is doubled when used versus players.",
+    "after_description": "Strikes the target, dealing $s1% weapon damage plus $s2 as Holy and triggering one of these effects:\r\n\r\n- |cFFFFFFFFDivine Storm|r cooldown reduced by $/1000;986284s1 sec.\r\n- |cFFFFFFFFJudgement|r cooldown reduced by  $/1000;986285s1 sec.\r\n- |cFFFFFFFFCrusader Strike|r regains $986283s1 charge. \r\n\r\nThis instant ability requires an active Art of War proc of any rank to be used and scales with modifiers to Exorcism. It can trigger Sanctity of Battle and Righteous Vengeance. Its cooldown is doubled when used versus players.",
+    "before_caster_aura": 853489,
+    "after_caster_aura": 0
+  },
+  {
+    "id": 986355,
+    "before_school": 1,
+    "after_school": 2,
+    "before_description": "Strikes the target, dealing $s1% weapon damage plus $s2 and triggering one of these effects:\r\n\r\n- |cFFFFFFFFDivine Storm|r cooldown reduced by $/1000;986284s1 sec.\r\n- |cFFFFFFFFJudgement|r cooldown reduced by  $/1000;986285s1 sec.\r\n- |cFFFFFFFFCrusader Strike|r regains $986283s1 charge. \r\n\r\nThis ability requires Art of War to be used and scales with modifiers to Exorcism. It can trigger Sanctity of Battle and Righteous Vengeance. Its cooldown is doubled when used versus players.",
+    "after_description": "Strikes the target, dealing $s1% weapon damage plus $s2 as Holy and triggering one of these effects:\r\n\r\n- |cFFFFFFFFDivine Storm|r cooldown reduced by $/1000;986284s1 sec.\r\n- |cFFFFFFFFJudgement|r cooldown reduced by  $/1000;986285s1 sec.\r\n- |cFFFFFFFFCrusader Strike|r regains $986283s1 charge. \r\n\r\nThis instant ability requires an active Art of War proc of any rank to be used and scales with modifiers to Exorcism. It can trigger Sanctity of Battle and Righteous Vengeance. Its cooldown is doubled when used versus players.",
+    "before_caster_aura": 853489,
+    "after_caster_aura": 0
+  }
+]
