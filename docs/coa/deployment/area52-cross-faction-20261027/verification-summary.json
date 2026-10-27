@@ -1,0 +1,157 @@
+{
+  "status": "offline_verified",
+  "activation": "not_performed",
+  "publication": "not_performed",
+  "stable_package": "preserved",
+  "reports": {
+    "build-auction-restored": "bdebc4b86b6d3118e0e40ac2a81fd97a6993827fe44aa52bb0263e2be5f56e6c",
+    "source-qualified": "91a9ec1d738f0512f5e4779243cd0591d2fe3a54357d6cd757ed20513be6f9e5",
+    "focused-auction-qualified": "ac91be98804eb3eda28bed20444fd2bd8dba58be39eedd939b51b3914b6d9195",
+    "data-qualified": "70d9c2ae7551d01f3d7d989732a8fe6e7dd3ad5f4b6acaff0bf31d171e49f0e2",
+    "config-auction": "b8d2f53056b7d63ab1233b04f6fb4f1c1da38fc6176558f27e8181ea609c0f46"
+  },
+  "data_inputs": {
+    "changes.json": "15a2a3d959ec85e63c0bc1226118ded5e02f453a06901ccc159074deaa099844",
+    "config-changes.json": "604c5dba01aff43926d24bab94af68db893d3483064ae0243ea128a5e6ecc09c",
+    "sql-baseline.json": "688f71794cc75819f2304f62351bb48b71f4ea02af93eda94c69c60684c2ee4c",
+    "hooks/data.py": "43c5c657b00a8298c068cdb66b63af065cc66985f9e319b2e35d011ab24178b5",
+    "hooks/config.py": "2c0f381d51a0d42ede843eb53eacb7fc68c92974b232a605cc3d2285456610fc",
+    "qualify_data.py": "ab28891c01fa5766419b96523d5df0b014ad0ff0fdbd471cdf5d953283e712a7",
+    "verify.py": "cbe9ed91070d8927758a71a1dfc3e79ae574ba4ba6b693b2f7781939b1fee22f",
+    "sql-qualification.json": "8a1e96c1237c96aa35197742eb1e45aa965f13daae0bbdfb97f495bc9fec1b61",
+    "auction-dbc.json": "65713e72dfd2e03051ceb7837b76b8ff293c3f2a6f30dae7e6ab07f9badc5640",
+    "harness/auction.py": "67a745f8b1d5ceeb7787d8575ea31aecaecea4202b6bf68a8d071e277d01da89"
+  },
+  "source_files": [
+    {
+      "path": "data/sql/updates/pending_db_auth/rev_20261026_52_area52_cross_faction.sql",
+      "before_sha256": null,
+      "after_sha256": "481c71ccf0fe60c1f4fd8ae862da8e817808d20e264f28c6ade5b31977e3ae53"
+    },
+    {
+      "path": "data/sql/updates/pending_db_world/rev_20261026_52_area52_cross_faction.sql",
+      "before_sha256": null,
+      "after_sha256": "bd21491db4847b99f127cfdd813a5f708b095654c5aa7a4367079320b541adb8"
+    },
+    {
+      "path": "modules/mod-cfbg/LICENSE",
+      "before_sha256": null,
+      "after_sha256": "5f714e96b8ffef2a441ff66f82a1a0b732a1e0ac5d40863f740c301d347fb159"
+    },
+    {
+      "path": "modules/mod-cfbg/README.md",
+      "before_sha256": null,
+      "after_sha256": "fa780c05ffe0b3b323bd9bf0b4973e63c4e7561368c3915cb0dffbc3616e5bb7"
+    },
+    {
+      "path": "modules/mod-cfbg/conf/CFBG.conf.dist",
+      "before_sha256": null,
+      "after_sha256": "797fc37c7079d4d40c7c2c5508c70b49b364141da703c7e592d9c187156f612e"
+    },
+    {
+      "path": "modules/mod-cfbg/src/CFBG.cpp",
+      "before_sha256": null,
+      "after_sha256": "eb532487443120f7007a11c6d2d0d0b2ab2a90eada072ec5f032947590b5e66f"
+    },
+    {
+      "path": "modules/mod-cfbg/src/CFBG.h",
+      "before_sha256": null,
+      "after_sha256": "2127ce5b5fd1d73cb02fdaa5c69a617164a52bc2e3b7fd9eca31abf13248b9c8"
+    },
+    {
+      "path": "modules/mod-cfbg/src/CFBG_SC.cpp",
+      "before_sha256": null,
+      "after_sha256": "fb91ca2562b971f4033146e65971dc4cc88e1941d46e3481ab949b04f6f6f03f"
+    },
+    {
+      "path": "modules/mod-cfbg/src/cfbg_loader.cpp",
+      "before_sha256": null,
+      "after_sha256": "8593df3952cb5917e8637b750c148da1abe2211b2a50166fa5162246f68b7e24"
+    },
+    {
+      "path": "modules/mod-cfbg/src/cs_cfbg.cpp",
+      "before_sha256": null,
+      "after_sha256": "7e717f0277a64dee367c20133443994808232528b399d2e647dd795e615c5672"
+    },
+    {
+      "path": "src/server/apps/worldserver/worldserver.conf.dist",
+      "before_sha256": "8849a2c6cd85471881c52900a74f9504accb624e17934b0f13b20ff61a7269ff",
+      "after_sha256": "62b3687aedeb3d4fd4ee41e028119da68b2dc3b53b3c195aea10d51bda867194"
+    },
+    {
+      "path": "src/server/coa/AscensionWisdomball.cpp",
+      "before_sha256": "e15f7c3b6027a489a4a90a4b369bbb3d634739b0503fb0b15d32b9e2e92e9270",
+      "after_sha256": "842c2cf13a792447f25f12fa365cb61db4df11aaa9fcdad1f415c12188abd0e6"
+    },
+    {
+      "path": "src/server/game/Handlers/MailHandler.cpp",
+      "before_sha256": "cd25a78d47b118adc499f8ab20a377c0da6dc298c8642f97cf09a4bf9c813590",
+      "after_sha256": "08cac1e7809842177c4f371ef5109f72149ae6315a9843935a7210d958a679a2"
+    },
+    {
+      "path": "src/server/game/Handlers/QueryHandler.cpp",
+      "before_sha256": "7bc4d5e651858c2f6b61d31d5ebf4183fc4f893855b2efd0069e8aaac153ffec",
+      "after_sha256": "08f977df02bd2954e682c7529d04bbf66f344b1394d25b928d35df25d236e888"
+    },
+    {
+      "path": "src/server/game/Handlers/TradeHandler.cpp",
+      "before_sha256": "e36dfa7bed4cf9578a2979a775426adb3d4378f10ec54aa875cb0b8788bcc34a",
+      "after_sha256": "d886fb9bfdc3dedabbf3c66eb588fe2cfaef79db9754171aa8e33c120b7374be"
+    },
+    {
+      "path": "src/server/game/Scripting/ScriptDefines/PlayerScript.cpp",
+      "before_sha256": "587db4d0fcef83c9cd2ef84e7e01668ba3e0b4ce3a25bedc9d1fb2d44f1741b3",
+      "after_sha256": "c230e63b53e5235ba6b34607bf102f0e1feb922cc38d65d9bd47c57f9c5f6647"
+    },
+    {
+      "path": "src/server/game/Scripting/ScriptDefines/PlayerScript.h",
+      "before_sha256": "21bb6bc7470fd702181435b1fd8f85fd763a48f1c9933de6d77345d5644c6e6c",
+      "after_sha256": "6a3c5758c65ccba8ed9f6836ebae33788abc3657940b7dc93234be083797cbec"
+    },
+    {
+      "path": "src/server/game/Scripting/ScriptMgr.h",
+      "before_sha256": "b50b7ffcdb303f4370432949e1a6e09ba8f5f74a25204cb2a872b6113342ac32",
+      "after_sha256": "dec79ae376d38e83c85a79a7c82645ccfabfd545d9dda3e4947b82f98fbdd950"
+    },
+    {
+      "path": "src/server/game/World/WorldConfig.cpp",
+      "before_sha256": "e19e75309e15e3d0ad201cbb5c926769ecc09fe002d32d0603e9d80bd718add1",
+      "after_sha256": "db2699ee9463924d68e198e0dc794fc05b55bf0610d09ff00c01b9207eb6d5c4"
+    },
+    {
+      "path": "src/server/game/World/WorldConfig.h",
+      "before_sha256": "fa16c46acd8a778bcb8007b9c985685941dd4e168084331456baaaa0865bdea2",
+      "after_sha256": "15cf53811ba5f9a994f175d956baf98fb6dae80fc9434daba1d6dc385cd064d4"
+    }
+  ],
+  "patch_sha256": "e1d5c247a3c044f1ac916fcc4fbea1014c66cb494c29c5733b70b3716bfb1856",
+  "binary_sha256": "3676f5a756ee77a2450a5ccce79db527eadfc8c144b906b50ff5ad6c3f846fce",
+  "baseline": {
+    "config_path": "/home/dml/games/ascension-freepick-test/private/pending-20261013/worldserver.conf",
+    "config_sha256": "c2139577974c36d43173e8afb9e7bdc50fcf0e5a5683019b77299bf9238abe87",
+    "settings": {
+      "AllowTwoSide.Accounts": "1",
+      "AllowTwoSide.Interaction.Calendar": "0",
+      "AllowTwoSide.Interaction.Chat": "0",
+      "AllowTwoSide.Interaction.Channel": "0",
+      "AllowTwoSide.Interaction.Group": "0",
+      "AllowTwoSide.Interaction.Guild": "0",
+      "AllowTwoSide.Interaction.Arena": "0",
+      "AllowTwoSide.Interaction.Auction": "0"
+    },
+    "binary_sha256": "eee1de5d21b06038c6f7450583c08f5eac484dd41a71f83f9d8a811a1df763c3",
+    "deployment": {
+      "status": "complete",
+      "updated": 1793060419.2515674,
+      "client_release": "published"
+    },
+    "stable_package_sha256": "914bb34b66b5f2221bc51d0a7ab2eb062c348000ab691d85eacb178b4ac3c83a"
+  },
+  "limitations": [
+    "Native extracted mechanics use explicit engine adapters; no live gameplay or client UI certification.",
+    "This is a standalone qualified candidate; stable activation package and publication scope are not replaced.",
+    "Wintergrasp, guilds, arena teams and open-world quest eligibility unchanged.",
+    "Battleground group queue limit retains upstream default of three.",
+    "Shared auctions retain deployed faction fees; no auction records or DBC changes required."
+  ]
+}
