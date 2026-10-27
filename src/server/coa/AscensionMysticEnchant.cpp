@@ -1080,6 +1080,11 @@ public:
 
 #include "Area52PrestigeEnchantReset.inc"
 
+bool IsConnected(std::uint32_t enchant)
+{
+    return Active && Connected.contains(enchant);
+}
+
 bool GrantsActive(Player const* player, std::uint32_t enchant)
 {
     if (!Applies(player) || !Connected.contains(enchant) || (enchant == 978724 && !player->HasSpell(2565)))

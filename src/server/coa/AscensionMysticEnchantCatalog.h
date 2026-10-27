@@ -40,6 +40,7 @@ bool ResolveNative(std::uint32_t spell, std::map<std::uint32_t, SpellNode> const
 void RefreshEquipped(Player* player);
 void RefreshEpicReplacements(Player* player);
 bool GrantsActive(Player const* player, std::uint32_t enchant);
+bool IsConnected(std::uint32_t enchant);
 void SetGrantedSpell(Player* player, std::uint32_t enchant, std::uint32_t spell, bool enabled);
 using Slots = std::array<std::uint32_t, 17>;
 bool IsRemovalOnly(Slots const& before, Slots const& wanted);
