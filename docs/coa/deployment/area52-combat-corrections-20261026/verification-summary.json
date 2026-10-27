@@ -1,0 +1,33 @@
+{
+  "reports": [
+    "build-brutal-pummel-final/report.json",
+    "source-brutal-pummel-final/report.json"
+  ],
+  "binary_sha256": "eee1de5d21b06038c6f7450583c08f5eac484dd41a71f83f9d8a811a1df763c3",
+  "baseline_binary_sha256": "2c45b011e6d75e15c9d618373aa1661c2ca742d9428b4943ec0c76780921d0e6",
+  "scope": [
+    "Art of War proc correction; Angelic Feather visual restoration; Brutal Pummel trigger, health gate and interrupt damage correction"
+  ],
+  "focused_reports": [
+    "focused-artwar-pummel-final/report.json",
+    "focused-feather-visual/report.json",
+    "focused-brutal-pummel-final/report.json"
+  ],
+  "status_changes": [],
+  "source_publication": "Three-file frozen patch against the confirmed deployed baseline; not integration into main",
+  "limits": "Native proc methods with bounded adapters and dispatcher tracing; no gameplay or full-talent status promotion",
+  "source": [
+    {
+      "path": "src/server/coa/AscensionBarbarianCompletion.cpp",
+      "sha256": "5cf8fb59b71e3b3f536d7d27172dfb1f521d2df31c85f429f4e317b878bff54b"
+    },
+    {
+      "path": "src/server/coa/AscensionSummonedEffects.cpp",
+      "sha256": "a8e0324237c4454ca6db5bf51df18329e5f637726a07e6d037e221326294790b"
+    },
+    {
+      "path": "src/server/game/Spells/SpellMgr.cpp",
+      "sha256": "1b61ede340c578cbdb2c48754a21587657514961f413562e495a8814bac43370"
+    }
+  ]
+}
