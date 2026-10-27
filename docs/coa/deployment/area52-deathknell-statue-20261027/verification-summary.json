@@ -1,0 +1,8 @@
+{
+  "status": "passed",
+  "package": "area52-deathknell-statue-20261027",
+  "report_sha256": "9b195e55de359f743a86ef8edebc947fbf17f7f1968fceaa013a04c7c11645e8",
+  "hook_sha256": "264ea971b51e6a4b822883e577f0e8fddea9113d63fffbac65bab76ff3fba00e",
+  "changes_sha256": "aada7f18ffd4929de6d730dfab86117172ce0a11142f3c0ae2f700a2580a64fb",
+  "scope": "Three rows; exact upstream safe-model and statue/marker relocation. Production-schema SQL apply/retry/drift/partial rollback verified. No binary/client change or gameplay test."
+}
