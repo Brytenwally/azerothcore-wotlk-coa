@@ -1784,35 +1784,35 @@ public:
     return true;
   }
 
-  void QueueKnownEntriesUpload(uint32 accountId, WorldPacket const& packet)
+  void QueueKnownEntriesUpload(WorldSession* session, WorldPacket const& packet)
   {
     TalentRequest request;
     if (packet.size())
       request.Upload.assign(packet.contents(), packet.contents() + packet.size());
-    QueueTalentRequest(accountId, std::move(request));
+    QueueTalentRequest(session, std::move(request));
   }
 
-  void QueueMasteryRemoval(uint32 accountId, uint32 entryId)
+  void QueueMasteryRemoval(WorldSession* session, uint32 entryId)
   {
     TalentRequest request;
     request.RemoveMasteryEntryId = entryId;
-    QueueTalentRequest(accountId, std::move(request));
+    QueueTalentRequest(session, std::move(request));
   }
 
-  void QueueTalentReset(uint32 accountId)
+  void QueueTalentReset(WorldSession* session)
   {
-    QueueTalentRequest(accountId, { true, {} });
+    QueueTalentRequest(session, { true, {} });
   }
 
-  void QueueAbilityReset(uint32 accountId)
+  void QueueAbilityReset(WorldSession* session)
   {
-    QueueTalentRequest(accountId, { true, {}, true });
+    QueueTalentRequest(session, { true, {}, true });
   }
 
   void ClearArea52TalentRequests(Player* player)
   {
     std::lock_guard<std::mutex> lock(_stateLock);
-    _pendingTalentRequests.erase(player->GetSession()->GetAccountId());
+    _pendingTalentRequests.erase(player->GetGUID().GetCounter());
   }
 
   void ProcessTalentRequests(Player* player)
@@ -1820,7 +1820,7 @@ public:
     std::deque<TalentRequest> requests;
     {
       std::lock_guard<std::mutex> lock(_stateLock);
-      auto itr = _pendingTalentRequests.find(player->GetSession()->GetAccountId());
+      auto itr = _pendingTalentRequests.find(player->GetGUID().GetCounter());
       if (itr == _pendingTalentRequests.end())
         return;
       requests = std::move(itr->second);
@@ -2179,7 +2179,7 @@ public:
     _proficiencySynchronizations.erase(player->GetGUID().GetCounter());
     _advancementPending.erase(player->GetGUID().GetCounter());
     _advancementSent.erase(player->GetGUID().GetCounter());
-    _pendingTalentRequests.erase(player->GetSession()->GetAccountId());
+    _pendingTalentRequests.erase(player->GetGUID().GetCounter());
   }
 
     static uint32 GetSelectableFreeGroup(uint32 entryId)
@@ -2309,20 +2309,23 @@ private:
     uint32 RemoveMasteryEntryId = 0;
   };
 
-  void QueueTalentRequest(uint32 accountId, TalentRequest request)
+  void QueueTalentRequest(WorldSession* session, TalentRequest request)
   {
+    Player* player = session ? session->GetPlayer() : nullptr;
+    if (!player)
+      return;
     std::lock_guard<std::mutex> lock(_stateLock);
-    std::deque<TalentRequest>& queue = _pendingTalentRequests[accountId];
+    std::deque<TalentRequest>& queue = _pendingTalentRequests[player->GetGUID().GetCounter()];
     if (queue.size() >= MAX_QUEUED_TALENT_REQUESTS)
     {
-      LOG_WARN("coa", "Dropping talent request for account {}: its queue is full", accountId);
+      LOG_WARN("coa", "Dropping talent request for {}: its queue is full", player->GetGUID().ToString());
       return;
     }
     queue.push_back(std::move(request));
   }
 
   static constexpr std::size_t MAX_QUEUED_TALENT_REQUESTS = 8;
-  std::unordered_map<uint32, std::deque<TalentRequest>> _pendingTalentRequests;
+  std::unordered_map<ObjectGuid::LowType, std::deque<TalentRequest>> _pendingTalentRequests;
 };
 
 class AscensionResourceService
@@ -5539,21 +5542,21 @@ public:
 
     if (opcode == 0x0528 && session && AscensionFreePick::Applies(session->GetPlayer()))
     {
-      AscensionClassService::Instance().QueueAbilityReset(session->GetAccountId());
+      AscensionClassService::Instance().QueueAbilityReset(session);
       return false;
     }
 
     if (opcode == CMSG_CHARACTER_ADVANCEMENT_KNOWN_ENTRIES)
     {
       if (session)
-        AscensionClassService::Instance().QueueKnownEntriesUpload(session->GetAccountId(), packet);
+        AscensionClassService::Instance().QueueKnownEntriesUpload(session, packet);
       return false;
     }
 
     if (opcode == CMSG_UNLEARN_TALENTS)
     {
       if (session)
-        AscensionClassService::Instance().QueueTalentReset(session->GetAccountId());
+        AscensionClassService::Instance().QueueTalentReset(session);
       return false;
     }
 
@@ -6003,7 +6006,7 @@ public:
             entryId = entryId * 10 + uint32(digit - '0');
         }
         if (entryId)
-            AscensionClassService::Instance().QueueMasteryRemoval(player->GetSession()->GetAccountId(), entryId);
+            AscensionClassService::Instance().QueueMasteryRemoval(player->GetSession(), entryId);
         return false;
     }
 
