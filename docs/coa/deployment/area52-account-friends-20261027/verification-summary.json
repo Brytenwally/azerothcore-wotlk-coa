@@ -1,0 +1,68 @@
+{
+  "status": "offline_verified",
+  "package": "area52-account-friends-20261027",
+  "baseline_binary_sha256": "3676f5a756ee77a2450a5ccce79db527eadfc8c144b906b50ff5ad6c3f846fce",
+  "binary_sha256": "093ebdd412fc8af6b300c28ddcdeb4c9aad26a337cc11d3b8c8cc5c0b65ac993",
+  "reports": {
+    "build-final": "60355d77487ccf36f10d94c7b153b09ebb8d4e0e4099a3549cb9fa0336a02d10",
+    "source-final": "f0dac3f1c5f346a326738fdc9f5170060243004b5aa99b553da7abc316285ba0",
+    "focused-final": "b3d82f1eb2e6e3f38e254f857a01c9170fa28cdc445cc7d6070f1d678c3232f2",
+    "sql-package-final": "78d711211c6839de036b7d98a4345f24c18a47bc89e3c30f96e5399bb301b417",
+    "package-source-final": "f36f3232dff04d5ae5ef8826eecb71e9114e35d29cdda2574b3ca8d0775e37af"
+  },
+  "source_files": [
+    {
+      "path": "data/sql/updates/pending_db_characters/rev_20261027_area52_account_friends.sql",
+      "before": null,
+      "after": "f0e2e512096f5eaa19d5901737563179d3fc4395f2ff40832060160be7619355"
+    },
+    {
+      "path": "src/server/coa/Area52AccountFriends.inc",
+      "before": null,
+      "after": "19201dbb3624d6146e887acb99ac4886f7c4be0bb65c50380a89475025145144"
+    },
+    {
+      "path": "src/server/database/Database/Implementation/CharacterDatabase.cpp",
+      "before": "21abfe532f3db303c8970046eb548971106ddb0232c560e5c15853b3d6593c8c",
+      "after": "d6ea4a9da5b8a097b5d79934f8877631ef9109b5ead3614bb38103f3b52a1e47"
+    },
+    {
+      "path": "src/server/database/Database/Implementation/CharacterDatabase.h",
+      "before": "f13b3a47f507ebb2b061668667e6be2eb0f0b3ad0da3158a7677e8971d0001da",
+      "after": "7c42c2aa335fa354658e2699dd6048f4d95a9bc8dc69c07bc8cb61475082e8bb"
+    },
+    {
+      "path": "src/server/game/Entities/Player/SocialMgr.cpp",
+      "before": "52820d96a0433444fba19684641dd77fbcd5d14d4d0487c7757676ba4698aed8",
+      "after": "f564341d555731f6256d51038b83cf7473ab56f541896c1f6ad011e60315e252"
+    },
+    {
+      "path": "src/server/game/Entities/Player/SocialMgr.h",
+      "before": "169ffc88dc3d16ceeed28aa47c2b6e12b36f8b5cbe51831d6cd8ba6eff4bb1f4",
+      "after": "3b29f24a9ac501a9b087d0b93004edeafbe7592ff2950ecb2e6b82b55fa772b6"
+    },
+    {
+      "path": "src/server/game/Handlers/Socialhandler.cpp",
+      "before": "c4b3d280e90146cbea3d280fff24c693f71a61349537c9c46f47ab932b90925e",
+      "after": "101f90b6ce8548e0f84f9d6b2b06ab0e0f06e40f7dd228dd6d1217ec9e0dfe61"
+    }
+  ],
+  "patch_sha256": "f4ad66d9b78630e4d9b6539a4bfd43601debc2a4d9359501a9064dedde7da232",
+  "inputs": {
+    "hooks/source.py": "c2209750829646cfd236965a8b78502a9e53dcf60662c03b8d68e202bb8d227f",
+    "hooks/friends.py": "88731ec1744461e1c442d64a828872d58638635ce010aebd6a020f775c79b229",
+    "qualify_data.py": "eae51b9188003c420c86a15b9b0892ef3be00bcee11dd5fc55fc10bbcd753040",
+    "harness/run.py": "edb65a8b51c70623f662651aae56ee401bae48174b4f5034b743aee4d441f5f2",
+    "harness/adapter.hpp": "11c55ec7f6fed4af7a299caff5b8fe79cbff34d8a9fa4a9b2810f78f742df042",
+    "harness/cases.cpp": "081316386f4bfcf6bfbeafd95a05f1159a98545b0c9b0e1ec71dc7714ec2060d",
+    "schemas.json": "f819200263acce213d54884f5d3aa9c0784c07a6c8a06273221d5ecd2e28a1da"
+  },
+  "limitations": [
+    "Native extracted behavior uses bounded session/database adapters; no live gameplay was run.",
+    "Uses the existing client original-name display, which hides Added as when names match.",
+    "Editable labels are deferred. No client files or DLL changes.",
+    "Character ignores remain character-specific; friendships are one-way account relationships."
+  ],
+  "activation": "not_performed",
+  "publication": "not_performed"
+}

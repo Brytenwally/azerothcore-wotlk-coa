@@ -1,0 +1,474 @@
+diff --git a/data/sql/updates/pending_db_characters/rev_20261027_area52_account_friends.sql b/data/sql/updates/pending_db_characters/rev_20261027_area52_account_friends.sql
+new file mode 100644
+index 0000000..7302ee6
+--- /dev/null
++++ b/data/sql/updates/pending_db_characters/rev_20261027_area52_account_friends.sql
+@@ -0,0 +1,36 @@
++CREATE TABLE IF NOT EXISTS `area52_account_friend` (
++  `account` int unsigned NOT NULL,
++  `friend_account` int unsigned NOT NULL,
++  `original_guid` int unsigned NOT NULL,
++  `original_name` varchar(48) NOT NULL,
++  `note` varchar(48) NOT NULL DEFAULT '',
++  PRIMARY KEY (`account`, `friend_account`),
++  KEY `friend_account` (`friend_account`)
++) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
++
++CREATE TABLE IF NOT EXISTS `area52_account_friend_migration` (
++  `id` tinyint unsigned NOT NULL,
++  PRIMARY KEY (`id`)
++) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
++
++START TRANSACTION;
++INSERT IGNORE INTO `area52_account_friend` (`account`, `friend_account`, `original_guid`, `original_name`, `note`)
++SELECT `o`.`account`, `t`.`account`, `t`.`guid`, `t`.`name`, `s`.`note`
++FROM `character_social` `s`
++JOIN `characters` `o` ON `o`.`guid` = `s`.`guid`
++JOIN `characters` `t` ON `t`.`guid` = `s`.`friend`
++WHERE (`s`.`flags` & 1) <> 0 AND `o`.`account` <> `t`.`account`
++  AND `o`.`deleteinfos_name` IS NULL AND `t`.`deleteinfos_name` IS NULL
++  AND NOT EXISTS (SELECT 1 FROM `area52_account_friend_migration` WHERE `id` = 1)
++  AND NOT EXISTS (
++    SELECT 1 FROM `character_social` `s2`
++    JOIN `characters` `o2` ON `o2`.`guid` = `s2`.`guid`
++    JOIN `characters` `t2` ON `t2`.`guid` = `s2`.`friend`
++    WHERE (`s2`.`flags` & 1) <> 0 AND `o2`.`account` = `o`.`account` AND `t2`.`account` = `t`.`account`
++      AND `o2`.`deleteinfos_name` IS NULL AND `t2`.`deleteinfos_name` IS NULL
++      AND (`s2`.`guid` < `s`.`guid` OR (`s2`.`guid` = `s`.`guid` AND `s2`.`friend` < `s`.`friend`)
++        OR (`s2`.`guid` = `s`.`guid` AND `s2`.`friend` = `s`.`friend` AND `s2`.`flags` < `s`.`flags`))
++  );
++INSERT IGNORE INTO `area52_account_friend_migration` (`id`)
++SELECT 1 WHERE NOT EXISTS (SELECT 1 FROM `area52_account_friend_migration` WHERE `id` = 1);
++COMMIT;
+diff --git a/src/server/coa/Area52AccountFriends.inc b/src/server/coa/Area52AccountFriends.inc
+new file mode 100644
+index 0000000..84f9f52
+--- /dev/null
++++ b/src/server/coa/Area52AccountFriends.inc
+@@ -0,0 +1,188 @@
++namespace Area52AccountFriends
++{
++    struct Entry
++    {
++        ObjectGuid OriginalGuid;
++        std::string OriginalName;
++        std::string Note;
++    };
++
++    using Friends = std::map<uint32, Entry>;
++    std::map<uint32, Friends> Loaded;
++
++    uint32 Account(ObjectGuid guid)
++    {
++        return sCharacterCache->GetCharacterAccountIdByGuid(guid);
++    }
++
++    bool Reload(uint32 account)
++    {
++        auto* statement = CharacterDatabase.GetPreparedStatement(CHAR_SEL_A52_ACCOUNT_FRIENDS);
++        statement->SetData(0, account);
++        auto result = CharacterDatabase.Query(statement);
++        if (!result)
++        {
++            Loaded.erase(account);
++            LOG_ERROR("entities.player", "Area52 account friends could not be loaded");
++            return false;
++        }
++
++        Friends friends;
++        do
++        {
++            Field* fields = result->Fetch();
++            uint32 target = fields[0].Get<uint32>();
++            if (target && target != account)
++                friends.emplace(target, Entry{ObjectGuid::Create<HighGuid::Player>(fields[1].Get<uint32>()),
++                    fields[2].Get<std::string>(), fields[3].Get<std::string>()});
++        } while (result->NextRow());
++        Loaded[account] = std::move(friends);
++        return true;
++    }
++
++    Friends const* Get(uint32 account)
++    {
++        if (!account || (!Loaded.count(account) && !Reload(account)))
++            return nullptr;
++        return &Loaded.at(account);
++    }
++
++    bool Has(ObjectGuid owner, ObjectGuid target)
++    {
++        auto const* friends = Get(Account(owner));
++        return friends && friends->count(Account(target));
++    }
++
++    bool Add(ObjectGuid owner, ObjectGuid target)
++    {
++        uint32 account = Account(owner);
++        uint32 other = Account(target);
++        auto const* friends = Get(account);
++        auto const* character = sCharacterCache->GetCharacterCacheByGuid(target);
++        if (!friends || !character || !other || account == other)
++            return false;
++        if (friends->count(other))
++            return true;
++        if (friends->size() >= SOCIALMGR_FRIEND_LIMIT)
++            return false;
++
++        auto* statement = CharacterDatabase.GetPreparedStatement(CHAR_INS_A52_ACCOUNT_FRIEND);
++        statement->SetData(0, account);
++        statement->SetData(1, other);
++        statement->SetData(2, target.GetCounter());
++        statement->SetData(3, character->Name);
++        statement->SetData(4, std::string());
++        CharacterDatabase.DirectExecute(statement);
++        return Reload(account) && Loaded.at(account).count(other);
++    }
++
++    void Remove(ObjectGuid owner, ObjectGuid target)
++    {
++        uint32 account = Account(owner);
++        auto* statement = CharacterDatabase.GetPreparedStatement(CHAR_DEL_A52_ACCOUNT_FRIEND);
++        statement->SetData(0, account);
++        statement->SetData(1, Account(target));
++        CharacterDatabase.DirectExecute(statement);
++        Reload(account);
++    }
++
++    void SetNote(ObjectGuid owner, ObjectGuid target, std::string note)
++    {
++        utf8truncate(note, 48);
++        uint32 account = Account(owner);
++        auto* statement = CharacterDatabase.GetPreparedStatement(CHAR_UPD_A52_ACCOUNT_FRIEND_NOTE);
++        statement->SetData(0, note);
++        statement->SetData(1, account);
++        statement->SetData(2, Account(target));
++        CharacterDatabase.DirectExecute(statement);
++        Reload(account);
++    }
++
++    ObjectGuid Display(Player* observer, uint32 account, Entry const& entry, ObjectGuid excluded)
++    {
++        if (WorldSession* session = sWorldSessionMgr->FindSession(account))
++            if (Player* current = session->GetPlayer())
++                if (current->GetGUID() != excluded && current->IsInWorld())
++                {
++                    FriendInfo info;
++                    SocialMgr::GetFriendInfo(observer, current->GetGUID(), info);
++                    if (info.Status != FRIEND_STATUS_OFFLINE)
++                        return current->GetGUID();
++                }
++
++        if (Account(entry.OriginalGuid) == account)
++            return entry.OriginalGuid;
++
++        auto* statement = CharacterDatabase.GetPreparedStatement(CHAR_SEL_A52_FRIEND_FALLBACK);
++        statement->SetData(0, account);
++        if (auto result = CharacterDatabase.Query(statement))
++        {
++            auto guid = ObjectGuid::Create<HighGuid::Player>(result->Fetch()[0].Get<uint32>());
++            if (Account(guid) == account)
++                return guid;
++        }
++        return ObjectGuid::Empty;
++    }
++
++    void String(WorldPacket& packet, std::string const& value)
++    {
++        packet << uint32(value.size());
++        packet.append(value.data(), value.size());
++    }
++
++    template<class Contacts>
++    void SendMetadata(Player* player, Contacts const& contacts)
++    {
++        auto const* friends = Get(player->GetSession()->GetAccountId());
++        if (!friends)
++            return;
++        WorldPacket packet(0x9C0, 128);
++        packet << uint32(0);
++        uint32 count = 0;
++        for (auto const& [guid, info] : contacts)
++        {
++            if (!(info.Flags & SOCIAL_FLAG_FRIEND) || count >= SOCIALMGR_FRIEND_LIMIT)
++                continue;
++            auto const* character = sCharacterCache->GetCharacterCacheByGuid(guid);
++            if (!character)
++                continue;
++            auto found = friends->find(character->AccountId);
++            if (found == friends->end())
++                continue;
++            String(packet, character->Name);
++            String(packet, found->second.OriginalName);
++            ++count;
++        }
++        packet.put<uint32>(0, count);
++        player->SendDirectMessage(&packet);
++    }
++}
++
++bool PlayerSocial::UsesAccountFriends() const
++{
++    return AscensionFreePick::Enabled();
++}
++
++void PlayerSocial::ProjectAccountFriends(Player* player, ObjectGuid excluded)
++{
++    for (auto itr = m_playerSocialMap.begin(); itr != m_playerSocialMap.end();)
++    {
++        itr->second.Flags &= ~SOCIAL_FLAG_FRIEND;
++        if (!itr->second.Flags)
++            itr = m_playerSocialMap.erase(itr);
++        else
++            ++itr;
++    }
++    auto const* friends = Area52AccountFriends::Get(player->GetSession()->GetAccountId());
++    if (!friends)
++        return;
++    for (auto const& [account, entry] : *friends)
++    {
++        ObjectGuid guid = Area52AccountFriends::Display(player, account, entry, excluded);
++        if (!guid)
++            continue;
++        auto& info = m_playerSocialMap[guid];
++        info.Flags |= SOCIAL_FLAG_FRIEND;
++        info.Note = entry.Note;
++    }
++}
+diff --git a/src/server/database/Database/Implementation/CharacterDatabase.cpp b/src/server/database/Database/Implementation/CharacterDatabase.cpp
+index 1a9bbfc..bc862ef 100755
+--- a/src/server/database/Database/Implementation/CharacterDatabase.cpp
++++ b/src/server/database/Database/Implementation/CharacterDatabase.cpp
+@@ -65,8 +65,6 @@ void CharacterDatabaseConnection::DoPrepareStatements()
+         "AND b.archived=0 AND COALESCE((SELECT MAX(r.revision) FROM area52_build_revision r "
+         "WHERE r.build_id=b.id),0)=?", CONNECTION_ASYNC);
+ 
+-
+-
+     // Read-only safety gate for the unregistered, never-saved Create probe.
+     PrepareStatement(CHAR_SEL_FRESH_CHECK_GUID_COUNT, "SELECT COUNT(*) FROM characters WHERE guid BETWEEN ? AND ?", CONNECTION_SYNCH);
+ 
+@@ -775,6 +773,20 @@ void CharacterDatabaseConnection::DoPrepareStatements()
+         "INSERT INTO area52_certification_reward_delivery (account, guid, item) VALUES (?, ?, ?)",
+         CONNECTION_ASYNC);
+ 
++    PrepareStatement(CHAR_SEL_A52_ACCOUNT_FRIENDS,
++        "SELECT friend_account, original_guid, original_name, note FROM area52_account_friend WHERE account = ? "
++        "UNION ALL SELECT 0, 0, '', ''", CONNECTION_SYNCH);
++    PrepareStatement(CHAR_INS_A52_ACCOUNT_FRIEND,
++        "INSERT INTO area52_account_friend (account, friend_account, original_guid, original_name, note) "
++        "VALUES (?, ?, ?, ?, ?)", CONNECTION_SYNCH);
++    PrepareStatement(CHAR_DEL_A52_ACCOUNT_FRIEND,
++        "DELETE FROM area52_account_friend WHERE account = ? AND friend_account = ?", CONNECTION_SYNCH);
++    PrepareStatement(CHAR_UPD_A52_ACCOUNT_FRIEND_NOTE,
++        "UPDATE area52_account_friend SET note = ? WHERE account = ? AND friend_account = ?", CONNECTION_SYNCH);
++    PrepareStatement(CHAR_SEL_A52_FRIEND_FALLBACK,
++        "SELECT guid FROM characters WHERE account = ? AND deleteinfos_name IS NULL ORDER BY guid LIMIT 1",
++        CONNECTION_SYNCH);
++
+     PrepareStatement(CHAR_INS_PLAYER_ANTICHEAT_ALERT, "INSERT INTO player_anticheat_alert (account, guid, name, reason, details, size) VALUES (?, ?, ?, ?, ?, ?)", CONNECTION_ASYNC);
+ }
+ 
+diff --git a/src/server/database/Database/Implementation/CharacterDatabase.h b/src/server/database/Database/Implementation/CharacterDatabase.h
+index f791a0b..1068d10 100755
+--- a/src/server/database/Database/Implementation/CharacterDatabase.h
++++ b/src/server/database/Database/Implementation/CharacterDatabase.h
+@@ -598,6 +598,12 @@ enum CharacterDatabaseStatements : uint32
+     CHAR_SEL_A52_LAST_CHARACTERS,
+     CHAR_UPS_A52_LAST_CHARACTER,
+ 
++    CHAR_SEL_A52_ACCOUNT_FRIENDS,
++    CHAR_INS_A52_ACCOUNT_FRIEND,
++    CHAR_DEL_A52_ACCOUNT_FRIEND,
++    CHAR_UPD_A52_ACCOUNT_FRIEND_NOTE,
++    CHAR_SEL_A52_FRIEND_FALLBACK,
++
+     MAX_CHARACTERDATABASE_STATEMENTS
+ };
+ 
+diff --git a/src/server/game/Entities/Player/SocialMgr.cpp b/src/server/game/Entities/Player/SocialMgr.cpp
+index 46fc3a4..4ec4d83 100755
+--- a/src/server/game/Entities/Player/SocialMgr.cpp
++++ b/src/server/game/Entities/Player/SocialMgr.cpp
+@@ -17,6 +17,9 @@
+ 
+ #include "SocialMgr.h"
+ #include "AccountMgr.h"
++#include "../../../coa/AscensionFreePick.h"
++#include "CharacterCache.h"
++#include "WorldSessionMgr.h"
+ #include "DatabaseEnv.h"
+ #include "ObjectMgr.h"
+ #include "Player.h"
+@@ -24,6 +27,7 @@
+ #include "Util.h"
+ #include "WorldPacket.h"
+ #include "WorldSession.h"
++#include "../../../coa/Area52AccountFriends.inc"
+ 
+ PlayerSocial::PlayerSocial(): m_playerGUID() { }
+ 
+@@ -40,6 +44,9 @@ uint32 PlayerSocial::GetNumberOfSocialsWithFlag(SocialFlag flag) const
+ 
+ bool PlayerSocial::AddToSocialList(ObjectGuid const& friendGuid, SocialFlag flag)
+ {
++    if (flag == SOCIAL_FLAG_FRIEND && UsesAccountFriends())
++        return Area52AccountFriends::Add(GetPlayerGUID(), friendGuid);
++
+     // check client limits
+     if (GetNumberOfSocialsWithFlag(flag) >= (((flag & SOCIAL_FLAG_FRIEND) != 0) ? SOCIALMGR_FRIEND_LIMIT : SOCIALMGR_IGNORE_LIMIT))
+         return false;
+@@ -74,6 +81,11 @@ bool PlayerSocial::AddToSocialList(ObjectGuid const& friendGuid, SocialFlag flag
+ 
+ void PlayerSocial::RemoveFromSocialList(ObjectGuid const& friendGuid, SocialFlag flag)
+ {
++    if (flag == SOCIAL_FLAG_FRIEND && UsesAccountFriends())
++    {
++        Area52AccountFriends::Remove(GetPlayerGUID(), friendGuid);
++        return;
++    }
+     auto itr = m_playerSocialMap.find(friendGuid);
+     if (itr == m_playerSocialMap.end())                     // not exist
+         return;
+@@ -105,6 +117,11 @@ void PlayerSocial::RemoveFromSocialList(ObjectGuid const& friendGuid, SocialFlag
+ 
+ void PlayerSocial::SetFriendNote(ObjectGuid const& friendGuid, std::string note)
+ {
++    if (UsesAccountFriends() && Area52AccountFriends::Has(GetPlayerGUID(), friendGuid))
++    {
++        Area52AccountFriends::SetNote(GetPlayerGUID(), friendGuid, note);
++        return;
++    }
+     auto itr = m_playerSocialMap.find(friendGuid);
+     if (itr == m_playerSocialMap.end())                     // not exist
+         return;
+@@ -122,11 +139,14 @@ void PlayerSocial::SetFriendNote(ObjectGuid const& friendGuid, std::string note)
+     m_playerSocialMap[friendGuid].Note = note;
+ }
+ 
+-void PlayerSocial::SendSocialList(Player* player, uint32 flags)
++void PlayerSocial::SendSocialList(Player* player, uint32 flags, ObjectGuid excluded)
+ {
+     if (!player)
+         return;
+ 
++    if (UsesAccountFriends())
++        ProjectAccountFriends(player, excluded);
++
+     uint32 friendsCount = 0;
+     uint32 ignoredCount = 0;
+     uint32 totalCount = 0;
+@@ -156,6 +176,8 @@ void PlayerSocial::SendSocialList(Player* player, uint32 flags)
+         ++totalCount;
+ 
+         sSocialMgr->GetFriendInfo(player, itr.first, friendInfo);
++        if (itr.first == excluded)
++            friendInfo.Status = FRIEND_STATUS_OFFLINE;
+ 
+         data << itr.first;                                    // player guid
+         data << uint32(contactFlags);                         // player flag (0x1 = Friend, 0x2 = Ignored, 0x4 = Muted)
+@@ -174,6 +196,8 @@ void PlayerSocial::SendSocialList(Player* player, uint32 flags)
+ 
+     data.put<uint32>(countPos, totalCount);
+     player->SendDirectMessage(&data);
++    if (UsesAccountFriends())
++        Area52AccountFriends::SendMetadata(player, m_playerSocialMap);
+     LOG_DEBUG("network", "WORLD: Sent SMSG_CONTACT_LIST");
+ }
+ 
+@@ -188,6 +212,8 @@ bool PlayerSocial::_checkContact(ObjectGuid const& guid, SocialFlag flags) const
+ 
+ bool PlayerSocial::HasFriend(ObjectGuid const& friend_guid) const
+ {
++    if (UsesAccountFriends())
++        return Area52AccountFriends::Has(GetPlayerGUID(), friend_guid);
+     return _checkContact(friend_guid, SOCIAL_FLAG_FRIEND);
+ }
+ 
+@@ -291,7 +317,25 @@ void SocialMgr::SendFriendStatus(Player* player, FriendsResult result, ObjectGui
+             break;
+     }
+ 
+-    if (broadcast)
++    if (broadcast && player->GetSocial()->UsesAccountFriends())
++    {
++        ObjectGuid excluded = result == FRIEND_OFFLINE ? player->GetGUID() : ObjectGuid::Empty;
++        for (auto& [guid, social] : m_socialMap)
++            if (social.HasFriend(player->GetGUID()))
++                if (Player* observer = ObjectAccessor::FindPlayer(guid))
++                {
++                    auto previous = social.m_playerSocialMap.find(player->GetGUID());
++                    bool wasOnline = previous != social.m_playerSocialMap.end() &&
++                        previous->second.Status != FRIEND_STATUS_OFFLINE;
++                    FriendInfo current;
++                    GetFriendInfo(observer, player->GetGUID(), current);
++                    social.SendSocialList(observer, SOCIAL_FLAG_ALL, excluded);
++                    if ((result == FRIEND_OFFLINE && wasOnline) ||
++                        (result == FRIEND_ONLINE && current.Status != FRIEND_STATUS_OFFLINE))
++                        observer->SendDirectMessage(&data);
++                }
++    }
++    else if (broadcast)
+         BroadcastToFriendListers(player, &data);
+     else
+         player->SendDirectMessage(&data);
+diff --git a/src/server/game/Entities/Player/SocialMgr.h b/src/server/game/Entities/Player/SocialMgr.h
+index ff1208a..b339ae7 100755
+--- a/src/server/game/Entities/Player/SocialMgr.h
++++ b/src/server/game/Entities/Player/SocialMgr.h
+@@ -108,7 +108,9 @@ class PlayerSocial
+         void RemoveFromSocialList(ObjectGuid const& friend_guid, SocialFlag flag);
+         void SetFriendNote(ObjectGuid const& friendGuid, std::string note);
+         // Packet send's
+-        void SendSocialList(Player* player, uint32 flags);
++        void SendSocialList(Player* player, uint32 flags, ObjectGuid excluded = ObjectGuid::Empty);
++        bool UsesAccountFriends() const;
++        void ProjectAccountFriends(Player* player, ObjectGuid excluded = ObjectGuid::Empty);
+         // Misc
+         bool HasFriend(ObjectGuid const& friend_guid) const;
+         bool HasIgnore(ObjectGuid const& ignore_guid) const;
+diff --git a/src/server/game/Handlers/Socialhandler.cpp b/src/server/game/Handlers/Socialhandler.cpp
+index 0c2edea..36c3ca6 100755
+--- a/src/server/game/Handlers/Socialhandler.cpp
++++ b/src/server/game/Handlers/Socialhandler.cpp
+@@ -71,7 +71,8 @@ void WorldSession::HandleAddFriendOpcode(WorldPacket& recv_data)
+     {
+         if (friendGuid)
+         {
+-            if (friendGuid == GetPlayer()->GetGUID())
++            if (friendGuid == GetPlayer()->GetGUID() ||
++                (GetPlayer()->GetSocial()->UsesAccountFriends() && friendAccountId == GetAccountId()))
+                 friendResult = FRIEND_SELF;
+             else if (GetPlayer()->GetTeamId() != teamId && !HasPermission(rbac::RBAC_PERM_TWO_SIDE_ADD_FRIEND))
+                 friendResult = FRIEND_ENEMY;
+@@ -89,11 +90,14 @@ void WorldSession::HandleAddFriendOpcode(WorldPacket& recv_data)
+                 else
+                 friendResult = FRIEND_LIST_FULL;
+             }
+-            GetPlayer()->GetSocial()->SetFriendNote(friendGuid, friendNote);
++            if (!GetPlayer()->GetSocial()->UsesAccountFriends())
++                GetPlayer()->GetSocial()->SetFriendNote(friendGuid, friendNote);
+         }
+     }
+ 
+     sSocialMgr->SendFriendStatus(GetPlayer(), friendResult, friendGuid, false);
++    if (GetPlayer()->GetSocial()->UsesAccountFriends())
++        GetPlayer()->GetSocial()->SendSocialList(GetPlayer(), SOCIAL_FLAG_ALL);
+ 
+     LOG_DEBUG("network", "WORLD: Sent (SMSG_FRIEND_STATUS)");
+ }
+@@ -106,6 +110,8 @@ void WorldSession::HandleDelFriendOpcode(WorldPacket& recv_data)
+     _player->GetSocial()->RemoveFromSocialList(FriendGUID, SOCIAL_FLAG_FRIEND);
+ 
+     sSocialMgr->SendFriendStatus(GetPlayer(), FRIEND_REMOVED, FriendGUID, false);
++    if (GetPlayer()->GetSocial()->UsesAccountFriends())
++        GetPlayer()->GetSocial()->SendSocialList(GetPlayer(), SOCIAL_FLAG_ALL);
+ 
+     LOG_DEBUG("network", "WORLD: Sent motd (SMSG_FRIEND_STATUS)");
+ }
+@@ -160,4 +166,6 @@ void WorldSession::HandleSetContactNotesOpcode(WorldPacket& recv_data)
+     std::string note;
+     recv_data >> guid >> note;
+     _player->GetSocial()->SetFriendNote(guid, note);
++    if (_player->GetSocial()->UsesAccountFriends())
++        _player->GetSocial()->SendSocialList(_player, SOCIAL_FLAG_ALL);
+ }
