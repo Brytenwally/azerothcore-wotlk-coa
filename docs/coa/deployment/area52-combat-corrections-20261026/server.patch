@@ -1,0 +1,158 @@
+--- a/src/server/coa/AscensionBarbarianCompletion.cpp
++++ b/src/server/coa/AscensionBarbarianCompletion.cpp
+@@ -1,6 +1,7 @@
+ /* Copyright (C) 2016+ AzerothCore, GNU AGPL v3. */
+ 
+ #include "AscensionBarbarianCompletion.h"
++#include "AscensionFreePick.h"
+ #include "Creature.h"
+ #include "Item.h"
+ #include "Pet.h"
+@@ -211,6 +212,13 @@
+ 
+     void ModifySpellEffectBaseValue(Unit const* caster, SpellInfo const* info, uint8 index, float& value) override
+     {
++        if (info && info->Id == 32515 && index == EFFECT_0 &&
++            AscensionFreePick::Applies(caster ? caster->ToPlayer() : nullptr))
++        {
++            value = CalculatePct(caster->GetTotalAttackPowerValue(BASE_ATTACK),
++                info->Effects[EFFECT_1].CalcValue(caster));
++            return;
++        }
+         Player const* player = caster ? caster->ToPlayer() : nullptr;
+         if (!player || player->getClass() != CLASS_BARBARIAN || info->SpellFamilyName != 18)
+             return;
+@@ -465,8 +473,57 @@
+ };
+ }
+ 
++class Area52BrutalPummel final : public AllSpellScript
++{
++public:
++    Area52BrutalPummel() : AllSpellScript("Area52BrutalPummel") { }
++
++    Player* Caster(Spell* spell, Unit* target)
++    {
++        Player* player = spell && spell->GetCaster() ? spell->GetCaster()->ToPlayer() : nullptr;
++        if (!AscensionFreePick::Applies(player) || !target || !target->IsAlive() ||
++            player->IsFriendlyTo(target) || spell->IsTriggered() ||
++            !player->MatchesSpellInteraction(spell->GetSpellInfo()->Id, 6552))
++            return nullptr;
++        return player;
++    }
++
++    void OnSpellHitResult(Spell* spell, Unit* target, uint8 miss, uint32, uint32, bool) override
++    {
++        Player* player = Caster(spell, target);
++        if (!player || miss != SPELL_MISS_NONE || spell->GetScriptValue(32512001))
++            return;
++        uint32 chance = player->HasAura(32513) ? 100 : player->HasAura(32512) ? 50 : 0;
++        if (!chance)
++            return;
++        spell->SetScriptValue(32512001, 1);
++        if (roll_chance_i(chance))
++        {
++            player->CastSpell(target, 58567, true);
++            player->CastSpell(target, 58567, true);
++        }
++        if (player->HealthBelowPct(35))
++            player->CastSpell(target, 832513, true);
++    }
++
++    void OnSpellSuccessfulInterrupt(Spell* spell, Unit* target) override
++    {
++        Player* player = Caster(spell, target);
++        if (!player || !player->HasAura(32513) || spell->GetScriptValue(32515001))
++            return;
++        SpellInfo const* damage = sSpellMgr->GetSpellInfo(32515);
++        if (!damage)
++            return;
++        spell->SetScriptValue(32515001, 1);
++        int32 amount = int32(CalculatePct(player->GetTotalAttackPowerValue(BASE_ATTACK),
++            damage->Effects[EFFECT_1].CalcValue(player)));
++        player->CastCustomSpell(32515, SPELLVALUE_BASE_POINT0, amount, target, true);
++    }
++};
++
+ void AddAscensionBarbarianCompletionScripts()
+ {
++    new Area52BrutalPummel();
+     new barbarian_barbaric_rage();
+     new barbarian_scaling();
+     new barbarian_casts();
+--- a/src/server/coa/AscensionSummonedEffects.cpp
++++ b/src/server/coa/AscensionSummonedEffects.cpp
+@@ -217,6 +217,9 @@
+ 
+         if (row->Creature == 840058 && AscensionFreePick::Applies(owner->ToPlayer()))
+         {
++            if (Aura* visual = me->AddAura(row->Helper, me))
++                if (AuraEffect* effect = visual->GetEffect(EFFECT_0))
++                    effect->SetPeriodic(false);
+             events.ScheduleEvent(EVENT_PLACE, 0ms);
+             events.ScheduleEvent(EVENT_OWNER_CHECK, 1s);
+             events.ScheduleEvent(EVENT_ACT, 0ms);
+--- a/src/server/game/Spells/SpellMgr.cpp
++++ b/src/server/game/Spells/SpellMgr.cpp
+@@ -905,6 +905,28 @@
+ 
+ SpellProcEntry const* SpellMgr::GetSpellProcEntry(uint32 spellId) const
+ {
++    if ((spellId == 32512 || spellId == 32513 || spellId == 32514) && AscensionFreePick::Enabled())
++        return nullptr;
++    if ((spellId == 53486 || spellId == 53488 || spellId == 853486) &&
++        AscensionFreePick::Enabled() && GetSpellInfo(spellId))
++    {
++        static SpellProcEntry const artOfWar = []
++        {
++            SpellProcEntry proc{};
++            proc.ProcFlags = PROC_FLAG_DONE_MELEE_AUTO_ATTACK | PROC_FLAG_DONE_SPELL_MELEE_DMG_CLASS |
++                PROC_FLAG_DONE_SPELL_RANGED_DMG_CLASS | PROC_FLAG_DONE_SPELL_NONE_DMG_CLASS_NEG |
++                PROC_FLAG_DONE_SPELL_MAGIC_DMG_CLASS_NEG | PROC_FLAG_DONE_PERIODIC;
++            proc.SpellTypeMask = PROC_SPELL_TYPE_DAMAGE;
++            proc.SpellPhaseMask = PROC_SPELL_PHASE_HIT;
++            proc.HitMask = PROC_HIT_NORMAL | PROC_HIT_CRITICAL;
++            proc.AttributesMask = PROC_ATTR_TRIGGERED_CAN_PROC;
++            proc.DisableEffectsMask = (1u << EFFECT_0) | (1u << EFFECT_2);
++            proc.Chance = 50.0f;
++            proc.Cooldown = Milliseconds(6000);
++            return proc;
++        }();
++        return &artOfWar;
++    }
+     SpellProcMap::const_iterator itr = mSpellProcMap.find(spellId);
+     if (itr != mSpellProcMap.end())
+         return &itr->second;
+@@ -913,6 +935,32 @@
+ 
+ bool SpellMgr::CanSpellTriggerProcOnEvent(SpellProcEntry const& procEntry, ProcEventInfo& eventInfo) const
+ {
++    if (AscensionFreePick::Enabled() && &procEntry == GetSpellProcEntry(53486))
++    {
++        Player const* actor = eventInfo.GetActor() ? eventInfo.GetActor()->ToPlayer() : nullptr;
++        DamageInfo const* damage = eventInfo.GetDamageInfo();
++        if (!AscensionFreePick::Applies(actor) || !damage || !damage->GetDamage())
++            return false;
++        if (eventInfo.GetTypeMask() & PROC_FLAG_DONE_MELEE_AUTO_ATTACK)
++        {
++            if (damage->GetAttackType() != BASE_ATTACK)
++                return false;
++        }
++        else
++        {
++            auto eligible = [](SpellInfo const* spell)
++            {
++                return spell && spell->IsAffected(SPELLFAMILY_PALADIN, flag96(0x00800000, 0x00028000, 0x02000000));
++            };
++            SpellInfo const* spell = eventInfo.GetSpellInfo();
++            bool matches = eligible(spell);
++            if (spell && !matches)
++                for (uint32 original : actor->GetSpellInteractionOrigins(spell->Id))
++                    matches |= eligible(GetSpellInfo(original));
++            if (!matches)
++                return false;
++        }
++    }
+     // proc type doesn't match
+     if (!(eventInfo.GetTypeMask() & procEntry.ProcFlags))
+         return false;
