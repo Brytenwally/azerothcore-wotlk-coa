@@ -1,0 +1,299 @@
+--- a/src/server/coa/AscensionBulwark.cpp
++++ b/src/server/coa/AscensionBulwark.cpp
+@@ -51,6 +51,8 @@
+     {
+         if (!Enabled)
+             return;
++        if (info->Id == 47294 || info->Id == 47295 || info->Id == 47296)
++            info->Stances = 0;
+         if (info->Id == 1495 || info->Id == 14269 || info->Id == 14270 ||
+             info->Id == 14271 || info->Id == 36916 || info->Id == 53339)
+             info->UseRangedAttackPowerForDamage = true;
+--- a/src/server/coa/AscensionCompat.cpp
++++ b/src/server/coa/AscensionCompat.cpp
+@@ -3580,7 +3580,8 @@
+             if (sSpellMgr->GetSpellInfo(spellId) && !player->HasSpell(spellId))
+                 player->learnSpell(spellId, false);
+ 
+-        player->SetSkill(SKILL_RIDING, 4, 300, 300);
++        if (player->GetPureSkillValue(SKILL_RIDING) != 300 || player->GetPureMaxSkillValue(SKILL_RIDING) != 300)
++            player->SetSkill(SKILL_RIDING, 4, 300, 300);
+     }
+ 
+     void PrepareOwnedCompanionsBeforeMap(Player* player)
+@@ -6126,6 +6127,8 @@
+       AscensionClassService::Instance().SynchronizeProficiencies(player);
+       AscensionClassService::Instance().SendCharacterAdvancementKnownEntries(player);
+ 
++      if (player->HasSpell(2842))
++        AscensionFreePick::SynchronizeLinkedSpells(player);
+       RefreshScaledQuestQueries(player);
+     }
+   }
+--- a/src/server/coa/AscensionFreePick.cpp
++++ b/src/server/coa/AscensionFreePick.cpp
+@@ -287,8 +287,21 @@
+     return changed;
+ }
+ 
++std::uint32_t LinkedSpellRequiredLevel(std::uint32_t spell)
++{
++    for (auto const& group : LinkedSpellGroups)
++        if (group.Parent == 2842 && std::find(group.Children.begin(), group.Children.end(), spell) != group.Children.end())
++        {
++            auto const* info = sSpellMgr->GetSpellInfo(spell);
++            return info ? std::max(info->BaseLevel, info->SpellLevel) : uint32(-1);
++        }
++    return 0;
++}
++
+ bool CanLearnSpell(Player const* player, std::uint32_t spell, bool temporary, bool alreadyOwned)
+ {
++    if (Applies(player) && !alreadyOwned && player->GetLevel() < LinkedSpellRequiredLevel(spell))
++        return false;
+     if (IsTalentRank(player, spell))
+         return AuthorizedTalentSpells(player).contains(spell);
+     if (Applies(player) && (spell == 6991 || spell == 1106991 || spell == 1356991))
+@@ -382,7 +395,7 @@
+                 if (child && sSpellMgr->GetSpellInfo(child))
+                 {
+                     managed.insert(child);
+-                    if (player->HasSpell(group.Parent))
++                    if (player->HasSpell(group.Parent) && player->GetLevel() >= LinkedSpellRequiredLevel(child))
+                         wanted.insert(child);
+                 }
+     std::vector<uint32> lessons(Area52CompanionTraining::Spells.begin(), Area52CompanionTraining::Spells.end());
+@@ -394,6 +407,8 @@
+             if (player->HasSpell(Area52CompanionTraining::Parent(spell)))
+                 wanted.insert(spell);
+         }
++    std::erase_if(wanted, [player](uint32 spell)
++        { return player->GetLevel() < LinkedSpellRequiredLevel(spell); });
+     bool changed = SynchronizeTalentRanks(player);
+     SpellLearningScope learning(player, wanted);
+     for (auto child : managed)
+--- a/src/server/coa/AscensionFreePickLinkedSpells.h
++++ b/src/server/coa/AscensionFreePickLinkedSpells.h
+@@ -10,7 +10,8 @@
+     std::uint32_t Parent;
+     std::array<std::uint32_t, 6> Children;
+ };
+-inline constexpr std::array<LinkedSpellGroup, 20> LinkedSpellGroups = {{
++inline constexpr std::array<LinkedSpellGroup, 21> LinkedSpellGroups = {{
++    {2842, {208679, 203408, 205761, 202823, 2013219, 2026785}},
+     {33917, {33876, 33878}},
+     {84864, {986202, 986203}},
+     {84865, {986200, 986201}},
+--- a/src/server/coa/AscensionHoplite.cpp
++++ b/src/server/coa/AscensionHoplite.cpp
+@@ -305,7 +305,11 @@
+ {
+     PrepareAuraScript(aura_area52_hoplite_impaled);
+     bool Load() override { return Applies(GetCaster()); }
+-    void Tick(AuraEffect const*) { PreventDefaultAction(); }
++    void Tick(AuraEffect const*)
++    {
++        PreventDefaultAction();
++        GetAura()->SetNeedClientUpdateForTargets();
++    }
+     void Register() override
+     {
+         OnEffectPeriodic += AuraEffectPeriodicFn(aura_area52_hoplite_impaled::Tick,
+--- a/src/server/coa/AscensionMysticEnchant.cpp
++++ b/src/server/coa/AscensionMysticEnchant.cpp
+@@ -1108,6 +1108,12 @@
+     }
+     else if (!preserve)
+         player->removeSpell(spell, SPEC_MASK_ALL, false);
++}
++
++bool CollectionLoaded(Player* player)
++{
++    auto const* state = player ? player->CustomData.Get<State>(StateKey) : nullptr;
++    return state && state->Loaded;
+ }
+ 
+ void RefreshEquipped(Player* player)
+--- a/src/server/coa/AscensionMysticEnchantCatalog.h
++++ b/src/server/coa/AscensionMysticEnchantCatalog.h
+@@ -37,6 +37,7 @@
+     std::set<std::uint32_t> Dependencies;
+ };
+ bool ResolveNative(std::uint32_t spell, std::map<std::uint32_t, SpellNode> const& spells);
++bool CollectionLoaded(Player* player);
+ void RefreshEquipped(Player* player);
+ void RefreshEpicReplacements(Player* player);
+ bool GrantsActive(Player const* player, std::uint32_t enchant);
+--- a/src/server/coa/AscensionMysticKnightEpics.cpp
++++ b/src/server/coa/AscensionMysticKnightEpics.cpp
+@@ -108,6 +108,10 @@
+     {
+         if (!Enabled)
+             return;
++        if (info->Id == 983723)
++            info->AuraInterruptFlags &= ~AURA_INTERRUPT_FLAG_LEAVE_COMBAT;
++        if (info->Id == 35395 || (info->Id >= 35601 && info->Id <= 35607))
++            info->SchoolMask = SPELL_SCHOOL_MASK_NORMAL | SPELL_SCHOOL_MASK_HOLY;
+         if (info->Id == 986281 || (info->Id >= 986347 && info->Id <= 986355))
+         {
+             info->SchoolMask = SPELL_SCHOOL_MASK_NORMAL | SPELL_SCHOOL_MASK_HOLY;
+--- a/src/server/coa/AscensionSpartanKick.cpp
++++ b/src/server/coa/AscensionSpartanKick.cpp
+@@ -1,5 +1,6 @@
+ /* Copyright (C) 2016+ AzerothCore, GNU AGPL v3. */
+ #include "Config.h"
++#include "AscensionMysticEnchantCatalog.h"
+ #include "Player.h"
+ #include "ScriptMgr.h"
+ #include "SpellAuraEffects.h"
+@@ -24,7 +25,7 @@
+ void Synchronize(Player* player)
+ {
+     if (!Applies(player) || !player->IsInWorld() || !player->IsAlive() || !player->GetSession() ||
+-        player->GetSession()->PlayerLogout())
++        player->GetSession()->PlayerLogout() || !AscensionMysticEnchant::CollectionLoaded(player))
+         return;
+     bool const active = player->HasAura(84445) && player->HasActiveSpell(1766);
+     bool const owned = player->GetPlayerSetting(OwnershipKey, 0).value != 0;
+--- a/src/server/coa/AscensionSummonedEffects.cpp
++++ b/src/server/coa/AscensionSummonedEffects.cpp
+@@ -150,6 +150,7 @@
+     Position destination;
+     float velocity = 0.0f;
+     bool slowed = false;
++    bool featherConsumed = false;
+ 
+     bool Fights() const
+     {
+@@ -162,7 +163,22 @@
+             ScriptedAI::AttackStart(victim);
+     }
+ 
+-    void MoveInLineOfSight(Unit*) override { }
++    void MoveInLineOfSight(Unit* unit) override
++    {
++        Unit* owner = Owner();
++        if (!row || row->Creature != 840058 || featherConsumed || !unit || !unit->IsPlayer() ||
++            !unit->IsAlive() || !AscensionFreePick::Applies(owner ? owner->ToPlayer() : nullptr) ||
++            !owner->IsFriendlyTo(unit) || !me->IsWithinLOSInMap(unit))
++            return;
++        SpellInfo const* speed = sSpellMgr->GetSpellInfo(760055);
++        if (!speed || !me->IsWithinDistInMap(unit, speed->Effects[EFFECT_0].CalcRadius(owner)))
++            return;
++        featherConsumed = true;
++        if (owner->AddAura(760055, unit))
++            me->DespawnOrUnsummon();
++        else
++            featherConsumed = false;
++    }
+ 
+     void EnterEvadeMode(EvadeReason why) override
+     {
+@@ -197,6 +213,14 @@
+             me->SetReactState(REACT_PASSIVE);
+             if (!me->IsTotem())
+                 me->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NOT_SELECTABLE);
++        }
++
++        if (row->Creature == 840058 && AscensionFreePick::Applies(owner->ToPlayer()))
++        {
++            events.ScheduleEvent(EVENT_PLACE, 0ms);
++            events.ScheduleEvent(EVENT_OWNER_CHECK, 1s);
++            events.ScheduleEvent(EVENT_ACT, 0ms);
++            return;
+         }
+ 
+         switch (row->Kind)
+@@ -435,6 +459,25 @@
+                 events.ScheduleEvent(EVENT_OWNER_CHECK, 1s);
+             else if (event == EVENT_PLACE)
+                 Place(owner);
++            else if (row->Creature == 840058 && AscensionFreePick::Applies(owner->ToPlayer()))
++            {
++                SpellInfo const* speed = sSpellMgr->GetSpellInfo(760055);
++                if (!featherConsumed && speed)
++                {
++                    std::list<Player*> players;
++                    float const radius = speed->Effects[EFFECT_0].CalcRadius(owner);
++                    Acore::AnyPlayerInObjectRangeCheck check(me, radius);
++                    Acore::PlayerListSearcher<Acore::AnyPlayerInObjectRangeCheck> searcher(me, players, check);
++                    Cell::VisitObjects(me, searcher, radius);
++                    for (Player* player : players)
++                    {
++                        MoveInLineOfSight(player);
++                        if (featherConsumed)
++                            return;
++                    }
++                    events.ScheduleEvent(EVENT_ACT, 100ms);
++                }
++            }
+             else
+                 Act(owner);
+         }
+--- a/src/server/game/Spells/Spell.cpp
++++ b/src/server/game/Spells/Spell.cpp
+@@ -1375,6 +1375,9 @@
+ 
+     CallScriptObjectAreaTargetSelectHandlers(targets, effIndex, targetType);
+ 
++    if (m_spellInfo->Id == 997604 && AscensionFreePick::Applies(m_caster->ToPlayer()))
++        targets.remove_if([this](WorldObject* target) { return target->GetGUID() == m_originalTargetGUID; });
++
+     if (!targets.empty())
+     {
+         // Other special target selection goes here
+--- a/src/server/game/Spells/SpellInfo.cpp
++++ b/src/server/game/Spells/SpellInfo.cpp
+@@ -1,3 +1,4 @@
++#include "../../coa/Area52BulwarkRules.h"
+ #include "../../coa/Area52HolyContracts.h"
+ /*
+  * This file is part of the AzerothCore Project. See AUTHORS file for Copyright information
+@@ -1479,6 +1480,15 @@
+ 
+ bool SpellInfo::IsAffectedBySpellMod(SpellModifier const* mod) const
+ {
++    if (AscensionFreePick::Enabled() && (mod->spellId == 47294 || mod->spellId == 47295 || mod->spellId == 47296))
++    {
++        Unit const* owner = mod->ownerAura ? mod->ownerAura->GetUnitOwner() : nullptr;
++        if (owner && AscensionFreePick::Applies(owner->ToPlayer()) &&
++            std::none_of(Area52Bulwark::TankStances.begin(), Area52Bulwark::TankStances.end(),
++                [owner](uint32 id) { return owner->HasAura(id); }))
++            return false;
++    }
++
+     // Stim's copied healing ignores caster modifiers, but Bandage Gun explicitly
+     // increases its chain targets. Keep the exemption limited to that modifier;
+     // its ordinary family/mask and script checks still run below.
+--- a/src/server/game/Spells/Auras/SpellAuras.cpp
++++ b/src/server/game/Spells/Auras/SpellAuras.cpp
+@@ -213,7 +213,11 @@
+     data << uint8(aura->GetCasterLevel());
+     // send stack amount for aura which could be stacked (never 0 - causes incorrect display) or charges
+     // stack amount has priority over charges (checked on retail with spell 50262)
+-    data << uint8(aura->GetSpellInfo()->StackAmount ? aura->GetStackAmount() : aura->GetCharges());
++    uint8 displayCount = aura->GetSpellInfo()->StackAmount ? aura->GetStackAmount() : aura->GetCharges();
++    if (aura->GetId() == 982251)
++        if (Unit const* caster = aura->GetCaster(); caster && AscensionFreePick::Applies(caster->ToPlayer()))
++            displayCount = uint8(std::clamp(aura->GetMaxDuration() - aura->GetDuration(), 0, 12000) / 1000);
++    data << displayCount;
+ 
+     if (!(flags & AFLAG_CASTER))
+         data << aura->GetCasterGUID().WriteAsPacked();
+--- a/src/server/game/Entities/Unit/Unit.cpp
++++ b/src/server/game/Entities/Unit/Unit.cpp
+@@ -154,7 +154,8 @@
+     if (!AscensionFreePick::Applies(defender->ToPlayer()) || !attacker)
+         return 0;
+     int32 percent = 0;
+-    if (!attacker->IsCharmedOwnedByPlayerOrPlayer() && !defender->HasAura(TouchedRank1) &&
++    if (Area52TankDefense(defender) && !attacker->IsCharmedOwnedByPlayerOrPlayer() &&
++        !defender->HasAura(TouchedRank1) &&
+         !defender->HasAura(TouchedRank2) && !defender->HasAura(TouchedRank3))
+         for (uint32 id : {CriticalBlockRank3, CriticalBlockRank2, CriticalBlockRank1})
+             if (AuraEffect const* talent = defender->GetAuraEffect(id, EFFECT_2))
+--- /dev/null
++++ b/data/sql/updates/pending_db_world/rev_20261026_icy_veins_haste_group.sql
+@@ -0,0 +1,2 @@
++DELETE FROM `spell_group` WHERE `id` = 1122 AND `spell_id` = 12472;
++INSERT INTO `spell_group` (`id`, `spell_id`) VALUES (1122, 12472);
