@@ -1,0 +1,92 @@
+--- a/src/server/coa/Area52Dependencies.inc
++++ b/src/server/coa/Area52Dependencies.inc
+@@ -82,6 +82,13 @@
+             return;
+         switch (info->Id)
+         {
++            case 18697:
++            case 18698:
++            case 18699:
++                info->Effects[EFFECT_1].MiscValue = SPELLMOD_EFFECT1;
++                info->Effects[EFFECT_1].SpellClassMask = flag96(16384, 0, 0);
++                info->Effects[EFFECT_2].ApplyAuraName = SPELL_AURA_DUMMY;
++                break;
+             case 828574:
+             case 828575:
+             case 828576:
+--- a/src/server/game/Entities/Pet/Pet.cpp
++++ b/src/server/game/Entities/Pet/Pet.cpp
+@@ -1629,6 +1629,15 @@
+             if (!caster_guid)
+                 caster_guid = GetGUID();
+             uint32 spellid = fields[1].Get<uint32>();
++            if (spellid == 25228 && AscensionFreePick::Applies(GetOwner() ? GetOwner()->ToPlayer() : nullptr))
++            {
++                Player* owner = GetOwner()->ToPlayer();
++                if (owner->HasSpell(19028) && GetCreatureType() == CREATURE_TYPE_DEMON &&
++                    GetEntry() != 416 && IsAlive() && caster_guid == GetGUID())
++                    if (PetAura const* link = sSpellMgr->GetPetAura(19028, EFFECT_0))
++                        owner->AddPetAura(link);
++                continue;
++            }
+             uint8 effmask = fields[2].Get<uint8>();
+             uint8 recalculatemask = fields[3].Get<uint8>();
+             uint8 stackcount = fields[4].Get<uint8>();
+@@ -1701,12 +1710,16 @@
+ 
+     for (AuraMap::const_iterator itr = m_ownedAuras.begin(); itr != m_ownedAuras.end(); ++itr)
+     {
++        bool const soulLink = itr->second->GetId() == 25228 &&
++            AscensionFreePick::Applies(GetOwner() ? GetOwner()->ToPlayer() : nullptr) &&
++            GetOwner()->ToPlayer()->HasSpell(19028) && GetCreatureType() == CREATURE_TYPE_DEMON &&
++            GetEntry() != 416 && IsAlive() && itr->second->GetCasterGUID() == GetGUID();
+         // check if the aura has to be saved
+-        if (!itr->second->CanBeSaved() || IsPetAura(itr->second))
++        if (!itr->second->CanBeSaved() || (IsPetAura(itr->second) && !soulLink))
+             continue;
+ 
+         Aura* aura = itr->second;
+-        if (aura->GetDuration() < 60 * IN_MILLISECONDS)
++        if (!soulLink && aura->GetDuration() < 60 * IN_MILLISECONDS)
+             continue;
+ 
+         // dont save infinite negative auras! (lavas, transformations etc)
+@@ -1718,7 +1731,7 @@
+             continue;
+ 
+         // xinef: don't save hidden auras
+-        if (aura->GetSpellInfo()->HasAttribute(SPELL_ATTR1_NO_AURA_ICON))
++        if (!soulLink && aura->GetSpellInfo()->HasAttribute(SPELL_ATTR1_NO_AURA_ICON))
+             continue;
+ 
+         // Xinef: Dont save auras with model change
+--- a/src/server/game/Handlers/SpellHandler.cpp
++++ b/src/server/game/Handlers/SpellHandler.cpp
+@@ -623,6 +623,13 @@
+         return;
+     }
+ 
++    if (spellId == 25228 && AscensionFreePick::Applies(_player))
++    {
++        if (PetAura const* link = sSpellMgr->GetPetAura(19028, EFFECT_0))
++            _player->RemovePetAura(link);
++        return;
++    }
++
+     // maybe should only remove one buff when there are multiple?
+     _player->RemoveOwnedAura(spellId, ObjectGuid::Empty, 0, AURA_REMOVE_BY_CANCEL);
+ }
+@@ -659,6 +666,13 @@
+     if (!pet->IsAlive())
+     {
+         pet->SendPetActionFeedback(FEEDBACK_PET_DEAD);
++        return;
++    }
++
++    if (spellId == 25228 && AscensionFreePick::Applies(_player))
++    {
++        if (PetAura const* link = sSpellMgr->GetPetAura(19028, EFFECT_0))
++            _player->RemovePetAura(link);
+         return;
+     }
+ 

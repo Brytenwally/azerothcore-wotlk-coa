@@ -1,0 +1,16 @@
+{
+  "package": "area52-soul-link-repair-20261028",
+  "checks": {
+    "build-persistence": "a450cac1e338a4f5dfcd02dfe8b8a3ebbd793af12e3c4c7fc61438ac91a335a5",
+    "focused-persistence": "682df210fa29ee4ad5ec7c5fd186e45af3cfb8e45f2d3259f647426add285ff4",
+    "source-final": "b55539c4faa41938c4e31e33c1d7027a9abeb52d68732f7ddf054f372f9d6393"
+  },
+  "baseline_binary": "715f29aa365e836c49c02a732317f7d7250ea3e7376acef58e07f8465fd1d71c",
+  "binary_sha256": "48058db4b2d54e506c507193dd5ae028be060ccd8cd2df9bf276b17d5b9f977a",
+  "source_patch_apply_rollback": "passed",
+  "publication_tests": 14,
+  "deployment_tests": 11,
+  "no_live_test": true,
+  "no_client_sql_status_changes": true,
+  "limits": "Extracted native modifier and persistence guards; database helpers and asynchronous loading traced in source, not gameplay-tested."
+}
