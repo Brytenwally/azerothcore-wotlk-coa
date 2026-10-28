@@ -44,6 +44,9 @@ the connected ones too and report any part that does nothing.
   `Talent.dbc` already). Grants learn every rank whose `SpellLevel` the character has reached (`GrantRankDue`).
 - Hidden helper auras that Ascension applied server-side (a passive `... SLS` with a proc) can be granted as
   passive spells (Executing Disembowel 977908). `RetiredSpellGrants` removes a grant that was replaced.
+- `Replaces` follows every rank of the replaced spell and points it at the highest granted rank, so it works when
+  the character knows a higher rank of either. An enchant that needs a talent (`@unlockby:` on the enchant) is listed
+  in `EnchantUnlocks`; its grants stay off without that talent (Knight of the Eclipse needs Eclipse 48525).
 - `SetTemporarySpellReplacement` needs both spells known, so a temporary swap must grant the replacement too
   (Combo Shot 850515 for Compound Shot's recast window 826680).
 
@@ -68,6 +71,9 @@ the connected ones too and report any part that does nothing.
   (`ProcChance`), the power buff applies the shared 20 s cooldown 780999 itself, and the value is the enchant's
   EFFECT_0 amount (it stacks with the enchant). Scripts: `aura_area52_draconic_sinister`,
   `spell_area52_necrotic_execute`.
+- Ascension spell-mod ops 36 (vs players) and 38 (vs NPCs) are beyond the core's 32 ops and silently ignored. List
+  the spell in `ApplyArea52MysticTargetDamageContracts` (`AscensionConditionalCombat.cpp`), which turns them into
+  damage-versus-target auras; check every "+X% damage" buff for them (Deadly Combo, Solar/Lunar Knight).
 - Ascension cooldown effect 165 names the original spell; `EffectAscensionModifyCooldown` sends it to a temporary
   replacement (Skull Crusher cools down Dragon Roar).
 - Engine support: aura 262 (ignore aura state) and 286 (periodic crit) work; aura 337 (spell override) and effect
@@ -81,5 +87,6 @@ the connected ones too and report any part that does nothing.
 
 ## Builds done (2026-10-28)
 
-`compoundpower-build` (Marksman), `dragonwarrior-build` (Dragon Warrior) and `bloodandguts-build` (Gutripper), with
-their follow-ups. Harnesses: `area52_marksman`, `area52_dragon_warrior`, `area52_gutripper`.
+`compoundpower-build` (Marksman), `dragonwarrior-build` (Dragon Warrior), `bloodandguts-build` (Gutripper) and
+`knightoftheeclipse-build` (Knight of the Eclipse), with their follow-ups. Harnesses: `area52_marksman`,
+`area52_dragon_warrior`, `area52_gutripper`, `area52_knight_of_the_eclipse`.
