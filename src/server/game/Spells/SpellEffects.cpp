@@ -382,7 +382,9 @@ void Spell::EffectAscensionModifyCooldown(SpellEffIndex effIndex)
     Unit* target = unitTarget ? unitTarget : m_caster;
     Player* player = target ? target->ToPlayer() : nullptr;
     SpellEffectInfo const& effect = m_spellInfo->Effects[effIndex];
-    ModifyAscensionCooldown(player, effect.MiscValue, damage, effect.MiscValueB != 0);
+    // Ascension names the original spell; a temporarily replaced spell keeps its cooldown on the replacement.
+    uint32 const spellId = player ? player->GetTemporarySpellReplacement(effect.MiscValue) : effect.MiscValue;
+    ModifyAscensionCooldown(player, spellId, damage, effect.MiscValueB != 0);
 }
 
 void Spell::EffectAscensionPlaySpellVisualKit(SpellEffIndex effIndex)
