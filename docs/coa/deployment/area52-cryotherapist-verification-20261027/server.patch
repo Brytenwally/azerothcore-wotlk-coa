@@ -1,0 +1,604 @@
+--- /dev/null
++++ b/src/server/coa/Area52Cryotherapist.inc
+@@ -0,0 +1,392 @@
++/* Copyright (C) 2016+ AzerothCore, GNU AGPL v3. */
++
++bool CryotherapistActive(Player* player)
++{
++    return Applies(player) && player->IsAlive() && AscensionMysticEnchant::GrantsActive(player, 86576);
++}
++
++struct SpiritFrostState : DataMap::Base
++{
++    uint64 generation = 0;
++};
++
++SpiritFrostState& SpiritState(Player* player)
++{
++    return *player->CustomData.GetDefault<SpiritFrostState>("Area52SpiritFrost");
++}
++
++bool SpiritFrostHeal(Player* player, uint32 spell)
++{
++    return player && (player->MatchesSpellInteraction(spell, 2061) ||
++        player->MatchesSpellInteraction(spell, 2060) || player->MatchesSpellInteraction(spell, 596));
++}
++
++Unit* FrozenLightTarget(Player* player)
++{
++    if (!CryotherapistActive(player) || !player->IsInWorld())
++        return nullptr;
++    for (Aura* aura : player->GetSingleCastAuras())
++    {
++        if (aura->GetId() != 92752 || aura->GetCasterGUID() != player->GetGUID())
++            continue;
++        Unit* target = aura->GetUnitOwner();
++        if (target && target->IsAlive() && target->IsInWorld() && target->GetMap() == player->GetMap() &&
++            player->IsValidAssistTarget(target))
++            return target;
++    }
++    return nullptr;
++}
++
++class CryotherapistContracts final : public GlobalScript
++{
++public:
++    CryotherapistContracts() : GlobalScript("Area52CryotherapistContracts") { }
++
++    bool OnIsAffectedBySpellModCheck(SpellInfo const* source, SpellInfo const* spell,
++        SpellModifier const* modifier) override
++    {
++        if (!Enabled || source->Id != 92753 || !modifier->ownerAura)
++            return true;
++        Unit* caster = modifier->ownerAura->GetCaster();
++        Player* player = caster ? caster->ToPlayer() : nullptr;
++        return !(CryotherapistActive(player) && SpiritFrostHeal(player, spell->Id));
++    }
++
++    void OnLoadSpellCustomAttr(SpellInfo* info) override
++    {
++        if (!Enabled)
++            return;
++        if (info->Id == 92752)
++        {
++            info->AttributesEx5 |= SPELL_ATTR5_LIMIT_N;
++            info->Effects[EFFECT_1].ApplyAuraName = SPELL_AURA_MOD_HEALING_RECEIVED;
++        }
++        if (info->Id == 300024)
++        {
++            info->Effects[EFFECT_0].ApplyAuraName = SPELL_AURA_MOD_HEALING_RECEIVED;
++            info->ExcludeTargetAuraSpell = 0;
++        }
++        if (info->Id == 86577)
++        {
++            info->Effects[EFFECT_0].Amplitude = 1000;
++            info->Effects[EFFECT_0].DieSides = 0;
++            info->Effects[EFFECT_0].RealPointsPerLevel = 0;
++            info->AttributesEx5 |= SPELL_ATTR5_EXTRA_INITIAL_PERIOD;
++            info->AttributesEx5 &= ~SPELL_ATTR5_SPELL_HASTE_AFFECTS_PERIODIC;
++            info->AttributesEx2 |= SPELL_ATTR2_CANT_CRIT;
++        }
++        if (info->Id == 92753)
++        {
++            info->Effects[EFFECT_0].ApplyAuraName = SPELL_AURA_DUMMY;
++            info->Effects[EFFECT_0].TriggerSpell = 0;
++            info->Effects[EFFECT_1].BasePoints = -54;
++            info->Effects[EFFECT_2].BasePoints = -11;
++        }
++        if (info->Id == 92762)
++        {
++            info->Effects[EFFECT_0].Effect = SPELL_EFFECT_DUMMY;
++            info->Effects[EFFECT_0].ApplyAuraName = SPELL_AURA_NONE;
++        }
++        if (info->Id == 271306 || info->Id == 271307)
++        {
++            info->Effects[EFFECT_0].TargetA = SpellImplicitTargetInfo(TARGET_UNIT_TARGET_ALLY);
++            info->Effects[EFFECT_0].TargetB = SpellImplicitTargetInfo(0);
++            info->Effects[EFFECT_1].Effect = 0;
++            info->MaxAffectedTargets = 1;
++            info->AttributesEx2 |= SPELL_ATTR2_CANT_CRIT;
++        }
++        if (info->Id == 92766)
++        {
++            info->Effects[EFFECT_0].TargetA = SpellImplicitTargetInfo(TARGET_UNIT_DEST_AREA_ALLY);
++            info->Effects[EFFECT_0].TargetB = SpellImplicitTargetInfo(0);
++            info->Effects[EFFECT_1].Effect = 0;
++            info->MaxAffectedTargets = 5;
++        }
++    }
++};
++
++class spell_area52_cryotherapist_gate : public SpellScript
++{
++    PrepareSpellScript(spell_area52_cryotherapist_gate);
++
++    SpellCastResult Check()
++    {
++        return CryotherapistActive(GetCaster()->ToPlayer()) ? SPELL_CAST_OK : SPELL_FAILED_SPELL_UNAVAILABLE;
++    }
++
++    void Register() override
++    {
++        OnCheckCast += SpellCheckCastFn(spell_area52_cryotherapist_gate::Check);
++    }
++};
++
++class spell_area52_icy_penance_bolt : public AllSpellScript
++{
++public:
++    spell_area52_icy_penance_bolt() : AllSpellScript("spell_area52_icy_penance_bolt") { }
++
++    bool CanPrepare(Spell* spell, SpellCastTargets const*, AuraEffect const*) override
++    {
++        Player* player = spell->GetCaster()->ToPlayer();
++        if (!spell->IsTriggered() && CryotherapistActive(player) && SpiritFrostHeal(player, spell->GetSpellInfo()->Id))
++            if (Aura* stacks = player->GetAura(92753, player->GetGUID()))
++            {
++                spell->SetScriptValue(92753, Area52Cryotherapist::ConsumedHealingStacks(stacks->GetStackAmount()));
++                spell->SetScriptValue(92764, SpiritState(player).generation);
++            }
++        return true;
++    }
++
++    void OnSpellCast(Spell* spell, Unit* caster, SpellInfo const*, bool) override
++    {
++        Player* player = caster->ToPlayer();
++        uint32 consumed = spell->GetScriptValue(92753);
++        spell->SetScriptValue(92753, 0);
++        if (consumed && CryotherapistActive(player) && spell->GetScriptValue(92764) == SpiritState(player).generation)
++            if (Aura* stacks = player->GetAura(92753, player->GetGUID()))
++                stacks->ModStackAmount(-int32(consumed));
++    }
++
++    void OnSpellHitResult(Spell* spell, Unit* target, uint8 miss, uint32 damage, uint32 healing, bool critical) override
++    {
++        if (!spell || !target || miss != SPELL_MISS_NONE)
++            return;
++        uint32 id = spell->GetSpellInfo()->Id;
++        Player* player = spell->GetCaster()->ToPlayer();
++        if (!CryotherapistActive(player))
++            return;
++        if (healing && (spell->GetSpellInfo()->GetSchoolMask() & SPELL_SCHOOL_MASK_HOLY) &&
++            spell->GetSpellInfo()->HasEffect(SPELL_EFFECT_HEAL) && id != 271306 && id != 271307 && id != 92766)
++        {
++            if (!target->HasAura(92752, player->GetGUID()))
++                player->CastSpell(target, 300024, true);
++            if (!spell->GetScriptValue(92768))
++            {
++                spell->SetScriptValue(92768, 1);
++                player->CastSpell(player, 92768, true);
++            }
++        }
++        if (!damage)
++            return;
++        if (player->MatchesSpellInteraction(id, 116) || player->MatchesSpellInteraction(id, 30455))
++        {
++            player->CastSpell(player, 92753, true);
++            std::list<Unit*> allies;
++            Acore::AnyFriendlyUnitInObjectRangeCheck check(target, player, 10.0f);
++            Acore::UnitListSearcher<Acore::AnyFriendlyUnitInObjectRangeCheck> searcher(target, allies, check);
++            Cell::VisitObjects(target, searcher, 10.0f);
++            allies.remove_if([player](Unit* ally)
++            {
++                return !ally->IsAlive() || !player->IsValidAssistTarget(ally);
++            });
++            allies.sort([](Unit* left, Unit* right)
++            {
++                return left->GetHealthPct() == right->GetHealthPct() ? left->GetGUID() < right->GetGUID() :
++                    left->GetHealthPct() < right->GetHealthPct();
++            });
++            if (allies.size() > 5)
++                allies.resize(5);
++            int32 pulse = Area52Cryotherapist::BaseHealingPulse(damage);
++            for (Unit* ally : allies)
++                player->CastCustomSpell(ally, 86577, &pulse, nullptr, nullptr,
++                    TriggerCastFlags(TRIGGERED_FULL_MASK & ~TRIGGERED_NO_PERIODIC_RESET));
++        }
++        if (!((id >= 92758 && id <= 92761) || (id >= 302043 && id <= 302046)))
++            return;
++        if (!FrozenLightTarget(player))
++            return;
++        int32 value = critical ? 1 : 0;
++        player->CastCustomSpell(player, 92762, &value, nullptr, nullptr, true);
++    }
++};
++
++class aura_area52_cryotherapy : public AuraScript
++{
++    PrepareAuraScript(aura_area52_cryotherapy);
++
++    bool Load() override
++    {
++        return Enabled;
++    }
++
++    void Amount(AuraEffect const* effect, int32& amount, bool& recalculate)
++    {
++        amount = std::max(0, effect->GetBaseAmount());
++        recalculate = false;
++    }
++
++    void Tick(AuraEffect const*)
++    {
++        if (!CryotherapistActive(GetCaster() ? GetCaster()->ToPlayer() : nullptr))
++        {
++            PreventDefaultAction();
++            Remove();
++        }
++    }
++
++    void Register() override
++    {
++        DoEffectCalcAmount += AuraEffectCalcAmountFn(aura_area52_cryotherapy::Amount,
++            EFFECT_0, SPELL_AURA_PERIODIC_HEAL);
++        OnEffectPeriodic += AuraEffectPeriodicFn(aura_area52_cryotherapy::Tick,
++            EFFECT_0, SPELL_AURA_PERIODIC_HEAL);
++    }
++};
++
++class aura_area52_spirit_frost : public AuraScript
++{
++    PrepareAuraScript(aura_area52_spirit_frost);
++
++    bool Load() override
++    {
++        Player* player = GetTarget()->ToPlayer();
++        if (!Applies(player))
++            return false;
++        ++SpiritState(player).generation;
++        return true;
++    }
++
++    void Modifier(AuraEffect const* effect, SpellModifier*& modifier)
++    {
++        if (modifier)
++        {
++            modifier->value = -int32(Area52Cryotherapist::ConsumedHealingStacks(GetStackAmount()) *
++                (effect->GetEffIndex() == EFFECT_1 ? 53 : 10));
++        }
++    }
++
++    void Register() override
++    {
++        DoEffectCalcSpellMod += AuraEffectCalcSpellModFn(aura_area52_spirit_frost::Modifier,
++            EFFECT_1, SPELL_AURA_ADD_PCT_MODIFIER);
++        DoEffectCalcSpellMod += AuraEffectCalcSpellModFn(aura_area52_spirit_frost::Modifier,
++            EFFECT_2, SPELL_AURA_ADD_PCT_MODIFIER);
++    }
++};
++
++class CryotherapyHealingCap final : public UnitScript
++{
++public:
++    CryotherapyHealingCap() : UnitScript("Area52CryotherapyHealingCap") { }
++
++    void ModifyHealReceived(Unit* target, Unit* healer, uint32& heal, SpellInfo const* info) override
++    {
++        if (info && info->Id == 86577 && target && healer && Applies(healer->ToPlayer()))
++            heal = std::min(heal, uint32(uint64(target->GetMaxHealth()) * 45 / 100));
++    }
++};
++
++class aura_area52_fingers_of_light_consumption : public AuraScript
++{
++    PrepareAuraScript(aura_area52_fingers_of_light_consumption);
++
++    void Consume(ProcEventInfo&)
++    {
++        Player* player = GetTarget()->ToPlayer();
++        if (CryotherapistActive(player) && player->HasAura(74396, player->GetGUID()))
++            player->RemoveAurasDueToSpell(92768, player->GetGUID());
++    }
++
++    void Register() override
++    {
++        AfterProc += AuraProcFn(aura_area52_fingers_of_light_consumption::Consume);
++    }
++};
++
++class aura_area52_frozen_light : public AuraScript
++{
++    PrepareAuraScript(aura_area52_frozen_light);
++
++    void Apply(AuraEffect const*, AuraEffectHandleModes)
++    {
++        if (CryotherapistActive(GetCaster() ? GetCaster()->ToPlayer() : nullptr))
++            GetTarget()->RemoveAurasDueToSpell(300024, GetCasterGUID());
++    }
++
++    void Register() override
++    {
++        AfterEffectApply += AuraEffectApplyFn(aura_area52_frozen_light::Apply,
++            EFFECT_0, SPELL_AURA_DUMMY, AURA_EFFECT_HANDLE_REAL_OR_REAPPLY_MASK);
++    }
++};
++class spell_area52_frozen_light_route : public SpellScript
++{
++    PrepareSpellScript(spell_area52_frozen_light_route);
++
++    void Route(SpellEffIndex)
++    {
++        Player* player = GetCaster()->ToPlayer();
++        Unit* target = FrozenLightTarget(player);
++        if (!target)
++            return;
++        player->CastSpell(target, GetEffectValue() ? 271306 : 271307, true);
++        if (player->HasAura(92753, player->GetGUID()))
++            player->CastSpell(target->GetPositionX(), target->GetPositionY(), target->GetPositionZ(), 92766, true);
++    }
++
++    void Register() override
++    {
++        OnEffectHitTarget += SpellEffectFn(spell_area52_frozen_light_route::Route, EFFECT_0, SPELL_EFFECT_DUMMY);
++    }
++};
++
++class spell_area52_icy_spirit : public SpellScript
++{
++    PrepareSpellScript(spell_area52_icy_spirit);
++
++    void Select(std::list<WorldObject*>& targets)
++    {
++        Player* player = GetCaster()->ToPlayer();
++        if (!CryotherapistActive(player) || !FrozenLightTarget(player) || !player->HasAura(92753, player->GetGUID()))
++        {
++            targets.clear();
++            return;
++        }
++        targets.remove_if([player](WorldObject* object)
++        {
++            Unit* unit = object->ToUnit();
++            return !unit || !unit->IsAlive() || !player->IsValidAssistTarget(unit) || !player->IsInRaidWith(unit);
++        });
++        targets.sort([](WorldObject* left, WorldObject* right)
++        {
++            float a = left->ToUnit()->GetHealthPct(), b = right->ToUnit()->GetHealthPct();
++            return a == b ? left->GetGUID() < right->GetGUID() : a < b;
++        });
++        if (targets.size() > 5)
++            targets.resize(5);
++    }
++
++    void Register() override
++    {
++        OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_area52_icy_spirit::Select,
++            EFFECT_0, TARGET_UNIT_DEST_AREA_ALLY);
++    }
++};
++
++class aura_area52_icy_penance_channel : public AuraScript
++{
++    PrepareAuraScript(aura_area52_icy_penance_channel);
++    bool ticked = false;
++
++    void Tick(AuraEffect const*)
++    {
++        ticked = true;
++    }
++
++    void End(AuraEffect const*, AuraEffectHandleModes)
++    {
++        Player* player = GetCaster() ? GetCaster()->ToPlayer() : nullptr;
++        if (!ticked || !CryotherapistActive(player))
++            return;
++        if (Aura* stacks = player->GetAura(92753, player->GetGUID()))
++            stacks->ModStackAmount(-1);
++    }
++
++    void Register() override
++    {
++        OnEffectPeriodic += AuraEffectPeriodicFn(aura_area52_icy_penance_channel::Tick,
++            EFFECT_1, SPELL_AURA_PERIODIC_TRIGGER_SPELL);
++        AfterEffectRemove += AuraEffectRemoveFn(aura_area52_icy_penance_channel::End,
++            EFFECT_1, SPELL_AURA_PERIODIC_TRIGGER_SPELL, AURA_EFFECT_HANDLE_REAL);
++    }
++};
+--- /dev/null
++++ b/src/server/coa/Area52CryotherapistRules.h
+@@ -0,0 +1,43 @@
++/* Copyright (C) 2016+ AzerothCore, GNU AGPL v3. */
++#ifndef AREA52_CRYOTHERAPIST_RULES_H
++#define AREA52_CRYOTHERAPIST_RULES_H
++
++#include <algorithm>
++#include <array>
++#include <cstdint>
++
++namespace Area52Cryotherapist
++{
++inline constexpr std::uint32_t Enchant = 86576;
++inline constexpr std::uint32_t FrozenLight = 92752;
++inline constexpr std::uint32_t LesserFrozenLight = 300024;
++inline constexpr std::array<std::uint32_t, 3> HealingTimesMs = {0, 1000, 2000};
++
++inline std::uint32_t BaseHealingPulse(std::uint32_t damage)
++{
++    return static_cast<std::uint32_t>(std::uint64_t(damage) * 2 / 100);
++}
++
++inline std::uint32_t ConsumedHealingStacks(std::uint32_t available)
++{
++    return std::min<std::uint32_t>(available, 2);
++}
++
++inline std::uint32_t CastTime(std::uint32_t originalMs, std::uint32_t available)
++{
++    auto reduction = std::min<std::uint32_t>(100, 53 * ConsumedHealingStacks(available));
++    return static_cast<std::uint32_t>(std::uint64_t(originalMs) * (100 - reduction) / 100);
++}
++
++inline std::uint32_t ManaCost(std::uint32_t originalCost, std::uint32_t available)
++{
++    return static_cast<std::uint32_t>(std::uint64_t(originalCost) * (100 - 10 * ConsumedHealingStacks(available)) / 100);
++}
++
++inline std::uint32_t RemainingHealingStacks(std::uint32_t available)
++{
++    return available - ConsumedHealingStacks(available);
++}
++}
++
++#endif
+--- a/src/server/coa/AscensionMysticKnightEpics.cpp
++++ b/src/server/coa/AscensionMysticKnightEpics.cpp
+@@ -4,6 +4,10 @@
+ #include "Area52HolyContracts.h"
+ #include "AscensionMysticEnchantCatalog.h"
+ #include "MotionMaster.h"
++#include "ObjectAccessor.h"
++#include "CellImpl.h"
++#include "GridNotifiersImpl.h"
++#include "Area52CryotherapistRules.h"
+ #include "Random.h"
+ #include "Player.h"
+ #include "ScriptMgr.h"
+@@ -18,6 +22,8 @@
+ namespace
+ {
+ bool Enabled = false;
++constexpr std::array<uint32, 8> CryoPenance = {47540, 302000, 302001, 302002, 302003, 53005, 53006, 53007};
++constexpr std::array<uint32, 8> IcyPenance = {92754, 302039, 302040, 302041, 302042, 92755, 92756, 92757};
+ constexpr uint32 Light = 926573, Hook = 92580, Deconstruction = 954081, GhostlyBlow = 983240;
+ constexpr uint32 Exorcist = 986280;
+ constexpr std::array<uint32, 13> HeroicStrike = {78, 284, 285, 1608, 11564, 11565, 11566, 11567,
+@@ -40,6 +46,7 @@
+ }
+ void Replacement(Player* player, uint32 original, uint32 replacement, bool active, uint32 enchant)
+ {
++    bool const replacing = player->GetTemporarySpellReplacement(original) == replacement;
+     AscensionMysticEnchant::SetGrantedSpell(player, enchant, replacement, active && player->HasSpell(original));
+     if (active && player->HasActiveSpell(original))
+     {
+@@ -47,14 +54,33 @@
+     }
+     else
+     {
+-        if (player->GetTemporarySpellReplacement(original) == replacement)
++        if (replacing)
+             player->SetTemporarySpellReplacement(original, 0);
++    }
++}
++void SynchronizeCryotherapist(Player* player)
++{
++    bool cryotherapist = Applies(player) && AscensionMysticEnchant::GrantsActive(player, 86576);
++    for (std::size_t i = 0; i < CryoPenance.size(); ++i)
++        Replacement(player, CryoPenance[i], IcyPenance[i], cryotherapist, 86576);
++    if (!cryotherapist && Applies(player))
++    {
++        player->RemoveAurasDueToSpell(92753, player->GetGUID());
++        player->RemoveAurasDueToSpell(92768, player->GetGUID());
++        std::vector<Unit*> marked;
++        for (Aura* aura : player->GetSingleCastAuras())
++            if (aura->GetId() == 92752 && aura->GetCasterGUID() == player->GetGUID())
++                marked.push_back(aura->GetUnitOwner());
++        for (Unit* target : marked)
++            if (target)
++                target->RemoveAurasDueToSpell(92752, player->GetGUID());
+     }
+ }
+ void Synchronize(Player* player)
+ {
+     if (!player || !player->GetSession() || player->GetSession()->PlayerLogout())
+         return;
++    SynchronizeCryotherapist(player);
+     bool slash = Applies(player) && AscensionMysticEnchant::GrantsActive(player, Exorcist);
+     bool ownsHeroic = std::any_of(HeroicStrike.begin(), HeroicStrike.end(),
+         [player](uint32 id) { return player->HasActiveSpell(id); });
+@@ -180,7 +206,7 @@
+     EpicPlayer() : PlayerScript("Area52EpicPlayer") { }
+     void Refresh(Player* player, uint32 spell)
+     {
+-        if (Applies(player) && (spell == 14251 || std::find(HeroicStrike.begin(), HeroicStrike.end(), spell) != HeroicStrike.end() ||
++        if (Applies(player) && (std::find(CryoPenance.begin(), CryoPenance.end(), spell) != CryoPenance.end() || spell == 14251 || std::find(HeroicStrike.begin(), HeroicStrike.end(), spell) != HeroicStrike.end() ||
+             std::find(Consecration.begin(), Consecration.end(), spell) != Consecration.end() ||
+             std::find(Devastate.begin(), Devastate.end(), spell) != Devastate.end()))
+             Synchronize(player);
+@@ -549,10 +575,22 @@
+             player->ModifySpellCooldown(14278, -1000);
+     }
+ };
++#include "Area52Cryotherapist.inc"
+ }
+ void AddAscensionMysticKnightEpicScripts()
+ {
+     new EpicWorld();
++    new CryotherapistContracts();
++    new spell_area52_icy_penance_bolt();
++    RegisterSpellScript(spell_area52_frozen_light_route);
++    RegisterSpellScript(spell_area52_cryotherapist_gate);
++    RegisterSpellScript(spell_area52_icy_spirit);
++    RegisterSpellScript(aura_area52_icy_penance_channel);
++    RegisterSpellScript(aura_area52_cryotherapy);
++    RegisterSpellScript(aura_area52_spirit_frost);
++    RegisterSpellScript(aura_area52_fingers_of_light_consumption);
++    RegisterSpellScript(aura_area52_frozen_light);
++    new CryotherapyHealingCap();
+     new EpicContracts();
+     new EpicPlayer();
+     new ghostly_blow_damage();
+@@ -573,7 +611,7 @@
+ 
+ bool HasArea52EpicEquipmentHandlers(uint32 spell)
+ {
+-    if (!Enabled || (spell != Light && spell != Hook && spell != Deconstruction && spell != GhostlyBlow && spell != Exorcist))
++    if (!Enabled || (spell != 86576 && spell != Light && spell != Hook && spell != Deconstruction && spell != GhostlyBlow && spell != Exorcist))
+         return false;
+     std::list<AuraScript*> auras;
+     sScriptMgr->CreateAuraScripts(spell, auras);
+@@ -586,6 +624,13 @@
+     if (!found)
+         return false;
+     std::vector<std::pair<uint32, std::string>> required;
++    if (spell == 86576)
++    {
++        required = {{92752, "spell_area52_cryotherapist_gate"}, {92762, "spell_area52_frozen_light_route"},
++            {92766, "spell_area52_icy_spirit"}};
++        for (uint32 id : IcyPenance)
++            required.emplace_back(id, "spell_area52_cryotherapist_gate");
++    }
+     if (spell == Exorcist)
+     {
+         required.emplace_back(986282, "spell_area52_exorcist_boon");
+@@ -632,6 +677,29 @@
+         if (!found)
+             return false;
+     }
++    if (spell == 86576)
++    {
++        std::vector<std::pair<uint32, std::string>> auraBindings = {
++            {92752, "aura_area52_frozen_light"},
++            {86577, "aura_area52_cryotherapy"}, {92753, "aura_area52_spirit_frost"},
++            {44543, "aura_area52_fingers_of_light_consumption"},
++            {44545, "aura_area52_fingers_of_light_consumption"}};
++        for (uint32 id : IcyPenance)
++            auraBindings.emplace_back(id, "aura_area52_icy_penance_channel");
++        for (auto const& [id, name] : auraBindings)
++        {
++            std::list<AuraScript*> helpers;
++            sScriptMgr->CreateAuraScripts(id, helpers);
++            found = false;
++            for (auto* script : helpers)
++            {
++                found |= *script->_GetScriptName() == name;
++                delete script;
++            }
++            if (!found)
++                return false;
++        }
++    }
+     return true;
+ }
+ 
+--- a/src/server/coa/AscensionMysticSpellGrants.h
++++ b/src/server/coa/AscensionMysticSpellGrants.h
+@@ -11,8 +11,9 @@
+     std::uint32_t Enchant;
+     std::uint32_t Spell;
+ };
+-inline constexpr std::array<SpellGrant, 7> SpellGrants = {{
++inline constexpr std::array<SpellGrant, 8> SpellGrants = {{
+     {81248, 81249},
++    {86576, 92752},
+     {84408, 84409},
+     {84466, 84467},
+     {92574, 92575},
