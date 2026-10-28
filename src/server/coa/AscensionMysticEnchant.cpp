@@ -56,13 +56,13 @@ extern pEffect SpellEffects[TOTAL_SPELL_EFFECTS];
 #include "Area52Battlemage.inc"
 #include "Area52MarksmanRules.h"
 #include "Area52Marksman.inc"
-#include "Area52DragonWarriorRules.h"
-#include "Area52DragonWarrior.inc"
 #include "Area52LegendaryBatchRules.h"
 #include "Area52LegendaryBatch.inc"
 #include "Area52Felfire.inc"
 #include "CellImpl.h"
 #include "GridNotifiersImpl.h"
+#include "Area52DragonWarriorRules.h"
+#include "Area52DragonWarrior.inc"
 #include "Area52CorruptedBear.inc"
 #include "Area52CastMovement.inc"
 #include "Area52Dependencies.inc"
@@ -1383,7 +1383,8 @@ void AddSC_AscensionMysticEnchant()
     RegisterSpellScript(spell_area52_compound_power);
     RegisterSpellScript(spell_area52_compound_power_slice_and_dice);
     RegisterSpellScript(spell_area52_sniper);
-    RegisterSpellScript(spell_area52_dragon_fury);
+    RegisterSpellScript(aura_area52_dragon_charge);
+    RegisterSpellScript(spell_area52_dragon_charge_impact);
     RegisterSpellScript(spell_area52_dragon_roar_stun);
     new area52_unstoppable_force();
     RegisterSpellScript(spell_area52_legendary_proc);

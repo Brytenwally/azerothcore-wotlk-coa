@@ -17,7 +17,9 @@ int main()
     assert(RoarStuns(3) && RoarStuns(5));
     assert(SlamAlwaysCrits(true, false) && SlamAlwaysCrits(false, true) && SlamAlwaysCrits(true, true));
     assert(!SlamAlwaysCrits(false, false));
-    assert(FuryCooldownCutMs == 5000 && SlamFamilyMask0 == 0x200000);
+    assert(SlamFamilyMask0 == 0x200000);
+    assert(ImpactDamage(100, false) == 100 && ImpactDamage(100, true) == 300);
+    assert(DragonCharge == 954256 && Intercept == 20252 && DragonChargeImpact == 954288);
     return 0;
 }
 '''
@@ -37,11 +39,17 @@ def command(source, exe):
 def main():
     grants = (ROOT / 'src/server/coa/AscensionMysticSpellGrants.h').read_text(encoding='utf-8')
     assert '{954252, 954250, 12292, 12292}' in grants
+    assert '{954252, 954256, 20252, 20252}' in grants
     sql = (ROOT / 'data/sql/updates/pending_db_world/rev_20261028_20_dragon_warrior_build.sql').read_text(
         encoding='utf-8')
-    for row in ("(954253, 'spell_area52_dragon_fury')", "(954251, 'spell_area52_dragon_roar_stun')",
+    for row in ("(954251, 'spell_area52_dragon_roar_stun')",
                 '(954261, 0, 4, 2097152, 0, 0, 16, 7, 2, 0, 0, 0, 0, 100, 0, 1)'):
         assert row in sql, row
+    charge = (ROOT / 'data/sql/updates/pending_db_world/rev_20261028_21_dragon_warrior_charge.sql').read_text(
+        encoding='utf-8')
+    for row in ("(954256, 'aura_area52_dragon_charge')", "(954288, 'spell_area52_dragon_charge_impact')",
+                "'spell_area52_dragon_fury'"):
+        assert row in charge, row
     with tempfile.TemporaryDirectory(prefix='coa-area52-dragon-warrior-') as directory:
         out = Path(directory)
         cpp, exe = out / 'dragon_warrior.cpp', out / 'dragon_warrior.exe'
