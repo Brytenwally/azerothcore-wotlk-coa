@@ -1,0 +1,458 @@
+bool HasAuraScriptNamed(uint32 spell, char const* name)
+{
+    std::list<AuraScript*> scripts;
+    sScriptMgr->CreateAuraScripts(spell, scripts);
+    bool found = false;
+    for (auto* script : scripts)
+    {
+        found |= *script->_GetScriptName() == name;
+        delete script;
+    }
+    return found;
+}
+
+bool HasSpellScriptNamed(uint32 spell, char const* name)
+{
+    std::list<SpellScript*> scripts;
+    sScriptMgr->CreateSpellScripts(spell, scripts);
+    bool found = false;
+    for (auto* script : scripts)
+    {
+        found |= *script->_GetScriptName() == name;
+        delete script;
+    }
+    return found;
+}
+
+bool HasArea52MarksmanHandlers(uint32 spell)
+{
+    if (spell == Area52Marksman::CompoundPower)
+        return sSpellMgr->GetSpellProcEntry(spell) && sSpellMgr->GetSpellInfo(Area52Marksman::CompoundFlurry) &&
+            HasAuraScriptNamed(spell, "spell_area52_compound_power") &&
+            HasAuraScriptNamed(Area52Marksman::SliceAndDice, "spell_area52_compound_power_slice_and_dice") &&
+            sSpellMgr->GetSpellInfo(Area52Marksman::ComboShot) &&
+            HasSpellScriptNamed(Area52Marksman::CompoundShot, "spell_area52_compound_shot") &&
+            HasAuraScriptNamed(Area52Marksman::CompoundShotRecast, "aura_area52_compound_shot_recast") &&
+            HasSpellScriptNamed(Area52Marksman::ComboShotVolley, "spell_area52_combo_shot_volley");
+    if (spell == Area52Marksman::Sniper)
+        return sSpellMgr->GetSpellInfo(Area52Marksman::SniperStack) && HasAuraScriptNamed(spell, "spell_area52_sniper");
+    return false;
+}
+
+class spell_area52_compound_power : public AuraScript
+{
+    PrepareAuraScript(spell_area52_compound_power);
+
+    bool Load() override
+    {
+        return AscensionFreePick::Applies(GetUnitOwner() ? GetUnitOwner()->ToPlayer() : nullptr);
+    }
+
+    bool Validate(SpellInfo const*) override
+    {
+        return ValidateSpellInfo({Area52Marksman::CompoundFlurry});
+    }
+
+    static Area52Marksman::ShotEffect Effect(ProcEventInfo& event)
+    {
+        SpellInfo const* spell = event.GetSpellInfo();
+        if (!spell)
+            return {};
+        auto const direct = Area52Marksman::CompoundPowerShot(sSpellMgr->GetFirstSpellInChain(spell->Id));
+        if (Area52Marksman::Triggers(direct))
+            return direct;
+        Player* player = event.GetActor() ? event.GetActor()->ToPlayer() : nullptr;
+        if (player)
+            for (uint32 original : {Area52Marksman::SteadyShot, Area52Marksman::ArcaneShot,
+                Area52Marksman::MultiShot, Area52Marksman::ChimeraShot, Area52Marksman::CompoundShot})
+                if (player->MatchesSpellInteraction(spell->Id, original))
+                    return Area52Marksman::CompoundPowerShot(original);
+        return {};
+    }
+
+    bool CheckProc(ProcEventInfo& event)
+    {
+        Unit* owner = GetTarget();
+        return owner && event.GetActor() == owner && event.GetActionTarget() && event.GetDamageInfo() &&
+            event.GetDamageInfo()->GetDamage() > 0 && Area52Marksman::Triggers(Effect(event));
+    }
+
+    void Proc(AuraEffect const* effect, ProcEventInfo& event)
+    {
+        PreventDefaultAction();
+        Unit* owner = GetTarget();
+        Unit* target = event.GetActionTarget();
+        if (!owner)
+            return;
+        auto const shot = Effect(event);
+        if (shot.Consumes)
+            owner->RemoveAurasDueToSpell(Area52Marksman::CompoundFlurry);
+        if (shot.ComboPoints && target)
+            owner->AddComboPoints(target, shot.ComboPoints);
+        if (shot.Empowers)
+            owner->CastSpell(owner, Area52Marksman::CompoundFlurry, true, nullptr, effect);
+    }
+
+    void Register() override
+    {
+        DoCheckProc += AuraCheckProcFn(spell_area52_compound_power::CheckProc);
+        OnEffectProc += AuraEffectProcFn(spell_area52_compound_power::Proc, EFFECT_0, SPELL_AURA_DUMMY);
+    }
+};
+
+class spell_area52_compound_power_slice_and_dice : public AuraScript
+{
+    PrepareAuraScript(spell_area52_compound_power_slice_and_dice);
+
+    bool Load() override
+    {
+        return AscensionFreePick::Applies(GetUnitOwner() ? GetUnitOwner()->ToPlayer() : nullptr);
+    }
+
+    void RangedHaste(AuraEffect const* /*effect*/, int32& amount, bool& /*canBeRecalculated*/)
+    {
+        Unit* owner = GetUnitOwner();
+        if (!owner || !owner->HasAura(Area52Marksman::CompoundPower))
+            return;
+        if (AuraEffect const* melee = GetAura()->GetEffect(EFFECT_1))
+            amount = melee->GetAmount();
+        else
+            amount = GetSpellInfo()->Effects[EFFECT_1].CalcValue(owner);
+    }
+
+    void Register() override
+    {
+        DoEffectCalcAmount += AuraEffectCalcAmountFn(spell_area52_compound_power_slice_and_dice::RangedHaste, EFFECT_2,
+            SPELL_AURA_MOD_RANGED_HASTE);
+    }
+};
+
+class spell_area52_sniper : public AuraScript
+{
+    PrepareAuraScript(spell_area52_sniper);
+
+    bool Load() override
+    {
+        return AscensionFreePick::Applies(GetUnitOwner() ? GetUnitOwner()->ToPlayer() : nullptr);
+    }
+
+    bool Validate(SpellInfo const*) override
+    {
+        return ValidateSpellInfo({Area52Marksman::SniperStack});
+    }
+
+    void Tick(AuraEffect const* /*effect*/)
+    {
+        Unit* owner = GetTarget();
+        if (!owner)
+            return;
+        auto const step = Area52Marksman::SniperTick(_still, owner->isMoving());
+        _still = step.Still;
+        if (step.Clear)
+        {
+            owner->RemoveAurasDueToSpell(Area52Marksman::SniperStack);
+            return;
+        }
+        if (Aura* stacks = owner->GetAura(Area52Marksman::SniperStack))
+            stacks->RefreshDuration();
+        if (step.AddStack)
+            owner->CastSpell(owner, Area52Marksman::SniperStack, true);
+    }
+
+    void Register() override
+    {
+        OnEffectPeriodic += AuraEffectPeriodicFn(spell_area52_sniper::Tick, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY);
+    }
+
+    std::uint32_t _still = 0;
+};
+
+class aura_area52_archetype_cleanup : public AuraScript
+{
+    PrepareAuraScript(aura_area52_archetype_cleanup);
+
+    bool Load() override
+    {
+        Unit* owner = GetUnitOwner();
+        return AscensionFreePick::Applies(owner ? owner->ToPlayer() : nullptr);
+    }
+
+    void Clear(AuraEffect const*, AuraEffectHandleModes)
+    {
+        Unit* owner = GetTarget();
+        if (!owner)
+            return;
+        switch (GetId())
+        {
+            case 81166:
+                owner->RemoveAurasDueToSpell(81167);
+                break;
+            case 979740:
+                owner->RemoveAurasDueToSpell(984926);
+                owner->RemoveAurasDueToSpell(826680);
+                break;
+            case 982890:
+                for (uint32 id : {983867u, 983868u, 983869u, 983887u, 983888u})
+                    owner->RemoveAurasDueToSpell(id);
+                break;
+            case 954252:
+                for (uint32 id : {954261u, 954253u, 954256u, 954286u, 954289u})
+                    owner->RemoveAurasDueToSpell(id);
+                break;
+            case 53302:
+            case 53303:
+            case 53304:
+                owner->RemoveAurasDueToSpell(Area52Marksman::SniperTrainingBuff + GetId() - 53302);
+                owner->RemoveAurasDueToSpell(Area52Marksman::SyndicateTrainingFor(GetId()));
+                if (GetId() == 53304)
+                {
+                    owner->RemoveAurasDueToSpell(983887);
+                    owner->RemoveAurasDueToSpell(983888);
+                }
+                break;
+            default:
+                break;
+        }
+    }
+
+    void Register() override
+    {
+        AfterEffectRemove += AuraEffectRemoveFn(aura_area52_archetype_cleanup::Clear, EFFECT_0,
+            SPELL_AURA_ANY, AURA_EFFECT_HANDLE_REAL);
+    }
+};
+
+class spell_area52_compound_shot : public SpellScript
+{
+    PrepareSpellScript(spell_area52_compound_shot);
+
+    bool Load() override
+    {
+        Unit* owner = GetCaster();
+        return AscensionFreePick::Applies(owner ? owner->ToPlayer() : nullptr);
+    }
+
+    bool Validate(SpellInfo const*) override
+    {
+        return ValidateSpellInfo({Area52Marksman::CompoundShotRecast});
+    }
+
+    void OpenRecastWindow()
+    {
+        Player* player = GetCaster() ? GetCaster()->ToPlayer() : nullptr;
+        if (!player || !AscensionFreePick::Applies(player))
+            return;
+        player->CastSpell(player, Area52Marksman::CompoundShotRecast, true);
+        if (Aura* recast = player->GetAura(Area52Marksman::CompoundShotRecast))
+            recast->SetDuration(Area52Marksman::RecastWindowMs);
+    }
+
+    void Register() override
+    {
+        AfterCast += SpellCastFn(spell_area52_compound_shot::OpenRecastWindow);
+    }
+};
+
+class aura_area52_compound_shot_recast : public AuraScript
+{
+    PrepareAuraScript(aura_area52_compound_shot_recast);
+
+    bool Load() override
+    {
+        Unit* owner = GetUnitOwner();
+        return AscensionFreePick::Applies(owner ? owner->ToPlayer() : nullptr);
+    }
+
+    static void Swap(Unit* target, bool toComboShot)
+    {
+        Player* player = target ? target->ToPlayer() : nullptr;
+        if (!player)
+            return;
+        std::set<uint32> visited;
+        for (uint32 rank = Area52Marksman::CompoundShot; rank && visited.insert(rank).second;
+            rank = sSpellMgr->GetNextSpellInChain(rank))
+            player->SetTemporarySpellReplacement(rank,
+                toComboShot && player->HasActiveSpell(rank) ? Area52Marksman::ComboShot : 0);
+    }
+
+    void Open(AuraEffect const*, AuraEffectHandleModes)
+    {
+        Swap(GetTarget(), true);
+    }
+
+    void Close(AuraEffect const*, AuraEffectHandleModes)
+    {
+        Swap(GetTarget(), false);
+    }
+
+    void Register() override
+    {
+        AfterEffectApply += AuraEffectApplyFn(aura_area52_compound_shot_recast::Open, EFFECT_1,
+            SPELL_AURA_ABILITY_IGNORE_AURASTATE, AURA_EFFECT_HANDLE_REAL);
+        AfterEffectRemove += AuraEffectRemoveFn(aura_area52_compound_shot_recast::Close, EFFECT_1,
+            SPELL_AURA_ABILITY_IGNORE_AURASTATE, AURA_EFFECT_HANDLE_REAL);
+    }
+};
+
+class spell_area52_combo_shot_volley : public SpellScript
+{
+    PrepareSpellScript(spell_area52_combo_shot_volley);
+
+    bool Load() override
+    {
+        Unit* owner = GetCaster();
+        return AscensionFreePick::Applies(owner ? owner->ToPlayer() : nullptr);
+    }
+
+    void KeepFighting(std::list<WorldObject*>& targets)
+    {
+        targets.remove_if([](WorldObject* target)
+        {
+            Unit* unit = target->ToUnit();
+            return !unit || !unit->IsInCombat();
+        });
+    }
+
+    void Register() override
+    {
+        OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_area52_combo_shot_volley::KeepFighting,
+            EFFECT_ALL, TARGET_UNIT_CONE_ENEMY_104);
+    }
+};
+
+class spell_area52_syndicate_sniper_training : public AuraScript
+{
+    PrepareAuraScript(spell_area52_syndicate_sniper_training);
+
+    bool Load() override
+    {
+        Unit* owner = GetUnitOwner();
+        return AscensionFreePick::Applies(owner ? owner->ToPlayer() : nullptr);
+    }
+
+    void Mirror(AuraEffect const*)
+    {
+        Player* player = GetTarget()->ToPlayer();
+        if (!player || !AscensionFreePick::Applies(player))
+            return;
+        uint32 const training = Area52Marksman::SyndicateTrainingFor(GetId());
+        Aura const* buff = player->GetAura(Area52Marksman::SniperTrainingBuffFor(GetId()));
+        if (!buff || !player->HasAura(Area52Marksman::SyndicateSniperShotEnchant))
+        {
+            player->RemoveAurasDueToSpell(training);
+            return;
+        }
+        Aura* mirror = player->GetAura(training);
+        if (!mirror)
+        {
+            player->CastSpell(player, training, true);
+            mirror = player->GetAura(training);
+        }
+        if (!mirror)
+            return;
+        if (mirror->GetStackAmount() != buff->GetStackAmount())
+            mirror->SetStackAmount(buff->GetStackAmount());
+        mirror->SetDuration(buff->GetDuration());
+    }
+
+    void Register() override
+    {
+        OnEffectPeriodic += AuraEffectPeriodicFn(spell_area52_syndicate_sniper_training::Mirror, EFFECT_0,
+            SPELL_AURA_PERIODIC_TRIGGER_SPELL);
+    }
+};
+
+class spell_area52_syndicate_capstone : public AuraScript
+{
+    PrepareAuraScript(spell_area52_syndicate_capstone);
+
+    bool Load() override
+    {
+        Unit* owner = GetUnitOwner();
+        return AscensionFreePick::Applies(owner ? owner->ToPlayer() : nullptr);
+    }
+
+    bool Validate(SpellInfo const*) override
+    {
+        return ValidateSpellInfo({Area52Marksman::HoneIn, Area52Marksman::HoneInDamage});
+    }
+
+    bool Ready(ProcEventInfo& event)
+    {
+        Unit* target = event.GetActionTarget();
+        return target && AscensionFreePick::Applies(GetTarget()->ToPlayer()) &&
+            Area52Marksman::HonesIn(GetStackAmount(), target->IsControlledByPlayer());
+    }
+
+    void HoneIn(AuraEffect const*, ProcEventInfo&)
+    {
+        Unit* hunter = GetTarget();
+        hunter->CastSpell(hunter, Area52Marksman::HoneIn, true);
+        hunter->CastSpell(hunter, Area52Marksman::HoneInDamage, true);
+    }
+
+    void Register() override
+    {
+        DoCheckProc += AuraCheckProcFn(spell_area52_syndicate_capstone::Ready);
+        OnEffectProc += AuraEffectProcFn(spell_area52_syndicate_capstone::HoneIn, EFFECT_2, SPELL_AURA_DUMMY);
+    }
+};
+
+class spell_area52_syndicate_sniper_shot : public SpellScript
+{
+    PrepareSpellScript(spell_area52_syndicate_sniper_shot);
+
+    bool Load() override
+    {
+        Unit* owner = GetCaster();
+        if (!AscensionFreePick::Applies(owner ? owner->ToPlayer() : nullptr))
+            return false;
+        if (owner->HasAuraType(SPELL_AURA_MOD_STEALTH))
+            if (SpellInfo const* bonus = sSpellMgr->GetSpellInfo(982901))
+                StealthBonus = bonus->Effects[EFFECT_2].CalcValue(owner);
+        return true;
+    }
+
+    void CaptureHoneIn()
+    {
+        Unit* hunter = GetCaster();
+        if (hunter && AscensionFreePick::Applies(hunter->ToPlayer()))
+            if (AuraEffect const* effect = hunter->GetAuraEffect(Area52Marksman::HoneInDamage, EFFECT_0))
+                HoneInBonus = effect->GetAmount();
+    }
+
+    int32 HoneInBonus = 0;
+    int32 StealthBonus = 0;
+
+    void SpendHoneIn()
+    {
+        if (Unit* hunter = GetCaster(); hunter && AscensionFreePick::Applies(hunter->ToPlayer()))
+        {
+            hunter->RemoveAurasDueToSpell(Area52Marksman::HoneIn);
+            hunter->RemoveAurasDueToSpell(Area52Marksman::HoneInDamage);
+        }
+    }
+
+    void AddSniperTraining()
+    {
+        Unit* hunter = GetCaster();
+        if (!hunter || !AscensionFreePick::Applies(hunter->ToPlayer()))
+            return;
+        SetHitDamage(Area52Marksman::WithSniperTraining(GetHitDamage(), HoneInBonus));
+        SetHitDamage(Area52Marksman::WithSniperTraining(GetHitDamage(), StealthBonus));
+        for (uint32 rank = 0; rank < 3; ++rank)
+            if (AuraEffect const* training = hunter->GetAuraEffect(Area52Marksman::SyndicateSniperTraining + rank,
+                EFFECT_0))
+            {
+                SetHitDamage(Area52Marksman::WithSniperTraining(GetHitDamage(), training->GetAmount()));
+                return;
+            }
+    }
+
+    void Register() override
+    {
+        BeforeCast += SpellCastFn(spell_area52_syndicate_sniper_shot::CaptureHoneIn);
+        AfterCast += SpellCastFn(spell_area52_syndicate_sniper_shot::SpendHoneIn);
+        OnHit += SpellHitFn(spell_area52_syndicate_sniper_shot::AddSniperTraining);
+    }
+};
