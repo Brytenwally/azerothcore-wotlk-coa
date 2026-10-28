@@ -316,8 +316,23 @@ class spell_area52_syndicate_sniper_shot : public SpellScript
         }
     }
 
+    void AddSniperTraining()
+    {
+        Unit* hunter = GetCaster();
+        if (!hunter || !AscensionFreePick::Applies(hunter->ToPlayer()))
+            return;
+        for (uint32 rank = 0; rank < 3; ++rank)
+            if (AuraEffect const* training = hunter->GetAuraEffect(Area52Marksman::SyndicateSniperTraining + rank,
+                EFFECT_0))
+            {
+                SetHitDamage(Area52Marksman::WithSniperTraining(GetHitDamage(), training->GetAmount()));
+                return;
+            }
+    }
+
     void Register() override
     {
         AfterCast += SpellCastFn(spell_area52_syndicate_sniper_shot::SpendHoneIn);
+        OnHit += SpellHitFn(spell_area52_syndicate_sniper_shot::AddSniperTraining);
     }
 };

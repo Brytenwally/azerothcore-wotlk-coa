@@ -33,6 +33,7 @@ int main()
     assert(!GrantRankDue(false, false, 0, 60));
     assert(SyndicateTrainingFor(53302) == 983867 && SyndicateTrainingFor(53304) == SyndicateCapstone);
     assert(SniperTrainingBuffFor(53303) == 64419);
+    assert(WithSniperTraining(1000, 28) == 1280 && WithSniperTraining(1000, 0) == 1000);
     assert(HonesIn(4, false) && !HonesIn(3, false) && !HonesIn(4, true));
 
     unsigned still = 0;

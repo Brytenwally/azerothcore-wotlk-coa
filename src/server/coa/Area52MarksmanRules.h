@@ -61,6 +61,11 @@ inline std::uint32_t SniperTrainingBuffFor(std::uint32_t talentRank)
     return SniperTrainingBuff + (talentRank - SniperTrainingTalent);
 }
 
+inline std::int32_t WithSniperTraining(std::int32_t damage, std::int32_t bonusPct)
+{
+    return bonusPct > 0 ? std::int32_t(std::int64_t(damage) * (100 + bonusPct) / 100) : damage;
+}
+
 inline bool HonesIn(std::uint8_t capstoneStacks, bool targetPlayerControlled)
 {
     return capstoneStacks >= CapstoneStacks && !targetPlayerControlled;
