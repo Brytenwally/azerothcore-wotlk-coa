@@ -308,13 +308,18 @@ void Synchronize(Player* player)
         std::set<std::uint32_t> visited;
         for (auto rank = grant.Spell; rank && visited.insert(rank).second;
             rank = sSpellMgr->GetNextSpellInChain(rank))
-            SetGrantedSpell(player, grant.Enchant, rank,
-                enabled && (rank == grant.Spell || player->HasSpell(rank)));
+        {
+            SpellInfo const* info = sSpellMgr->GetSpellInfo(rank);
+            SetGrantedSpell(player, grant.Enchant, rank, enabled && info &&
+                GrantRankDue(rank == grant.Spell, player->HasSpell(rank), info->SpellLevel, player->GetLevel()));
+        }
         if (grant.Enchant == 81248)
             player->SetTemporarySpellReplacement(33831, enabled ? 81249 : 0);
         if (grant.Replaces)
             player->SetTemporarySpellReplacement(grant.Replaces, enabled ? grant.Spell : 0);
     }
+    for (auto const& retired : RetiredSpellGrants)
+        SetGrantedSpell(player, retired.Enchant, retired.Spell, false);
     RefreshEpicReplacements(player);
 }
 
@@ -1388,6 +1393,9 @@ void AddSC_AscensionMysticEnchant()
     RegisterSpellScript(spell_area52_compound_power);
     RegisterSpellScript(spell_area52_compound_power_slice_and_dice);
     RegisterSpellScript(spell_area52_sniper);
+    RegisterSpellScript(spell_area52_compound_shot);
+    RegisterSpellScript(aura_area52_compound_shot_recast);
+    RegisterSpellScript(spell_area52_combo_shot_volley);
     RegisterSpellScript(aura_area52_dragon_charge);
     RegisterSpellScript(spell_area52_dragon_charge_impact);
     RegisterSpellScript(spell_area52_dragon_roar_stun);
