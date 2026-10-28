@@ -7,7 +7,10 @@
 # Enable the compatibility packet filter.
 CoA.Enable = 1
 
-CoA.FreePickBuilds.Enable = 0
+# Area 52 Free Pick. Free Pick runs only with CoA.ClassModel = "hero", CoA.RealmType = "live" and
+# CoA.GameModeMask = 0 (or 1024, Quality mode), and only for Hero characters (class 10).
+# Build Creator (the Archetypes window).
+CoA.FreePickBuilds.Enable = 1
 
 # Apply the Ascension protocol settings to remote connections as well as loopback
 # (extension opcodes, ping interval, spell-modifier layout, class-10 mapping).
@@ -18,7 +21,7 @@ CoA.AllowRemoteClients = 0
 # Ascension's classless character creator submits class ID 10 (Hero).
 # 1 - Create a stock warrior shell instead.
 # 0 - Create a Hero. Use this on a realm with CoA.ClassModel = "hero".
-CoA.MapClass10ToWarrior = 1
+CoA.MapClass10ToWarrior = 0
 
 # Log each consumed extension packet during protocol discovery.
 CoA.LogConsumedPackets = 1
@@ -104,13 +107,13 @@ CoA.RealmType = "live"
 #    CoA.ClassModel
 #        Description: Character-creation mode advertised to the client in
 #                     SMSG_REALM_INFO when the character list is requested.
-#                     "coa"  - Conquest of Azeroth classes. Default.
+#                     "coa"  - Conquest of Azeroth classes.
 #                     "wcr"  - Warcraft Reborn (classic) classes.
 #                     "hero" - free-pick Hero.
-#        Default:     "coa"
+#        Default:     "hero" - (Area 52 Free Pick)
 #
 
-CoA.ClassModel = "coa"
+CoA.ClassModel = "hero"
 
 #
 #    CoA.GameModeMask
@@ -137,10 +140,10 @@ CoA.GameModeMask = 0
 #                     They select realm-specific client UI, for example
 #                     "CONFIG_LEGACY_CHARACTER_ADVANCEMENT_ENABLED=0" loads the current Character
 #                     Advancement UI instead of the Season 9 one on a free-pick realm.
-#        Default:     "" - none
+#        Default:     "CONFIG_LEGACY_CHARACTER_ADVANCEMENT_ENABLED=0" - (Area 52 Free Pick)
 #
 
-CoA.ClientBooleanConfigs = ""
+CoA.ClientBooleanConfigs = "CONFIG_LEGACY_CHARACTER_ADVANCEMENT_ENABLED=0"
 CoA.ClientIntegerConfigs = ""
 
 ###################################################################################################
@@ -282,10 +285,11 @@ Ascension.CallboardCache.PreviousStageOnly = 0
 
 Ascension.CallboardCache.ItemLevelAllowance = 6
 
-# Opt-in Free Pick Mystic Enchant collection and equipment service.
-CoA.FreePickMysticEnchants.Enable = 0
+# Free Pick Mystic Enchant collection and equipment service: without it no Mystic Enchant works.
+CoA.FreePickMysticEnchants.Enable = 1
 
-CoA.FreePickBuilds.Apply = 0
+# "Activate Build" keeps a character's picks up to date as it levels.
+CoA.FreePickBuilds.Apply = 1
 
 # Optional shared-client XP hotspots. Independent of class or realm ruleset.
 # MaxContinent: 0 = Azeroth, 1 = Azeroth and Outland, 2 = all three continents.
