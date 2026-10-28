@@ -13909,6 +13909,18 @@ std::vector<uint32> Player::GetSpellInteractionOrigins(uint32 spellId) const
 
     std::vector<uint32> pending{spellId};
     for (size_t index = 0; index < pending.size(); ++index)
+    {
+        if (HasAura(979740) && sSpellMgr->GetFirstSpellInChain(pending[index]) == 826679)
+        {
+            std::set<uint32> visited;
+            for (uint32 aimed = 19434; aimed && visited.insert(aimed).second;
+                aimed = sSpellMgr->GetNextSpellInChain(aimed))
+                if (HasActiveSpell(aimed) && std::find(pending.begin(), pending.end(), aimed) == pending.end())
+                {
+                    pending.push_back(aimed);
+                    origins.push_back(aimed);
+                }
+        }
         for (auto const& [original, replacement] : m_temporarySpellReplacements)
             if (replacement == pending[index] && original != replacement &&
                 HasActiveSpell(original) && HasActiveSpell(replacement) &&
@@ -13917,6 +13929,7 @@ std::vector<uint32> Player::GetSpellInteractionOrigins(uint32 spellId) const
                 pending.push_back(original);
                 origins.push_back(original);
             }
+    }
     return origins;
 }
 

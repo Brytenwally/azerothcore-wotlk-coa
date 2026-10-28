@@ -97,6 +97,7 @@ def main():
         subprocess.run([str(exe)], cwd=out, check=True, timeout=15)
     print('area52 marksman rules: ok')
     runpy.run_path(str(HERE / 'verification.py'), run_name='__main__')
+    runpy.run_path(str(HERE / 'damage.py'), run_name='__main__')
 
 
 if __name__ == '__main__':

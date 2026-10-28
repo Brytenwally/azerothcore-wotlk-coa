@@ -177,6 +177,18 @@ class aura_area52_archetype_cleanup : public AuraScript
         return AscensionFreePick::Applies(owner ? owner->ToPlayer() : nullptr);
     }
 
+    void RefreshSliceAndDice(AuraEffect const*, AuraEffectHandleModes)
+    {
+        if (GetId() != Area52Marksman::CompoundPower)
+            return;
+        Unit* owner = GetTarget();
+        if (!owner)
+            return;
+        for (AuraEffect* effect : owner->GetAuraEffectsByType(SPELL_AURA_MOD_RANGED_HASTE))
+            if (sSpellMgr->GetFirstSpellInChain(effect->GetId()) == Area52Marksman::SliceAndDice)
+                effect->RecalculateAmount();
+    }
+
     void Clear(AuraEffect const*, AuraEffectHandleModes)
     {
         Unit* owner = GetTarget();
@@ -190,6 +202,7 @@ class aura_area52_archetype_cleanup : public AuraScript
             case 979740:
                 owner->RemoveAurasDueToSpell(984926);
                 owner->RemoveAurasDueToSpell(826680);
+                RefreshSliceAndDice(nullptr, AURA_EFFECT_HANDLE_REAL);
                 break;
             case 982890:
                 for (uint32 id : {983867u, 983868u, 983869u, 983887u, 983888u})
@@ -217,6 +230,8 @@ class aura_area52_archetype_cleanup : public AuraScript
 
     void Register() override
     {
+        AfterEffectApply += AuraEffectApplyFn(aura_area52_archetype_cleanup::RefreshSliceAndDice, EFFECT_0,
+            SPELL_AURA_ANY, AURA_EFFECT_HANDLE_REAL);
         AfterEffectRemove += AuraEffectRemoveFn(aura_area52_archetype_cleanup::Clear, EFFECT_0,
             SPELL_AURA_ANY, AURA_EFFECT_HANDLE_REAL);
     }
