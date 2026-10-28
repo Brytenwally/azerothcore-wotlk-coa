@@ -1,0 +1,1720 @@
+--- /dev/null
++++ b/apps/coa-tests/area52_dragon_warrior/run.py
+@@ -0,0 +1,65 @@
++import os
++from pathlib import Path
++import shutil
++import subprocess
++import tempfile
++
++HERE = Path(__file__).resolve().parent
++ROOT = HERE.parents[2]
++
++HARNESS = r'''#include "Area52DragonWarriorRules.h"
++#include <cassert>
++using namespace Area52DragonWarrior;
++
++int main()
++{
++    assert(!RoarStuns(0) && !RoarStuns(1) && !RoarStuns(2));
++    assert(RoarStuns(3) && RoarStuns(5));
++    assert(SlamAlwaysCrits(true, false) && SlamAlwaysCrits(false, true) && SlamAlwaysCrits(true, true));
++    assert(!SlamAlwaysCrits(false, false));
++    assert(SlamFamilyMask0 == 0x200000);
++    assert(ImpactDamage(100, false) == 100 && ImpactDamage(100, true) == 300);
++    assert(DragonCharge == 954256 && Intercept == 20252 && DragonChargeImpact == 954288);
++    return 0;
++}
++'''
++
++
++def command(source, exe):
++    if os.environ.get('VCToolsInstallDir'):
++        compiler = Path(os.environ['VCToolsInstallDir']) / 'bin/Hostx64/x64/cl.exe'
++        return [str(compiler), '/nologo', '/std:c++20', '/EHsc', '/W4', '/WX', '/I', str(ROOT / 'src/server/coa'),
++                str(source), '/Fe' + str(exe)]
++    compiler = shutil.which(os.environ.get('CXX', 'g++'))
++    assert compiler, 'Set CXX to a C++17 compiler or run from an MSVC developer environment.'
++    return [compiler, '-std=c++17', '-Wall', '-Wextra', '-Werror', '-I', str(ROOT / 'src/server/coa'), str(source),
++            '-o', str(exe)]
++
++
++def main():
++    grants = (ROOT / 'src/server/coa/AscensionMysticSpellGrants.h').read_text(encoding='utf-8')
++    assert '{954252, 954250, 12292, 12292}' in grants
++    assert '{954252, 954256, 20252, 20252}' in grants
++    effects = (ROOT / 'src/server/game/Spells/SpellEffects.cpp').read_text(encoding='utf-8')
++    assert 'player->GetTemporarySpellReplacement(effect.MiscValue)' in effects
++    sql = (ROOT / 'data/sql/updates/pending_db_world/rev_20261028_20_dragon_warrior_build.sql').read_text(
++        encoding='utf-8')
++    for row in ("(954251, 'spell_area52_dragon_roar_stun')",
++                '(954261, 0, 4, 2097152, 0, 0, 16, 7, 2, 0, 0, 0, 0, 100, 0, 1)'):
++        assert row in sql, row
++    charge = (ROOT / 'data/sql/updates/pending_db_world/rev_20261028_21_dragon_warrior_charge.sql').read_text(
++        encoding='utf-8')
++    for row in ("(954256, 'aura_area52_dragon_charge')", "(954288, 'spell_area52_dragon_charge_impact')",
++                "'spell_area52_dragon_fury'"):
++        assert row in charge, row
++    with tempfile.TemporaryDirectory(prefix='coa-area52-dragon-warrior-') as directory:
++        out = Path(directory)
++        cpp, exe = out / 'dragon_warrior.cpp', out / 'dragon_warrior.exe'
++        cpp.write_text(HARNESS, encoding='utf-8')
++        subprocess.run(command(cpp, exe), cwd=out, check=True, timeout=60)
++        subprocess.run([str(exe)], cwd=out, check=True, timeout=15)
++    print('area52 dragon warrior rules: ok')
++
++
++if __name__ == '__main__':
++    main()
+--- /dev/null
++++ b/apps/coa-tests/area52_marksman/damage.py
+@@ -0,0 +1,41 @@
++from pathlib import Path
++import subprocess,tempfile
++R=Path(__file__).resolve().parents[3]
++s=(R/'src/server/game/Entities/Unit/Unit.cpp').read_text()
++start=s.index('            coeff = bonus->direct_damage;',s.index('uint32 Unit::SpellDamageBonusDone'))
++end=s.index('\n        }',start)
++ap=s[start:end]
++sp='        DoneTotal += int32(DoneAdvertisedBenefit * coeff * factorMod);'
++assert sp in s
++sql=(R/'data/sql/updates/pending_db_world/rev_20261028_50_archetype_verification.sql').read_text()
++assert '(954250, 0.864, 0, 0.864, 0,' in sql
++code=r'''
++#include <cassert>
++using int32=int;
++using WeaponAttackType=int;
++constexpr int BASE_ATTACK=0,RANGED_ATTACK=2,SPELL_DAMAGE_CLASS_MELEE=2;
++constexpr int SPELL_AURA_MELEE_ATTACK_POWER_ATTACKER_BONUS=1,SPELL_AURA_RANGED_ATTACK_POWER_ATTACKER_BONUS=2;
++struct Info {bool UseRangedAttackPowerForDamage=false;int DmgClass=0;bool IsRangedWeaponSpell()const{return false;}};
++struct Bonus {float direct_damage=0.864f,ap_bonus=0.864f;};
++struct Victim {int GetTotalAuraModifier(int)const{return 0;}};
++struct Damage {
++ float attack=0;
++ float GetTotalAttackPowerValue(int)const{return attack;}
++ float GetSpellAttackPowerCoefficientFlatBonus(Info const*)const{return 0;}
++ int Calculate(float power){
++  Info info;Info const* spellProto=&info;Bonus row;Bonus const* bonus=&row;
++  Victim target;Victim* victim=&target;int DoneTotal=0;float coeff=0;
++  float area52CoefficientScale=1,ApCoeffMod=1,stack=1,factorMod=1,DoneAdvertisedBenefit=power;
++  BODY_AP
++  BODY_SP
++  return 100+DoneTotal;
++ }
++};
++int main(){Damage d;assert(d.Calculate(0)==100);assert(d.Calculate(500)==532);
++ d.attack=1000;assert(d.Calculate(0)==964);assert(d.Calculate(500)==1396);}
++'''.replace('BODY_AP',ap).replace('BODY_SP',sp)
++with tempfile.TemporaryDirectory() as d:
++ p=Path(d);(p/'damage.cpp').write_text(code)
++ subprocess.run(['g++','-std=c++17','-Wall','-Wextra','-Werror',str(p/'damage.cpp'),'-o',str(p/'damage')],check=True)
++ subprocess.run([str(p/'damage')],check=True)
++print('PASS Dragon Roar native AP/SP coefficient fragments; SQL coefficients and armor metadata checked separately')
+--- /dev/null
++++ b/apps/coa-tests/area52_marksman/run.py
+@@ -0,0 +1,104 @@
++import os
++import runpy
++from pathlib import Path
++import shutil
++import subprocess
++import tempfile
++
++HERE = Path(__file__).resolve().parent
++ROOT = HERE.parents[2]
++
++HARNESS = r'''#include "Area52MarksmanRules.h"
++#include "AscensionMysticSpellGrants.h"
++#include <cassert>
++#include <initializer_list>
++using namespace Area52Marksman;
++using AscensionMysticEnchant::GrantRankDue;
++
++int main()
++{
++    ShotEffect steady = CompoundPowerShot(SteadyShot);
++    assert(steady.ComboPoints == 2 && !steady.Empowers && steady.Consumes);
++    ShotEffect arcane = CompoundPowerShot(ArcaneShot);
++    assert(arcane.ComboPoints == 2 && arcane.Empowers && !arcane.Consumes);
++    for (unsigned shot : {MultiShot, ChimeraShot, CompoundShot})
++    {
++        ShotEffect effect = CompoundPowerShot(shot);
++        assert(effect.ComboPoints == 0 && effect.Empowers && !effect.Consumes && Triggers(effect));
++    }
++    assert(!Triggers(CompoundPowerShot(19434)));
++    assert(!Triggers(CompoundPowerShot(0)));
++    assert(CompoundShot == 826679 && ComboShot == 850515 && CompoundShotRecast == 826680 && RecastWindowMs == 3000);
++    assert(GrantRankDue(true, false, 20, 1) && !GrantRankDue(false, true, 80, 60));
++    assert(GrantRankDue(false, false, 60, 60) && !GrantRankDue(false, false, 70, 60));
++    assert(!GrantRankDue(false, false, 0, 60));
++    assert(SyndicateTrainingFor(53302) == 983867 && SyndicateTrainingFor(53304) == SyndicateCapstone);
++    assert(SniperTrainingBuffFor(53303) == 64419);
++    assert(WithSniperTraining(1000, 28) == 1280 && WithSniperTraining(1000, 0) == 1000);
++    assert(HonesIn(4, false) && !HonesIn(3, false) && !HonesIn(4, true));
++
++    unsigned still = 0;
++    unsigned stacks = 0;
++    for (int second = 1; second <= 9; ++second)
++    {
++        SniperStep step = SniperTick(still, false);
++        still = step.Still;
++        assert(!step.Clear);
++        stacks += step.AddStack;
++        assert(step.AddStack == (second % 3 == 0));
++    }
++    assert(stacks == 3);
++    SniperStep moved = SniperTick(still, true);
++    assert(moved.Clear && !moved.AddStack && moved.Still == 0);
++    assert(!SniperTick(moved.Still, false).AddStack);
++    return 0;
++}
++'''
++
++
++def command(source, exe):
++    if os.environ.get('VCToolsInstallDir'):
++        compiler = Path(os.environ['VCToolsInstallDir']) / 'bin/Hostx64/x64/cl.exe'
++        return [str(compiler), '/nologo', '/std:c++20', '/EHsc', '/W4', '/WX', '/I', str(ROOT / 'src/server/coa'),
++                str(source), '/Fe' + str(exe)]
++    compiler = shutil.which(os.environ.get('CXX', 'g++'))
++    assert compiler, 'Set CXX to a C++17 compiler or run from an MSVC developer environment.'
++    return [compiler, '-std=c++17', '-Wall', '-Wextra', '-Werror', '-I', str(ROOT / 'src/server/coa'), str(source),
++            '-o', str(exe)]
++
++
++def main():
++    grants = (ROOT / 'src/server/coa/AscensionMysticSpellGrants.h').read_text(encoding='utf-8')
++    for grant in ('{978716, 978717}', '{978716, 978718}', '{979740, 826679, 19434}', '{979740, 850515, 19434}',
++                  '{982890, 982891, 8676}'):
++        assert grant in grants, grant
++    sql = (ROOT / 'data/sql/updates/pending_db_world/rev_20261028_10_compound_power_build.sql').read_text(
++        encoding='utf-8')
++    for binding in ("(979740, 'spell_area52_compound_power')", "(-5171, 'spell_area52_compound_power_slice_and_dice')",
++                    "(81166, 'spell_area52_sniper')"):
++        assert binding in sql, binding
++    recast = (ROOT / 'data/sql/updates/pending_db_world/rev_20261028_30_compound_shot_recast.sql').read_text(
++        encoding='utf-8')
++    for row in ('(826679, 826686, 7)', "(-826679, 'spell_area52_compound_shot')",
++                "(826680, 'aura_area52_compound_shot_recast')", "(850517, 'spell_area52_combo_shot_volley')"):
++        assert row in recast, row
++    assert '{979740, 984925}' in grants
++    capstone = (ROOT / 'data/sql/updates/pending_db_world/rev_20261028_31_syndicate_sniper_capstone.sql').read_text(
++        encoding='utf-8')
++    for row in ('(983869, 0, 9, 131072, 0, 0, 256, 1, 2, 0, 0, 0, 0, 100, 8000, 0)',
++                "(-53302, 'spell_area52_syndicate_sniper_training')", "(983869, 'spell_area52_syndicate_capstone')",
++                "(982891, 'spell_area52_syndicate_sniper_shot')"):
++        assert row in capstone, row
++    with tempfile.TemporaryDirectory(prefix='coa-area52-marksman-') as directory:
++        out = Path(directory)
++        cpp, exe = out / 'marksman.cpp', out / 'marksman.exe'
++        cpp.write_text(HARNESS, encoding='utf-8')
++        subprocess.run(command(cpp, exe), cwd=out, check=True, timeout=60)
++        subprocess.run([str(exe)], cwd=out, check=True, timeout=15)
++    print('area52 marksman rules: ok')
++    runpy.run_path(str(HERE / 'verification.py'), run_name='__main__')
++    runpy.run_path(str(HERE / 'damage.py'), run_name='__main__')
++
++
++if __name__ == '__main__':
++    main()
+--- /dev/null
++++ b/apps/coa-tests/area52_marksman/verification.py
+@@ -0,0 +1,190 @@
++from pathlib import Path
++import subprocess,tempfile
++R=Path(__file__).resolve().parents[3]/'src/server/coa'
++def body(text, signature):
++ start=text.index('{',text.index(signature)); depth=1;end=start+1
++ while depth:
++  depth+=(text[end]=='{')-(text[end]=='}');end+=1
++ return text[start:end]
++dragon=(R/'Area52DragonWarrior.inc').read_text()
++marksman=(R/'Area52Marksman.inc').read_text()
++cpp=r'''
++#include "Area52MarksmanRules.h"
++#include "Area52DragonWarriorRules.h"
++#include <cassert>
++#include <map>
++#include <string>
++#include <cmath>
++#include <algorithm>
++#include <set>
++#include <vector>
++using uint32=unsigned; using int32=int; using SpellEffIndex=int;
++constexpr int EFFECT_0=0;
++constexpr int EFFECT_1=1,EFFECT_2=2,SPELL_EFFECT_APPLY_AURA=6,TARGET_UNIT_CASTER=1;
++constexpr int SPELL_AURA_ADD_PCT_MODIFIER=108,SPELL_ATTR0_CU_IGNORE_ARMOR=1,SPELL_EFFECT_NONE=0;
++constexpr int SPELL_AURA_MOD_STEALTH=16,RANGED_ATTACK=2;
++constexpr int SPELL_AURA_MOD_RANGED_HASTE=140,AURA_EFFECT_HANDLE_REAL=1;
++struct SpellImplicitTargetInfo { int value; SpellImplicitTargetInfo(int v=0):value(v){} };
++struct SpellInfo { unsigned Id; unsigned AttributesCu=0; struct EffectData { int Effect=0,ApplyAuraName=0,BasePoints=0; SpellImplicitTargetInfo TargetA; int CalcValue(void*)const{return BasePoints+1;} } Effects[3]; };
++struct SpellMgr { SpellInfo bonus{}; std::map<unsigned,unsigned> roots,next;
++ unsigned GetFirstSpellInChain(unsigned id){return roots.count(id)?roots[id]:id;}
++ unsigned GetNextSpellInChain(unsigned id){return next[id];}
++ SpellInfo const* GetSpellInfo(unsigned){return &bonus;} } manager;
++SpellMgr* sSpellMgr=&manager;
++struct Config {
++ bool enabled=true; std::string model="coa",realm="live";unsigned mask=0;
++ template<class T>T GetOption(char const* key,T){
++  if constexpr(std::is_same_v<T,bool>)return enabled;
++  else if constexpr(std::is_same_v<T,std::string>)return std::string(key)=="CoA.ClassModel"?model:realm;
++  else return mask;
++ }
++} config;
++Config* sConfigMgr=&config;
++struct Metadata { void Apply(SpellInfo* info) BODY_METADATA };
++struct AuraEffect { int amount; unsigned id=0,recalculated=0; int GetAmount()const{return amount;}
++ unsigned GetId()const{return id;} void RecalculateAmount(){++recalculated;} };
++struct Player {
++ std::set<unsigned> known;std::map<unsigned,unsigned> m_temporarySpellReplacements;
++ std::vector<AuraEffect*> rangedEffects;
++ auto const& GetAuraEffectsByType(int)const{return rangedEffects;}
++ bool HasActiveSpell(unsigned id)const{return known.count(id);}
++ std::vector<uint32> GetSpellInteractionOrigins(uint32 spellId) const;
++ bool area=true,stealth=false; unsigned now=0; std::map<unsigned,unsigned> cooldown;
++ std::map<unsigned,AuraEffect> auras;
++ Player* ToPlayer(){return this;}
++ bool HasSpellCooldown(unsigned id){return cooldown[id]>now;}
++ void AddSpellCooldown(unsigned id,unsigned,unsigned duration){cooldown[id]=now+duration;}
++ AuraEffect const* GetAuraEffect(unsigned id,int){auto it=auras.find(id);return it==auras.end()?nullptr:&it->second;}
++ void RemoveAurasDueToSpell(unsigned id){auras.erase(id);}
++ bool HasAura(unsigned id)const{return auras.count(id);}
++ bool HasAuraType(int){return stealth;}
++ bool MatchesSpellInteraction(unsigned spell,unsigned original){return spell==original || (spell==999999 && original==56641);}
++};
++using Unit=Player;
++namespace AscensionFreePick { bool Applies(Player const* p){return p && p->area;} }
++struct Skull {
++ Player* caster; bool prevented=false;
++ Unit* GetCaster(){return caster;}
++ void PreventHitDefaultEffect(int){prevented=true;}
++ void LimitCooldown(SpellEffIndex index) BODY_SKULL
++};
++struct Shot {
++ Player* caster; int damage=1000; int HoneInBonus=0;int StealthBonus=0;
++ Unit* GetCaster(){return caster;}
++ int GetHitDamage(){return damage;}
++ void SetHitDamage(int v){damage=v;}
++ void CaptureHoneIn() BODY_CAPTURE
++ void SpendHoneIn() BODY_SPEND
++ void AddSniperTraining() BODY_DAMAGE
++ bool Load() BODY_SHOT_LOAD
++};
++struct CastUnit: Player {
++ float m_modAttackSpeedPct[3]={1,1,1};
++ void CastTime(SpellInfo const* spellInfo,int32& castTime){switch(1){case 1: BODY_RANGED default:break;}}
++};
++using AuraEffectHandleModes=int;
++struct Cleanup {
++ Player* target; unsigned id;
++ Player* GetTarget(){return target;}
++ unsigned GetId(){return id;}
++ void Clear(AuraEffect const*, AuraEffectHandleModes) BODY_CLEANUP
++ void RefreshSliceAndDice(AuraEffect const*, AuraEffectHandleModes) BODY_REFRESH
++};
++int main(){
++ Player inherited;inherited.known={826679,826681,850515,19434,20900};
++ manager.roots[826681]=826679;manager.next[19434]=20900;
++ assert(inherited.GetSpellInteractionOrigins(826681).empty());
++ inherited.auras[979740]={1};
++ assert(inherited.GetSpellInteractionOrigins(826681)==std::vector<uint32>({19434,20900}));
++ inherited.m_temporarySpellReplacements[826681]=850515;
++ auto origins=inherited.GetSpellInteractionOrigins(850515);
++ assert(origins==std::vector<uint32>({826681,19434,20900}));
++ inherited.auras.erase(979740);assert(inherited.GetSpellInteractionOrigins(826681).empty());
++ inherited.auras[979740]={1};inherited.known.erase(19434);inherited.known.erase(20900);
++ assert(inherited.GetSpellInteractionOrigins(826681).empty());
++ inherited.area=false;assert(inherited.GetSpellInteractionOrigins(850515).empty());
++ Metadata metadata; SpellInfo cap{};cap.Id=983869;metadata.Apply(&cap);assert(cap.Effects[2].Effect==0);
++ config.model="hero";metadata.Apply(&cap);assert(cap.Effects[2].Effect==6 && cap.Effects[2].TargetA.value==1);
++ metadata.Apply(&cap);assert(cap.Effects[2].Effect==6);
++ SpellInfo slam{};slam.Id=954261;metadata.Apply(&slam);assert(slam.Effects[1].Effect==6);
++ SpellInfo volley{};volley.Id=850517;metadata.Apply(&volley);assert(volley.Effects[1].Effect==6);
++ SpellInfo roar{};roar.Id=954250;metadata.Apply(&roar);assert(roar.AttributesCu & SPELL_ATTR0_CU_IGNORE_ARMOR);
++ for(unsigned rank=0;rank<3;++rank){
++  SpellInfo training{};training.Id=983867+rank;metadata.Apply(&training);
++  assert(training.Effects[1].ApplyAuraName==108);
++  assert(training.Effects[1].BasePoints+1==-int(1+2*rank));
++  for(int stacks=1;stacks<=4;++stacks){
++   float pct=1+(training.Effects[1].BasePoints+1)*stacks/100.0f;
++   assert(std::fabs(2500*pct-(2500-25*(1+2*rank)*stacks))<0.01f);
++   for(float base:{1000.0f,2500.0f,4000.0f})for(float haste:{0.8f,1.0f,1.3f}){
++    float expected=base*(100-(1+2*rank)*stacks)/100.0f*haste;
++    assert(std::fabs(base*pct*haste-expected)<0.01f);
++   }
++  }
++ }
++ SpellInfo otherMode{};otherMode.Id=983869;config.mask=1;metadata.Apply(&otherMode);assert(otherMode.Effects[2].Effect==0);
++ Player p; Skull skull{&p};
++ skull.LimitCooldown(1); assert(!skull.prevented && p.cooldown[81101]==3000);
++ p.now=2999; skull.LimitCooldown(1); assert(skull.prevented && p.cooldown[81101]==3000);
++ p.now=3000; skull.prevented=false; skull.LimitCooldown(1); assert(!skull.prevented && p.cooldown[81101]==6000);
++ p.area=false; p.cooldown.clear(); skull.LimitCooldown(1); assert(p.cooldown.empty());
++ skull.caster=nullptr; skull.LimitCooldown(1);
++ p.area=true; p.auras[983888]={30}; p.auras[983887]={1}; p.auras[983869]={28};
++ Shot shot{&p}; shot.CaptureHoneIn(); shot.SpendHoneIn();
++ assert(!p.GetAuraEffect(983888,0) && !p.GetAuraEffect(983887,0));
++ shot.AddSniperTraining(); assert(shot.damage==1664);
++ Shot next{&p}; next.CaptureHoneIn(); next.AddSniperTraining(); assert(next.damage==1280);
++ p.area=false; p.auras[983888]={30}; Shot other{&p};
++ other.CaptureHoneIn();other.SpendHoneIn();other.AddSniperTraining();
++ assert(other.damage==1000 && p.GetAuraEffect(983888,0));
++ assert(std::fabs(Area52Marksman::WithoutMunitionsHaste(0.8f*1.3f,-30)-0.8f)<0.00001f);
++ assert(std::fabs(Area52Marksman::WithoutMunitionsHaste(0.8f/1.3f,30)-0.8f)<0.00001f);
++ p.auras[81167]={5};p.auras[123]={1}; Cleanup cleanup{&p,81166};cleanup.Clear(nullptr,0);
++ assert(!p.GetAuraEffect(81167,0) && p.GetAuraEffect(123,0));
++ for(unsigned id:{983867u,983868u,983869u,983887u,983888u})p.auras[id]={1};
++ cleanup.id=982890;cleanup.Clear(nullptr,0);
++ for(unsigned id:{983867u,983868u,983869u,983887u,983888u})assert(!p.GetAuraEffect(id,0));
++ cleanup.Clear(nullptr,0);assert(p.GetAuraEffect(123,0));
++ AuraEffect dice{30,5171},otherHaste{20,1234};p.rangedEffects={&dice,&otherHaste};
++ cleanup.id=979740;cleanup.RefreshSliceAndDice(nullptr,1);
++ assert(dice.recalculated==1 && otherHaste.recalculated==0);
++ cleanup.Clear(nullptr,1);assert(dice.recalculated==2 && otherHaste.recalculated==0);
++ for(unsigned id:{954261u,954253u,954256u,954286u,954289u})p.auras[id]={1};
++ cleanup.id=954252;cleanup.Clear(nullptr,0);
++ for(unsigned id:{954261u,954253u,954256u,954286u,954289u})assert(!p.GetAuraEffect(id,0));
++ for(unsigned rank=0;rank<3;++rank){
++  p.auras[64418+rank]={4};p.auras[983867+rank]={4};
++  cleanup.id=53302+rank;cleanup.Clear(nullptr,0);
++  assert(!p.GetAuraEffect(64418+rank,0));assert(!p.GetAuraEffect(983867+rank,0));
++  assert(p.GetAuraEffect(123,0));
++ }
++ p.area=true;p.stealth=true;manager.bonus.Effects[2].BasePoints=39;
++ Shot stealthShot{&p};assert(stealthShot.Load());p.stealth=false;stealthShot.AddSniperTraining();assert(stealthShot.damage==1400);
++ Shot exposed{&p};assert(exposed.Load());exposed.AddSniperTraining();assert(exposed.damage==1000);
++ CastUnit caster;caster.auras[978716]={1};caster.auras[978717]={-30};caster.m_modAttackSpeedPct[2]=0.8f*1.3f;
++ SpellInfo steady{};steady.Id=56641;int32 ms=2500;caster.CastTime(&steady,ms);assert(std::abs(ms-2000)<=1);
++ steady.Id=999999;ms=2500;caster.CastTime(&steady,ms);assert(std::abs(ms-2000)<=1);
++ steady.Id=19434;ms=2500;caster.CastTime(&steady,ms);assert(std::abs(ms-2600)<=1);
++ caster.area=false;steady.Id=56641;ms=2500;caster.CastTime(&steady,ms);assert(std::abs(ms-2600)<=1);
++ for(unsigned thunder:{275048u,275052u,275058u,1574554u,1574561u}){
++  assert(Area52DragonWarrior::IsThunderSlam(thunder));
++  assert(!Area52DragonWarrior::SlamAlwaysCrits(true,true,Area52DragonWarrior::IsThunderSlam(thunder)));
++ }
++ assert(Area52DragonWarrior::SlamAlwaysCrits(false,true,false));
++}
++'''
++for token,text,signature in [('BODY_METADATA',dragon,'void OnLoadSpellCustomAttr'),('BODY_SKULL',dragon,'void LimitCooldown'),('BODY_CAPTURE',marksman,'void CaptureHoneIn'),('BODY_SPEND',marksman,'void SpendHoneIn'),('BODY_DAMAGE',marksman,'void AddSniperTraining')]:
++ cpp=cpp.replace(token,body(text,signature))
++cpp=cpp.replace('BODY_CLEANUP',body(marksman,'void Clear(AuraEffect const*'))
++cpp=cpp.replace('BODY_REFRESH',body(marksman,'void RefreshSliceAndDice('))
++cpp=cpp.replace('BODY_SHOT_LOAD',body(marksman[marksman.index('class spell_area52_syndicate_sniper_shot'):],'bool Load()'))
++unit=(R.parent/'game/Entities/Unit/Unit.cpp').read_text()
++cpp=cpp.replace('BODY_RANGED',body(unit[unit.index('void Unit::ModSpellCastTime'):],'case SPELL_DAMAGE_CLASS_RANGED:'))
++player=(R.parent/'game/Entities/Player/Player.cpp').read_text()
++origin='std::vector<uint32> Player::GetSpellInteractionOrigins(uint32 spellId) const '+body(player,'std::vector<uint32> Player::GetSpellInteractionOrigins')
++cpp=cpp.replace('int main(){',origin+'\nint main(){')
++with tempfile.TemporaryDirectory() as d:
++ path=Path(d);(path/'test.cpp').write_text(cpp)
++ subprocess.run(['g++','-std=c++17','-Wall','-Wextra','-Werror','-I',str(R),str(path/'test.cpp'),'-o',str(path/'test')],check=True)
++ subprocess.run([str(path/'test')],check=True)
++print('Extracted Skull Crusher cooldown and Hone In cast/consume/hit regressions passed; engine dispatch traced separately.')
+--- /dev/null
++++ b/apps/coa-tests/talent_rank_restoration/run.py
+@@ -0,0 +1,128 @@
++from pathlib import Path
++import json,struct,subprocess,tempfile
++ROOT=Path(__file__).resolve().parents[3]
++def function(text,name):
++ start=text.index(name);begin=text.index('{',start);depth=1;end=begin+1
++ while depth:
++  depth+=(text[end]=='{')-(text[end]=='}');end+=1
++ return text[start:end]
++def main():
++ raw=Path('/data/dbc/CharacterAdvancement.dbc').read_bytes();_,count,fields,size,strings=struct.unpack_from('<4s4I',raw)
++ rows=[]
++ for i in range(count):
++  values=struct.unpack_from('<16I',raw,20+i*size)
++  ranks=[v for v in values[5:14] if v]
++  if values[15] and len(ranks)>1:rows.append((values[0],ranks))
++ assert all(x in {r[0] for r in rows} for x in (427,432,739,855,1076,1148))
++ native=(ROOT/'src/server/coa/AscensionFreePick.cpp').read_text()
++ player=(ROOT/'src/server/game/Entities/Player/Player.cpp').read_text()
++ functions='\n'.join(function(native,name) for name in ('bool IsTalentRank(', 'bool CanLearnSpell(', 'bool SynchronizeTalentRanks('))
++ restore=function(player,'void Player::learnSpell(')
++ a=restore.index('    if (uint32 nextSpell');b=restore.index('    // xinef: if we learn new spell',a)
++ restore=restore[a:b]
++ removal=player[player.index('    if (itr->second->specMask == 0 && (AscensionFreePick::'):]
++ removal=removal[:removal.index('\n    {')].strip()[4:-1]
++ cpp=r'''
++#include <algorithm>
++#include <cassert>
++#include <cstdint>
++#include <map>
++#include <set>
++#include <vector>
++#include <string>
++#include <iostream>
++using uint32=std::uint32_t;
++constexpr unsigned SPEC_MASK_ALL=255, PLAYERSPELL_REMOVED=2;
++struct SpellInfo { unsigned Id; bool IsPassive() const { return true; } bool HasAnyAura() const {return true;} };
++struct SpellMgr { std::map<unsigned,unsigned> next; std::map<unsigned,SpellInfo> info;
++ unsigned GetNextSpellInChain(unsigned id) { return next[id]; }
++ SpellInfo const* GetSpellInfo(unsigned id) { return &info.at(id); }
++ bool IsAdditionalTalentSpell(unsigned) { return false; }
++} manager;
++auto sSpellMgr=&manager;
++struct State { unsigned State=0,specMask=1; bool IsInSpec(unsigned) const {return specMask!=0;} };
++using PlayerSpellMap=std::map<unsigned,State*>;
++struct Player {
++ bool freepick=true,baseline=false; unsigned m_activeSpec=0; PlayerSpellMap m_spells;
++ std::set<unsigned> approved,auras; std::vector<unsigned> order;
++ ~Player(){for(auto [id,state]:m_spells)delete state;}
++ bool HasSpell(unsigned id) const {auto it=m_spells.find(id);return it!=m_spells.end()&&it->second->State!=PLAYERSPELL_REMOVED&&it->second->specMask;}
++ bool HasAura(unsigned id) const {return auras.contains(id);}
++ unsigned GetLevel() const {return 80;}
++ bool IsInWorld() const {return true;}
++ unsigned GetGUID() const {return 1;}
++ bool IsNeedCastPassiveSpellAtLearn(SpellInfo const*) const {return true;}
++ void RemoveAurasDueToSpell(unsigned id,unsigned){auras.erase(id);}
++ void CastSpell(Player*,unsigned id,bool){auras.clear();auras.insert(id);}
++ void removeSpell(unsigned,unsigned,bool);
++ void learnSpell(unsigned,bool=false);
++};
++namespace AscensionFreePick {
++std::set<unsigned> TalentSpells,ClassSpells;
++std::vector<unsigned> SpecializationSpells;
++struct Group {unsigned Parent;std::vector<unsigned> Children;};
++std::vector<Group> LinkedSpellGroups;
++bool Applies(Player const* p){return p->freepick;}
++bool RacialSpell(Player const*,unsigned){return false;}
++unsigned LinkedSpellRequiredLevel(unsigned){return 0;}
++struct SpellLearningScope {static bool Allows(Player const* p,unsigned s){return p->approved.contains(s);}};
++std::set<unsigned> KnownEntries(Player const* p){return p->approved;}
++std::set<unsigned> SelectedSpells(std::set<unsigned> s){return s;}
++std::set<unsigned> AuthorizedTalentSpells(Player const* p){return p->approved;}
++FUNCTIONS
++}
++unsigned GetTalentSpellCost(unsigned id){return AscensionFreePick::TalentSpells.contains(id)?1:0;}
++void Player::removeSpell(unsigned spell_id,unsigned,bool){
++ auto itr=m_spells.find(spell_id);if(itr==m_spells.end()||!itr->second->specMask)return;
++ itr->second->specMask=0;unsigned firstRankSpellId=spell_id;
++ bool forget=baseline ? GetTalentSpellCost(firstRankSpellId)==0 : (REMOVAL);
++ if(forget)itr->second->State=PLAYERSPELL_REMOVED;
++ auras.erase(spell_id);
++}
++void Player::learnSpell(unsigned spellId,bool temporary){
++ if(HasSpell(spellId))return;
++ bool owned=m_spells.contains(spellId)&&m_spells[spellId]->State!=PLAYERSPELL_REMOVED;
++ if(!(baseline&&owned)&&!AscensionFreePick::CanLearnSpell(this,spellId,temporary,owned))return;
++ if(!m_spells.contains(spellId))m_spells[spellId]=new State;
++ m_spells[spellId]->State=0;m_spells[spellId]->specMask=1;
++ CastSpell(this,spellId,true);
++ RESTORE
++}
++void select(Player& p,std::vector<unsigned> const& ranks,unsigned n){
++ p.approved.clear();for(unsigned i=0;i<n;++i)p.approved.insert(ranks[i]);
++ for(unsigned i=n;i<ranks.size();++i)p.removeSpell(ranks[i],255,false);
++ for(unsigned i=0;i<n;++i)p.learnSpell(ranks[i]);
++}
++void check(Player const& p,std::vector<unsigned> const& ranks,unsigned n){
++ for(unsigned i=0;i<ranks.size();++i)assert(p.HasSpell(ranks[i])==(i<n));
++ if(n)assert(p.HasAura(ranks[n-1]));else assert(p.auras.empty());
++}
++int main(){
++ std::vector<std::vector<unsigned>> catalog={CATALOG};
++ unsigned cases=0;
++ for(auto const& ranks:catalog){
++  manager.next.clear();AscensionFreePick::TalentSpells={ranks.begin(),ranks.end()};AscensionFreePick::ClassSpells=AscensionFreePick::TalentSpells;
++  for(unsigned i=0;i<ranks.size();++i){manager.info[ranks[i]]={ranks[i]};manager.next[ranks[i]]=i+1<ranks.size()?ranks[i+1]:0;}
++  {Player old;old.baseline=true;select(old,ranks,ranks.size());select(old,ranks,0);select(old,ranks,1);assert(old.HasSpell(ranks.back()));}
++  for(unsigned n=1;n<=ranks.size();++n){
++   Player p;select(p,ranks,n);check(p,ranks,n);select(p,ranks,ranks.size());check(p,ranks,ranks.size());select(p,ranks,0);check(p,ranks,0);select(p,ranks,n);check(p,ranks,n);++cases;
++   Player dirty;select(dirty,ranks,ranks.size());dirty.approved={ranks.begin(),ranks.begin()+n};
++   AscensionFreePick::SynchronizeTalentRanks(&dirty);check(dirty,ranks,n);assert(!AscensionFreePick::SynchronizeTalentRanks(&dirty));
++   for(auto id:ranks)dirty.learnSpell(id);check(dirty,ranks,n);
++   Player saved;saved.approved={ranks.begin(),ranks.begin()+n};for(auto id:ranks){saved.m_spells[id]=new State;saved.m_spells[id]->specMask=0;}saved.learnSpell(ranks[0]);assert(!saved.HasSpell(ranks.back())||n==ranks.size());
++  }
++  Player granted;granted.approved.insert(ranks.back());granted.learnSpell(ranks.back());AscensionFreePick::SynchronizeTalentRanks(&granted);assert(granted.HasSpell(ranks.back()));
++  Player normal;normal.freepick=false;assert(AscensionFreePick::CanLearnSpell(&normal,ranks.back(),false,true));
++ }
++ AscensionFreePick::TalentSpells.clear();AscensionFreePick::ClassSpells.clear();
++ Player ability;ability.m_spells[999]=new State;assert(!AscensionFreePick::IsTalentRank(&ability,999));assert(AscensionFreePick::CanLearnSpell(&ability,999,false,true));
++ std::cout<<"PASS catalog entries="<<catalog.size()<<" purchased-rank cases="<<cases<<" baseline defect reproduced for each chain"<<std::endl;
++}
++'''
++ cpp=cpp.replace('FUNCTIONS',functions).replace('REMOVAL',removal).replace('RESTORE',restore).replace('CATALOG',','.join('{'+','.join(map(str,r))+'}' for _,r in rows))
++ with tempfile.TemporaryDirectory() as tmp:
++  p=Path(tmp);(p/'test.cpp').write_text(cpp)
++  subprocess.run(['g++','-std=c++20','-Wall','-Wextra','-Werror','-Wno-misleading-indentation',str(p/'test.cpp'),'-o',str(p/'test')],check=True)
++  subprocess.run([str(p/'test')],check=True)
++ print('Scope: production learning guard, rank restoration fragment, removal predicate and cleanup function; mocked Player/aura storage. No gameplay.')
++if __name__=='__main__':main()
+--- /dev/null
++++ b/data/sql/updates/pending_db_world/rev_20261028_10_compound_power_build.sql
+@@ -0,0 +1,22 @@
++-- Marksman build (Compound Power): the four Mystic Enchants of the build that were not connected.
++-- Compound Power (979740) and Sniper (81166) get their scripts (Area52Marksman.inc); Munitions Expert, Syndicate
++-- Sniper Shot and Compound Power's Compound Shot are spell grants (AscensionMysticSpellGrants.h).
++-- Compound Power procs on every damaging spell; its script keeps Steady, Arcane, Multi-, Chimera and Compound Shot.
++DELETE FROM `spell_proc` WHERE `SpellId` = 979740;
++INSERT INTO `spell_proc` (`SpellId`, `SchoolMask`, `SpellFamilyName`, `SpellFamilyMask0`, `SpellFamilyMask1`, `SpellFamilyMask2`, `ProcFlags`, `SpellTypeMask`, `SpellPhaseMask`, `HitMask`, `AttributesMask`, `DisableEffectsMask`, `ProcsPerMinute`, `Chance`, `Cooldown`, `Charges`) VALUES
++(979740, 0, 0, 0, 0, 0, 69888, 1, 2, 0, 0, 2, 0, 100, 0, 0);
++
++DELETE FROM `spell_script_names` WHERE `ScriptName` IN ('spell_area52_compound_power', 'spell_area52_compound_power_slice_and_dice', 'spell_area52_sniper');
++INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`) VALUES
++(979740, 'spell_area52_compound_power'),
++(-5171, 'spell_area52_compound_power_slice_and_dice'),
++(81166, 'spell_area52_sniper');
++
++-- Heavy Munitions and High Velocity Munitions replace each other.
++DELETE FROM `spell_group` WHERE `id` = 2000979;
++INSERT INTO `spell_group` (`id`, `spell_id`) VALUES
++(2000979, 978717),
++(2000979, 978718);
++DELETE FROM `spell_group_stack_rules` WHERE `group_id` = 2000979;
++INSERT INTO `spell_group_stack_rules` (`group_id`, `stack_rule`, `description`) VALUES
++(2000979, 1, 'Munitions Expert: Heavy Munitions or High Velocity Munitions');
+--- /dev/null
++++ b/data/sql/updates/pending_db_world/rev_20261028_20_dragon_warrior_build.sql
+@@ -0,0 +1,17 @@
++-- Dragon Warrior build: the four Mystic Enchants of the build that were not connected.
++-- Slam's damage spell is cast with proc events disabled (spell_warr_slam), so the Slam procs read the Slam cast
++-- itself (family mask 0x200000, any spell type). Skull Crusher and Battering Ram only lacked their proc rows;
++-- Skull Crusher's 3 second limit is its tooltip's. Dragon Warrior: Bloodthirst and Execute grant Draconic Slam,
++-- which the next Slam consumes (one charge) for a Dragon Fury stack; Dragon Roar replaces Death Wish
++-- (AscensionMysticSpellGrants.h). Unstoppable Force is scripted in Area52DragonWarrior.inc.
++DELETE FROM `spell_proc` WHERE `SpellId` IN (81101, 964332, 954252, 954261);
++INSERT INTO `spell_proc` (`SpellId`, `SchoolMask`, `SpellFamilyName`, `SpellFamilyMask0`, `SpellFamilyMask1`, `SpellFamilyMask2`, `ProcFlags`, `SpellTypeMask`, `SpellPhaseMask`, `HitMask`, `AttributesMask`, `DisableEffectsMask`, `ProcsPerMinute`, `Chance`, `Cooldown`, `Charges`) VALUES
++(81101, 0, 4, 2097152, 0, 0, 16, 7, 2, 0, 0, 0, 0, 100, 0, 0),
++(964332, 0, 4, 2097152, 0, 0, 16, 7, 2, 0, 0, 0, 0, 100, 0, 0),
++(954252, 0, 4, 536870912, 1024, 0, 16, 7, 2, 0, 0, 0, 0, 100, 0, 0),
++(954261, 0, 4, 2097152, 0, 0, 16, 7, 2, 0, 0, 0, 0, 100, 0, 1);
++
++DELETE FROM `spell_script_names` WHERE `ScriptName` IN ('spell_area52_dragon_fury', 'spell_area52_dragon_roar_stun');
++INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`) VALUES
++(954253, 'spell_area52_dragon_fury'),
++(954251, 'spell_area52_dragon_roar_stun');
+--- /dev/null
++++ b/data/sql/updates/pending_db_world/rev_20261028_21_dragon_warrior_charge.sql
+@@ -0,0 +1,7 @@
++-- Dragon Warrior: Draconic Slam's proc spell 954260 already deals 200% weapon damage and cuts Dragon Roar's cooldown
++-- by 5 seconds (Ascension effect 165), so the Dragon Fury cooldown script is dropped. Dragon Charge replaces
++-- Intercept (AscensionMysticSpellGrants.h) and is scripted in Area52DragonWarrior.inc.
++DELETE FROM `spell_script_names` WHERE `ScriptName` IN ('spell_area52_dragon_fury', 'aura_area52_dragon_charge', 'spell_area52_dragon_charge_impact');
++INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`) VALUES
++(954256, 'aura_area52_dragon_charge'),
++(954288, 'spell_area52_dragon_charge_impact');
+--- /dev/null
++++ b/data/sql/updates/pending_db_world/rev_20261028_30_compound_shot_recast.sql
+@@ -0,0 +1,18 @@
++-- Compound Power grants the Hunter Compound Shot (826679, seven ranks by level, Hunter spellbook tab) in place of
++-- the tab-less 984925. Its cast opens the 3 second recast window (826680), which turns the button into Combo Shot
++-- (850515): a cone volley (850517) that bleeds enemies already in combat (Area52Marksman.inc).
++DELETE FROM `spell_ranks` WHERE `first_spell_id` = 826679;
++INSERT INTO `spell_ranks` (`first_spell_id`, `spell_id`, `rank`) VALUES
++(826679, 826679, 1),
++(826679, 826681, 2),
++(826679, 826682, 3),
++(826679, 826683, 4),
++(826679, 826684, 5),
++(826679, 826685, 6),
++(826679, 826686, 7);
++
++DELETE FROM `spell_script_names` WHERE `ScriptName` IN ('spell_area52_compound_shot', 'aura_area52_compound_shot_recast', 'spell_area52_combo_shot_volley');
++INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`) VALUES
++(-826679, 'spell_area52_compound_shot'),
++(826680, 'aura_area52_compound_shot_recast'),
++(850517, 'spell_area52_combo_shot_volley');
+--- /dev/null
++++ b/data/sql/updates/pending_db_world/rev_20261028_31_syndicate_sniper_capstone.sql
+@@ -0,0 +1,13 @@
++-- Syndicate Sniper Shot: with the enchant on, Sniper Training (53302-53304) keeps the matching Syndicate Sniper
++-- Training stack (983867-983869) in step with its own buff. At 4 stacks of the third rank, an Aimed Shot or Compound
++-- Shot hit on a creature grants Hone In (983887, 983888: the next Syndicate Sniper Shot without stealth), every
++-- 8 seconds at most; the shot spends it (Area52Marksman.inc).
++DELETE FROM `spell_proc` WHERE `SpellId` = 983869;
++INSERT INTO `spell_proc` (`SpellId`, `SchoolMask`, `SpellFamilyName`, `SpellFamilyMask0`, `SpellFamilyMask1`, `SpellFamilyMask2`, `ProcFlags`, `SpellTypeMask`, `SpellPhaseMask`, `HitMask`, `AttributesMask`, `DisableEffectsMask`, `ProcsPerMinute`, `Chance`, `Cooldown`, `Charges`) VALUES
++(983869, 0, 9, 131072, 0, 0, 256, 1, 2, 0, 0, 0, 0, 100, 8000, 0);
++
++DELETE FROM `spell_script_names` WHERE `ScriptName` IN ('spell_area52_syndicate_sniper_training', 'spell_area52_syndicate_capstone', 'spell_area52_syndicate_sniper_shot');
++INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`) VALUES
++(-53302, 'spell_area52_syndicate_sniper_training'),
++(983869, 'spell_area52_syndicate_capstone'),
++(982891, 'spell_area52_syndicate_sniper_shot');
+--- /dev/null
++++ b/data/sql/updates/pending_db_world/rev_20261028_40_pr37_qualification.sql
+@@ -0,0 +1,3 @@
++DELETE FROM `spell_script_names` WHERE `ScriptName` = 'spell_area52_skull_crusher_cooldown';
++INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`) VALUES
++(179, 'spell_area52_skull_crusher_cooldown');
+--- /dev/null
++++ b/data/sql/updates/pending_db_world/rev_20261028_50_archetype_verification.sql
+@@ -0,0 +1,15 @@
++DELETE FROM `spell_bonus_data` WHERE `entry` = 954250;
++INSERT INTO `spell_bonus_data` (`entry`, `direct_bonus`, `dot_bonus`, `ap_bonus`, `ap_dot_bonus`, `comments`) VALUES
++(954250, 0.864, 0, 0.864, 0, 'Area 52 Dragon Roar client formula');
++
++DELETE FROM `spell_script_names` WHERE `ScriptName` = 'aura_area52_archetype_cleanup';
++INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`) VALUES
++(81166, 'aura_area52_archetype_cleanup'),
++(979740, 'aura_area52_archetype_cleanup'),
++(982890, 'aura_area52_archetype_cleanup'),
++(954252, 'aura_area52_archetype_cleanup'),
++(-53302, 'aura_area52_archetype_cleanup');
++
++DELETE FROM `spell_group` WHERE `id` = 1058 AND `spell_id` = 179;
++INSERT INTO `spell_group` (`id`, `spell_id`) VALUES
++(1058, 179);
+--- /dev/null
++++ b/src/server/coa/Area52DragonWarrior.inc
+@@ -0,0 +1,220 @@
++bool HasArea52DragonWarriorHandlers(uint32 spell)
++{
++    if (spell == Area52DragonWarrior::DragonWarrior)
++        return sSpellMgr->GetSpellProcEntry(spell) && sSpellMgr->GetSpellProcEntry(Area52DragonWarrior::DraconicSlam) &&
++            sSpellMgr->GetSpellInfo(Area52DragonWarrior::DragonRoar) &&
++            sSpellMgr->GetSpellInfo(Area52DragonWarrior::DragonCharge) &&
++            HasAuraScriptNamed(Area52DragonWarrior::DragonCharge, "aura_area52_dragon_charge") &&
++            HasSpellScriptNamed(Area52DragonWarrior::DragonChargeImpact, "spell_area52_dragon_charge_impact") &&
++            HasSpellScriptNamed(Area52DragonWarrior::DragonRoarDummy, "spell_area52_dragon_roar_stun");
++    return spell == Area52DragonWarrior::UnstoppableForce;
++}
++
++class aura_area52_dragon_charge : public AuraScript
++{
++    PrepareAuraScript(aura_area52_dragon_charge);
++
++    bool Load() override
++    {
++        Unit* owner = GetUnitOwner();
++        return AscensionFreePick::Applies(owner ? owner->ToPlayer() : nullptr);
++    }
++
++    bool Validate(SpellInfo const*) override
++    {
++        return ValidateSpellInfo({Area52DragonWarrior::DragonChargeSpeed, Area52DragonWarrior::DragonChargeImpact,
++            Area52DragonWarrior::DraconicMight});
++    }
++
++    void TickEvery(AuraEffect const*, bool& isPeriodic, int32& amplitude)
++    {
++        isPeriodic = true;
++        amplitude = Area52DragonWarrior::ChargeTickMs;
++    }
++
++    void Start(AuraEffect const*, AuraEffectHandleModes)
++    {
++        Unit* charger = GetTarget();
++        charger->CastSpell(charger, Area52DragonWarrior::DragonChargeSpeed, true);
++        if (Aura* speed = charger->GetAura(Area52DragonWarrior::DragonChargeSpeed))
++            speed->SetDuration(GetDuration());
++        charger->CastSpell(charger, Area52DragonWarrior::DraconicMight, true);
++        if (Aura* might = charger->GetAura(Area52DragonWarrior::DraconicMight))
++            might->SetDuration(GetSpellInfo()->Effects[EFFECT_1].CalcValue(charger));
++    }
++
++    void Impact(AuraEffect const*)
++    {
++        Unit* charger = GetTarget();
++        float const range = charger->GetCombatReach() + Area52DragonWarrior::ChargeImpactReach;
++        std::list<Unit*> candidates;
++        Acore::AnyUnfriendlyUnitInObjectRangeCheck check(charger, charger, range);
++        Acore::UnitListSearcher<Acore::AnyUnfriendlyUnitInObjectRangeCheck> searcher(charger, candidates, check);
++        Cell::VisitObjects(charger, searcher, range);
++        for (Unit* target : candidates)
++        {
++            if (!target->IsAlive() || !charger->IsValidAttackTarget(target) || !charger->HasInArc(M_PI / 2, target) ||
++                !charger->IsWithinDistInMap(target, Area52DragonWarrior::ChargeImpactReach) ||
++                !charger->IsWithinLOSInMap(target))
++                continue;
++            charger->CastSpell(target, Area52DragonWarrior::DragonChargeImpact, true);
++            Remove();
++            return;
++        }
++    }
++
++    void Stop(AuraEffect const*, AuraEffectHandleModes)
++    {
++        GetTarget()->RemoveAurasDueToSpell(Area52DragonWarrior::DragonChargeSpeed);
++    }
++
++    void Register() override
++    {
++        DoEffectCalcPeriodic += AuraEffectCalcPeriodicFn(aura_area52_dragon_charge::TickEvery, EFFECT_2,
++            SPELL_AURA_DUMMY);
++        AfterEffectApply += AuraEffectApplyFn(aura_area52_dragon_charge::Start, EFFECT_0,
++            SPELL_AURA_FORCE_MOVE_FORWARD, AURA_EFFECT_HANDLE_REAL);
++        OnEffectPeriodic += AuraEffectPeriodicFn(aura_area52_dragon_charge::Impact, EFFECT_2, SPELL_AURA_DUMMY);
++        AfterEffectRemove += AuraEffectRemoveFn(aura_area52_dragon_charge::Stop, EFFECT_0,
++            SPELL_AURA_FORCE_MOVE_FORWARD, AURA_EFFECT_HANDLE_REAL);
++    }
++};
++
++class spell_area52_dragon_charge_impact : public SpellScript
++{
++    PrepareSpellScript(spell_area52_dragon_charge_impact);
++
++    bool Load() override
++    {
++        Unit* owner = GetCaster();
++        return AscensionFreePick::Applies(owner ? owner->ToPlayer() : nullptr);
++    }
++
++    void Damage(SpellEffIndex)
++    {
++        Unit* target = GetHitUnit();
++        bool const slowImmune = target && target->IsImmunedToSpellEffect(GetSpellInfo(), EFFECT_2, GetCaster());
++        SetHitDamage(Area52DragonWarrior::ImpactDamage(GetHitDamage(), slowImmune));
++    }
++
++    void Register() override
++    {
++        OnEffectHitTarget += SpellEffectFn(spell_area52_dragon_charge_impact::Damage, EFFECT_0,
++            SPELL_EFFECT_SCHOOL_DAMAGE);
++    }
++};
++
++class spell_area52_dragon_roar_stun : public SpellScript
++{
++    PrepareSpellScript(spell_area52_dragon_roar_stun);
++
++    bool Load() override
++    {
++        Unit* owner = GetCaster();
++        return AscensionFreePick::Applies(owner ? owner->ToPlayer() : nullptr);
++    }
++
++    void Stun(SpellEffIndex effIndex)
++    {
++        Unit* caster = GetCaster();
++        Aura const* fury = caster ? caster->GetAura(Area52DragonWarrior::DragonFury) : nullptr;
++        if (!Area52DragonWarrior::RoarStuns(fury ? fury->GetStackAmount() : 0))
++            PreventHitDefaultEffect(effIndex);
++    }
++
++    void Register() override
++    {
++        OnEffectLaunch += SpellEffectFn(spell_area52_dragon_roar_stun::Stun, EFFECT_1, SPELL_EFFECT_TRIGGER_SPELL);
++        OnEffectLaunchTarget += SpellEffectFn(spell_area52_dragon_roar_stun::Stun, EFFECT_1,
++            SPELL_EFFECT_TRIGGER_SPELL);
++    }
++};
++
++class area52_unstoppable_force : public AllSpellScript
++{
++public:
++    area52_unstoppable_force() : AllSpellScript("area52_unstoppable_force", {ALLSPELLHOOK_ON_CRIT_CHANCE}) { }
++
++    void OnSpellCritChance(Spell* spell, Unit* target, float& chance) override
++    {
++        Player* player = spell->GetCaster() ? spell->GetCaster()->ToPlayer() : nullptr;
++        SpellInfo const* info = spell->GetSpellInfo();
++        if (!target || !player || !AscensionFreePick::Applies(player) ||
++            (!player->MatchesSpellInteraction(info->Id, 1464) &&
++                (info->SpellFamilyName != SPELLFAMILY_WARRIOR ||
++                    !(info->SpellFamilyFlags[0] & Area52DragonWarrior::SlamFamilyMask0))) ||
++            !player->HasAura(Area52DragonWarrior::UnstoppableForce))
++            return;
++        constexpr uint64 incapacitated = (1ULL << MECHANIC_KNOCKOUT) | (1ULL << MECHANIC_SAPPED) |
++            (1ULL << MECHANIC_POLYMORPH) | (1ULL << MECHANIC_SLEEP) | (1ULL << MECHANIC_SHACKLE) |
++            (1ULL << MECHANIC_STUN);
++        constexpr uint64 immobilized = (1ULL << MECHANIC_ROOT) | (1ULL << MECHANIC_FREEZE);
++        if (Area52DragonWarrior::SlamAlwaysCrits(target->HasAuraWithMechanic(incapacitated) ||
++                target->HasAuraType(SPELL_AURA_MOD_STUN),
++                target->HasAuraWithMechanic(immobilized) || target->HasAuraType(SPELL_AURA_MOD_ROOT),
++                Area52DragonWarrior::IsThunderSlam(info->Id)))
++            chance = 100.0f;
++    }
++};
++
++class spell_area52_skull_crusher_cooldown : public SpellScript
++{
++    PrepareSpellScript(spell_area52_skull_crusher_cooldown);
++
++    bool Load() override
++    {
++        Unit* owner = GetCaster();
++        return AscensionFreePick::Applies(owner ? owner->ToPlayer() : nullptr);
++    }
++
++    void LimitCooldown(SpellEffIndex index)
++    {
++        Player* player = GetCaster() ? GetCaster()->ToPlayer() : nullptr;
++        if (!player || !AscensionFreePick::Applies(player))
++            return;
++        if (player->HasSpellCooldown(81101))
++            PreventHitDefaultEffect(index);
++        else
++            player->AddSpellCooldown(81101, 0, 3000);
++    }
++
++    void Register() override
++    {
++        OnEffectHitTarget += SpellEffectFn(spell_area52_skull_crusher_cooldown::LimitCooldown,
++            EFFECT_1, SPELL_EFFECT_ASCENSION_MODIFY_COOLDOWN);
++    }
++};
++
++class area52_pr37_metadata : public GlobalScript
++{
++public:
++    area52_pr37_metadata() : GlobalScript("area52_pr37_metadata") { }
++
++    void OnLoadSpellCustomAttr(SpellInfo* info) override
++    {
++        if (!sConfigMgr->GetOption<bool>("CoA.Enable", true) ||
++            sConfigMgr->GetOption<std::string>("CoA.ClassModel", "coa") != "hero" ||
++            sConfigMgr->GetOption<std::string>("CoA.RealmType", "live") != "live" ||
++            (sConfigMgr->GetOption<uint32>("CoA.GameModeMask", 0) & ~uint32(0x400)))
++            return;
++        if (info->Id == 983869)
++        {
++            info->Effects[EFFECT_2].Effect = SPELL_EFFECT_APPLY_AURA;
++            info->Effects[EFFECT_2].TargetA = SpellImplicitTargetInfo(TARGET_UNIT_CASTER);
++        }
++        if (info->Id == 954261)
++            info->Effects[EFFECT_1].Effect = SPELL_EFFECT_APPLY_AURA;
++        if (info->Id == 850517)
++            info->Effects[EFFECT_1].Effect = SPELL_EFFECT_APPLY_AURA;
++        if (info->Id == 954250)
++            info->AttributesCu |= SPELL_ATTR0_CU_IGNORE_ARMOR;
++        if (info->Id == 982890)
++            info->Effects[EFFECT_1].Effect = 0;
++        if (info->Id >= 983867 && info->Id <= 983869)
++        {
++            constexpr int32 reductions[] = {-1, -3, -5};
++            info->Effects[EFFECT_1].ApplyAuraName = SPELL_AURA_ADD_PCT_MODIFIER;
++            info->Effects[EFFECT_1].BasePoints = reductions[info->Id - 983867] - 1;
++        }
++    }
++};
+--- /dev/null
++++ b/src/server/coa/Area52DragonWarriorRules.h
+@@ -0,0 +1,46 @@
++#ifndef AREA52_DRAGON_WARRIOR_RULES_H
++#define AREA52_DRAGON_WARRIOR_RULES_H
++#include <cstdint>
++
++namespace Area52DragonWarrior
++{
++constexpr std::uint32_t DragonWarrior = 954252;
++constexpr std::uint32_t DraconicSlam = 954261;
++constexpr std::uint32_t DragonFury = 954253;
++constexpr std::uint32_t DragonCharge = 954256;
++constexpr std::uint32_t DragonChargeSpeed = 954286;
++constexpr std::uint32_t DragonChargeImpact = 954288;
++constexpr std::uint32_t DraconicMight = 954289;
++constexpr std::uint32_t Intercept = 20252;
++constexpr std::uint32_t DragonRoar = 954250;
++constexpr std::uint32_t DragonRoarDummy = 954251;
++constexpr std::uint32_t DeathWish = 12292;
++constexpr std::uint32_t UnstoppableForce = 911167;
++constexpr std::uint32_t SlamFamilyMask0 = 0x200000;
++constexpr std::int32_t ChargeTickMs = 100;
++constexpr float ChargeImpactReach = 2.0f;
++constexpr std::int32_t SlowImmuneDamageFactor = 3;
++constexpr std::uint8_t RoarStunStacks = 3;
++
++inline bool RoarStuns(std::uint8_t furyStacks)
++{
++    return furyStacks >= RoarStunStacks;
++}
++
++inline std::int32_t ImpactDamage(std::int32_t damage, bool slowImmune)
++{
++    return slowImmune ? damage * SlowImmuneDamageFactor : damage;
++}
++
++inline bool IsThunderSlam(std::uint32_t spell)
++{
++    return spell == 275048 || (spell >= 275052 && spell <= 275058) ||
++        (spell >= 1574554 && spell <= 1574561);
++}
++
++inline bool SlamAlwaysCrits(bool incapacitated, bool immobilized, bool thunderSlam = false)
++{
++    return !thunderSlam && (incapacitated || immobilized);
++}
++}
++#endif
+--- /dev/null
++++ b/src/server/coa/Area52Marksman.inc
+@@ -0,0 +1,473 @@
++bool HasAuraScriptNamed(uint32 spell, char const* name)
++{
++    std::list<AuraScript*> scripts;
++    sScriptMgr->CreateAuraScripts(spell, scripts);
++    bool found = false;
++    for (auto* script : scripts)
++    {
++        found |= *script->_GetScriptName() == name;
++        delete script;
++    }
++    return found;
++}
++
++bool HasSpellScriptNamed(uint32 spell, char const* name)
++{
++    std::list<SpellScript*> scripts;
++    sScriptMgr->CreateSpellScripts(spell, scripts);
++    bool found = false;
++    for (auto* script : scripts)
++    {
++        found |= *script->_GetScriptName() == name;
++        delete script;
++    }
++    return found;
++}
++
++bool HasArea52MarksmanHandlers(uint32 spell)
++{
++    if (spell == Area52Marksman::CompoundPower)
++        return sSpellMgr->GetSpellProcEntry(spell) && sSpellMgr->GetSpellInfo(Area52Marksman::CompoundFlurry) &&
++            HasAuraScriptNamed(spell, "spell_area52_compound_power") &&
++            HasAuraScriptNamed(Area52Marksman::SliceAndDice, "spell_area52_compound_power_slice_and_dice") &&
++            sSpellMgr->GetSpellInfo(Area52Marksman::ComboShot) &&
++            HasSpellScriptNamed(Area52Marksman::CompoundShot, "spell_area52_compound_shot") &&
++            HasAuraScriptNamed(Area52Marksman::CompoundShotRecast, "aura_area52_compound_shot_recast") &&
++            HasSpellScriptNamed(Area52Marksman::ComboShotVolley, "spell_area52_combo_shot_volley");
++    if (spell == Area52Marksman::Sniper)
++        return sSpellMgr->GetSpellInfo(Area52Marksman::SniperStack) && HasAuraScriptNamed(spell, "spell_area52_sniper");
++    return false;
++}
++
++class spell_area52_compound_power : public AuraScript
++{
++    PrepareAuraScript(spell_area52_compound_power);
++
++    bool Load() override
++    {
++        return AscensionFreePick::Applies(GetUnitOwner() ? GetUnitOwner()->ToPlayer() : nullptr);
++    }
++
++    bool Validate(SpellInfo const*) override
++    {
++        return ValidateSpellInfo({Area52Marksman::CompoundFlurry});
++    }
++
++    static Area52Marksman::ShotEffect Effect(ProcEventInfo& event)
++    {
++        SpellInfo const* spell = event.GetSpellInfo();
++        if (!spell)
++            return {};
++        auto const direct = Area52Marksman::CompoundPowerShot(sSpellMgr->GetFirstSpellInChain(spell->Id));
++        if (Area52Marksman::Triggers(direct))
++            return direct;
++        Player* player = event.GetActor() ? event.GetActor()->ToPlayer() : nullptr;
++        if (player)
++            for (uint32 original : {Area52Marksman::SteadyShot, Area52Marksman::ArcaneShot,
++                Area52Marksman::MultiShot, Area52Marksman::ChimeraShot, Area52Marksman::CompoundShot})
++                if (player->MatchesSpellInteraction(spell->Id, original))
++                    return Area52Marksman::CompoundPowerShot(original);
++        return {};
++    }
++
++    bool CheckProc(ProcEventInfo& event)
++    {
++        Unit* owner = GetTarget();
++        return owner && event.GetActor() == owner && event.GetActionTarget() && event.GetDamageInfo() &&
++            event.GetDamageInfo()->GetDamage() > 0 && Area52Marksman::Triggers(Effect(event));
++    }
++
++    void Proc(AuraEffect const* effect, ProcEventInfo& event)
++    {
++        PreventDefaultAction();
++        Unit* owner = GetTarget();
++        Unit* target = event.GetActionTarget();
++        if (!owner)
++            return;
++        auto const shot = Effect(event);
++        if (shot.Consumes)
++            owner->RemoveAurasDueToSpell(Area52Marksman::CompoundFlurry);
++        if (shot.ComboPoints && target)
++            owner->AddComboPoints(target, shot.ComboPoints);
++        if (shot.Empowers)
++            owner->CastSpell(owner, Area52Marksman::CompoundFlurry, true, nullptr, effect);
++    }
++
++    void Register() override
++    {
++        DoCheckProc += AuraCheckProcFn(spell_area52_compound_power::CheckProc);
++        OnEffectProc += AuraEffectProcFn(spell_area52_compound_power::Proc, EFFECT_0, SPELL_AURA_DUMMY);
++    }
++};
++
++class spell_area52_compound_power_slice_and_dice : public AuraScript
++{
++    PrepareAuraScript(spell_area52_compound_power_slice_and_dice);
++
++    bool Load() override
++    {
++        return AscensionFreePick::Applies(GetUnitOwner() ? GetUnitOwner()->ToPlayer() : nullptr);
++    }
++
++    void RangedHaste(AuraEffect const* /*effect*/, int32& amount, bool& /*canBeRecalculated*/)
++    {
++        Unit* owner = GetUnitOwner();
++        if (!owner || !owner->HasAura(Area52Marksman::CompoundPower))
++            return;
++        if (AuraEffect const* melee = GetAura()->GetEffect(EFFECT_1))
++            amount = melee->GetAmount();
++        else
++            amount = GetSpellInfo()->Effects[EFFECT_1].CalcValue(owner);
++    }
++
++    void Register() override
++    {
++        DoEffectCalcAmount += AuraEffectCalcAmountFn(spell_area52_compound_power_slice_and_dice::RangedHaste, EFFECT_2,
++            SPELL_AURA_MOD_RANGED_HASTE);
++    }
++};
++
++class spell_area52_sniper : public AuraScript
++{
++    PrepareAuraScript(spell_area52_sniper);
++
++    bool Load() override
++    {
++        return AscensionFreePick::Applies(GetUnitOwner() ? GetUnitOwner()->ToPlayer() : nullptr);
++    }
++
++    bool Validate(SpellInfo const*) override
++    {
++        return ValidateSpellInfo({Area52Marksman::SniperStack});
++    }
++
++    void Tick(AuraEffect const* /*effect*/)
++    {
++        Unit* owner = GetTarget();
++        if (!owner)
++            return;
++        auto const step = Area52Marksman::SniperTick(_still, owner->isMoving());
++        _still = step.Still;
++        if (step.Clear)
++        {
++            owner->RemoveAurasDueToSpell(Area52Marksman::SniperStack);
++            return;
++        }
++        if (Aura* stacks = owner->GetAura(Area52Marksman::SniperStack))
++            stacks->RefreshDuration();
++        if (step.AddStack)
++            owner->CastSpell(owner, Area52Marksman::SniperStack, true);
++    }
++
++    void Register() override
++    {
++        OnEffectPeriodic += AuraEffectPeriodicFn(spell_area52_sniper::Tick, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY);
++    }
++
++    std::uint32_t _still = 0;
++};
++
++class aura_area52_archetype_cleanup : public AuraScript
++{
++    PrepareAuraScript(aura_area52_archetype_cleanup);
++
++    bool Load() override
++    {
++        Unit* owner = GetUnitOwner();
++        return AscensionFreePick::Applies(owner ? owner->ToPlayer() : nullptr);
++    }
++
++    void RefreshSliceAndDice(AuraEffect const*, AuraEffectHandleModes)
++    {
++        if (GetId() != Area52Marksman::CompoundPower)
++            return;
++        Unit* owner = GetTarget();
++        if (!owner)
++            return;
++        for (AuraEffect* effect : owner->GetAuraEffectsByType(SPELL_AURA_MOD_RANGED_HASTE))
++            if (sSpellMgr->GetFirstSpellInChain(effect->GetId()) == Area52Marksman::SliceAndDice)
++                effect->RecalculateAmount();
++    }
++
++    void Clear(AuraEffect const*, AuraEffectHandleModes)
++    {
++        Unit* owner = GetTarget();
++        if (!owner)
++            return;
++        switch (GetId())
++        {
++            case 81166:
++                owner->RemoveAurasDueToSpell(81167);
++                break;
++            case 979740:
++                owner->RemoveAurasDueToSpell(984926);
++                owner->RemoveAurasDueToSpell(826680);
++                RefreshSliceAndDice(nullptr, AURA_EFFECT_HANDLE_REAL);
++                break;
++            case 982890:
++                for (uint32 id : {983867u, 983868u, 983869u, 983887u, 983888u})
++                    owner->RemoveAurasDueToSpell(id);
++                break;
++            case 954252:
++                for (uint32 id : {954261u, 954253u, 954256u, 954286u, 954289u})
++                    owner->RemoveAurasDueToSpell(id);
++                break;
++            case 53302:
++            case 53303:
++            case 53304:
++                owner->RemoveAurasDueToSpell(Area52Marksman::SniperTrainingBuff + GetId() - 53302);
++                owner->RemoveAurasDueToSpell(Area52Marksman::SyndicateTrainingFor(GetId()));
++                if (GetId() == 53304)
++                {
++                    owner->RemoveAurasDueToSpell(983887);
++                    owner->RemoveAurasDueToSpell(983888);
++                }
++                break;
++            default:
++                break;
++        }
++    }
++
++    void Register() override
++    {
++        AfterEffectApply += AuraEffectApplyFn(aura_area52_archetype_cleanup::RefreshSliceAndDice, EFFECT_0,
++            SPELL_AURA_ANY, AURA_EFFECT_HANDLE_REAL);
++        AfterEffectRemove += AuraEffectRemoveFn(aura_area52_archetype_cleanup::Clear, EFFECT_0,
++            SPELL_AURA_ANY, AURA_EFFECT_HANDLE_REAL);
++    }
++};
++
++class spell_area52_compound_shot : public SpellScript
++{
++    PrepareSpellScript(spell_area52_compound_shot);
++
++    bool Load() override
++    {
++        Unit* owner = GetCaster();
++        return AscensionFreePick::Applies(owner ? owner->ToPlayer() : nullptr);
++    }
++
++    bool Validate(SpellInfo const*) override
++    {
++        return ValidateSpellInfo({Area52Marksman::CompoundShotRecast});
++    }
++
++    void OpenRecastWindow()
++    {
++        Player* player = GetCaster() ? GetCaster()->ToPlayer() : nullptr;
++        if (!player || !AscensionFreePick::Applies(player))
++            return;
++        player->CastSpell(player, Area52Marksman::CompoundShotRecast, true);
++        if (Aura* recast = player->GetAura(Area52Marksman::CompoundShotRecast))
++            recast->SetDuration(Area52Marksman::RecastWindowMs);
++    }
++
++    void Register() override
++    {
++        AfterCast += SpellCastFn(spell_area52_compound_shot::OpenRecastWindow);
++    }
++};
++
++class aura_area52_compound_shot_recast : public AuraScript
++{
++    PrepareAuraScript(aura_area52_compound_shot_recast);
++
++    bool Load() override
++    {
++        Unit* owner = GetUnitOwner();
++        return AscensionFreePick::Applies(owner ? owner->ToPlayer() : nullptr);
++    }
++
++    static void Swap(Unit* target, bool toComboShot)
++    {
++        Player* player = target ? target->ToPlayer() : nullptr;
++        if (!player)
++            return;
++        std::set<uint32> visited;
++        for (uint32 rank = Area52Marksman::CompoundShot; rank && visited.insert(rank).second;
++            rank = sSpellMgr->GetNextSpellInChain(rank))
++            player->SetTemporarySpellReplacement(rank,
++                toComboShot && player->HasActiveSpell(rank) ? Area52Marksman::ComboShot : 0);
++    }
++
++    void Open(AuraEffect const*, AuraEffectHandleModes)
++    {
++        Swap(GetTarget(), true);
++    }
++
++    void Close(AuraEffect const*, AuraEffectHandleModes)
++    {
++        Swap(GetTarget(), false);
++    }
++
++    void Register() override
++    {
++        AfterEffectApply += AuraEffectApplyFn(aura_area52_compound_shot_recast::Open, EFFECT_1,
++            SPELL_AURA_ABILITY_IGNORE_AURASTATE, AURA_EFFECT_HANDLE_REAL);
++        AfterEffectRemove += AuraEffectRemoveFn(aura_area52_compound_shot_recast::Close, EFFECT_1,
++            SPELL_AURA_ABILITY_IGNORE_AURASTATE, AURA_EFFECT_HANDLE_REAL);
++    }
++};
++
++class spell_area52_combo_shot_volley : public SpellScript
++{
++    PrepareSpellScript(spell_area52_combo_shot_volley);
++
++    bool Load() override
++    {
++        Unit* owner = GetCaster();
++        return AscensionFreePick::Applies(owner ? owner->ToPlayer() : nullptr);
++    }
++
++    void KeepFighting(std::list<WorldObject*>& targets)
++    {
++        targets.remove_if([](WorldObject* target)
++        {
++            Unit* unit = target->ToUnit();
++            return !unit || !unit->IsInCombat();
++        });
++    }
++
++    void Register() override
++    {
++        OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_area52_combo_shot_volley::KeepFighting,
++            EFFECT_ALL, TARGET_UNIT_CONE_ENEMY_104);
++    }
++};
++
++class spell_area52_syndicate_sniper_training : public AuraScript
++{
++    PrepareAuraScript(spell_area52_syndicate_sniper_training);
++
++    bool Load() override
++    {
++        Unit* owner = GetUnitOwner();
++        return AscensionFreePick::Applies(owner ? owner->ToPlayer() : nullptr);
++    }
++
++    void Mirror(AuraEffect const*)
++    {
++        Player* player = GetTarget()->ToPlayer();
++        if (!player || !AscensionFreePick::Applies(player))
++            return;
++        uint32 const training = Area52Marksman::SyndicateTrainingFor(GetId());
++        Aura const* buff = player->GetAura(Area52Marksman::SniperTrainingBuffFor(GetId()));
++        if (!buff || !player->HasAura(Area52Marksman::SyndicateSniperShotEnchant))
++        {
++            player->RemoveAurasDueToSpell(training);
++            return;
++        }
++        Aura* mirror = player->GetAura(training);
++        if (!mirror)
++        {
++            player->CastSpell(player, training, true);
++            mirror = player->GetAura(training);
++        }
++        if (!mirror)
++            return;
++        if (mirror->GetStackAmount() != buff->GetStackAmount())
++            mirror->SetStackAmount(buff->GetStackAmount());
++        mirror->SetDuration(buff->GetDuration());
++    }
++
++    void Register() override
++    {
++        OnEffectPeriodic += AuraEffectPeriodicFn(spell_area52_syndicate_sniper_training::Mirror, EFFECT_0,
++            SPELL_AURA_PERIODIC_TRIGGER_SPELL);
++    }
++};
++
++class spell_area52_syndicate_capstone : public AuraScript
++{
++    PrepareAuraScript(spell_area52_syndicate_capstone);
++
++    bool Load() override
++    {
++        Unit* owner = GetUnitOwner();
++        return AscensionFreePick::Applies(owner ? owner->ToPlayer() : nullptr);
++    }
++
++    bool Validate(SpellInfo const*) override
++    {
++        return ValidateSpellInfo({Area52Marksman::HoneIn, Area52Marksman::HoneInDamage});
++    }
++
++    bool Ready(ProcEventInfo& event)
++    {
++        Unit* target = event.GetActionTarget();
++        return target && AscensionFreePick::Applies(GetTarget()->ToPlayer()) &&
++            Area52Marksman::HonesIn(GetStackAmount(), target->IsControlledByPlayer());
++    }
++
++    void HoneIn(AuraEffect const*, ProcEventInfo&)
++    {
++        Unit* hunter = GetTarget();
++        hunter->CastSpell(hunter, Area52Marksman::HoneIn, true);
++        hunter->CastSpell(hunter, Area52Marksman::HoneInDamage, true);
++    }
++
++    void Register() override
++    {
++        DoCheckProc += AuraCheckProcFn(spell_area52_syndicate_capstone::Ready);
++        OnEffectProc += AuraEffectProcFn(spell_area52_syndicate_capstone::HoneIn, EFFECT_2, SPELL_AURA_DUMMY);
++    }
++};
++
++class spell_area52_syndicate_sniper_shot : public SpellScript
++{
++    PrepareSpellScript(spell_area52_syndicate_sniper_shot);
++
++    bool Load() override
++    {
++        Unit* owner = GetCaster();
++        if (!AscensionFreePick::Applies(owner ? owner->ToPlayer() : nullptr))
++            return false;
++        if (owner->HasAuraType(SPELL_AURA_MOD_STEALTH))
++            if (SpellInfo const* bonus = sSpellMgr->GetSpellInfo(982901))
++                StealthBonus = bonus->Effects[EFFECT_2].CalcValue(owner);
++        return true;
++    }
++
++    void CaptureHoneIn()
++    {
++        Unit* hunter = GetCaster();
++        if (hunter && AscensionFreePick::Applies(hunter->ToPlayer()))
++            if (AuraEffect const* effect = hunter->GetAuraEffect(Area52Marksman::HoneInDamage, EFFECT_0))
++                HoneInBonus = effect->GetAmount();
++    }
++
++    int32 HoneInBonus = 0;
++    int32 StealthBonus = 0;
++
++    void SpendHoneIn()
++    {
++        if (Unit* hunter = GetCaster(); hunter && AscensionFreePick::Applies(hunter->ToPlayer()))
++        {
++            hunter->RemoveAurasDueToSpell(Area52Marksman::HoneIn);
++            hunter->RemoveAurasDueToSpell(Area52Marksman::HoneInDamage);
++        }
++    }
++
++    void AddSniperTraining()
++    {
++        Unit* hunter = GetCaster();
++        if (!hunter || !AscensionFreePick::Applies(hunter->ToPlayer()))
++            return;
++        SetHitDamage(Area52Marksman::WithSniperTraining(GetHitDamage(), HoneInBonus));
++        SetHitDamage(Area52Marksman::WithSniperTraining(GetHitDamage(), StealthBonus));
++        for (uint32 rank = 0; rank < 3; ++rank)
++            if (AuraEffect const* training = hunter->GetAuraEffect(Area52Marksman::SyndicateSniperTraining + rank,
++                EFFECT_0))
++            {
++                SetHitDamage(Area52Marksman::WithSniperTraining(GetHitDamage(), training->GetAmount()));
++                return;
++            }
++    }
++
++    void Register() override
++    {
++        BeforeCast += SpellCastFn(spell_area52_syndicate_sniper_shot::CaptureHoneIn);
++        AfterCast += SpellCastFn(spell_area52_syndicate_sniper_shot::SpendHoneIn);
++        OnHit += SpellHitFn(spell_area52_syndicate_sniper_shot::AddSniperTraining);
++    }
++};
+--- /dev/null
++++ b/src/server/coa/Area52MarksmanRules.h
+@@ -0,0 +1,95 @@
++#ifndef AREA52_MARKSMAN_RULES_H
++#define AREA52_MARKSMAN_RULES_H
++#include <cstdint>
++
++namespace Area52Marksman
++{
++constexpr std::uint32_t CompoundPower = 979740;
++constexpr std::uint32_t CompoundFlurry = 984926;
++constexpr std::uint32_t CompoundShot = 826679;
++constexpr std::uint32_t CompoundShotRecast = 826680;
++constexpr std::uint32_t ComboShot = 850515;
++constexpr std::uint32_t ComboShotVolley = 850517;
++constexpr std::int32_t RecastWindowMs = 3000;
++constexpr std::uint32_t SyndicateSniperShotEnchant = 982890;
++constexpr std::uint32_t SyndicateSniperShot = 982891;
++constexpr std::uint32_t SniperTrainingTalent = 53302;
++constexpr std::uint32_t SniperTrainingBuff = 64418;
++constexpr std::uint32_t SyndicateSniperTraining = 983867;
++constexpr std::uint32_t SyndicateCapstone = 983869;
++constexpr std::uint32_t HoneIn = 983887;
++constexpr std::uint32_t HoneInDamage = 983888;
++constexpr std::uint8_t CapstoneStacks = 4;
++constexpr std::uint32_t Sniper = 81166;
++constexpr std::uint32_t SniperStack = 81167;
++constexpr std::uint32_t SniperStackSeconds = 3;
++constexpr std::uint32_t SteadyShot = 56641;
++constexpr std::uint32_t ArcaneShot = 3044;
++constexpr std::uint32_t MultiShot = 2643;
++constexpr std::uint32_t ChimeraShot = 53209;
++constexpr std::uint32_t SliceAndDice = 5171;
++
++struct ShotEffect
++{
++    std::int8_t ComboPoints = 0;
++    bool Empowers = false;
++    bool Consumes = false;
++};
++
++inline ShotEffect CompoundPowerShot(std::uint32_t firstRank)
++{
++    ShotEffect effect;
++    effect.ComboPoints = firstRank == SteadyShot || firstRank == ArcaneShot ? 2 : 0;
++    effect.Empowers = firstRank == MultiShot || firstRank == ArcaneShot || firstRank == ChimeraShot ||
++        firstRank == CompoundShot;
++    effect.Consumes = firstRank == SteadyShot;
++    return effect;
++}
++
++inline bool Triggers(ShotEffect effect)
++{
++    return effect.ComboPoints || effect.Empowers || effect.Consumes;
++}
++
++inline std::uint32_t SyndicateTrainingFor(std::uint32_t talentRank)
++{
++    return SyndicateSniperTraining + (talentRank - SniperTrainingTalent);
++}
++
++inline std::uint32_t SniperTrainingBuffFor(std::uint32_t talentRank)
++{
++    return SniperTrainingBuff + (talentRank - SniperTrainingTalent);
++}
++
++inline std::int32_t WithSniperTraining(std::int32_t damage, std::int32_t bonusPct)
++{
++    return bonusPct > 0 ? std::int32_t(std::int64_t(damage) * (100 + bonusPct) / 100) : damage;
++}
++
++inline bool HonesIn(std::uint8_t capstoneStacks, bool targetPlayerControlled)
++{
++    return capstoneStacks >= CapstoneStacks && !targetPlayerControlled;
++}
++
++inline float WithoutMunitionsHaste(float multiplier, std::int32_t amount)
++{
++    return amount > 0 ? multiplier * (1.0f + amount / 100.0f) :
++        multiplier / (1.0f - amount / 100.0f);
++}
++
++struct SniperStep
++{
++    std::uint32_t Still = 0;
++    bool AddStack = false;
++    bool Clear = false;
++};
++
++inline SniperStep SniperTick(std::uint32_t stillSeconds, bool moving)
++{
++    if (moving)
++        return {0, false, true};
++    std::uint32_t const still = stillSeconds + 1;
++    return {still, still % SniperStackSeconds == 0, false};
++}
++}
++#endif
+--- a/src/server/coa/AscensionMysticEnchant.cpp
++++ b/src/server/coa/AscensionMysticEnchant.cpp
+@@ -57,6 +57,10 @@
+ #include "Area52BattlemageRules.h"
+ #include "Area52LegendaryProcs.inc"
+ #include "Area52Battlemage.inc"
++#include "Area52MarksmanRules.h"
++#include "Area52Marksman.inc"
++#include "Area52DragonWarriorRules.h"
++#include "Area52DragonWarrior.inc"
+ #include "Area52LegendaryBatchRules.h"
+ #include "Area52LegendaryBatch.inc"
+ #include "Area52Felfire.inc"
+@@ -94,6 +98,18 @@
+ bool Applies(Player const* player)
+ {
+     return Active && AscensionFreePick::Applies(player);
++}
++
++bool GrantRequirementMet(Player const* player, std::uint32_t required)
++{
++    if (!required)
++        return true;
++    std::set<std::uint32_t> visited;
++    for (auto rank = sSpellMgr->GetFirstSpellInChain(required); rank && visited.insert(rank).second;
++        rank = sSpellMgr->GetNextSpellInChain(rank))
++        if (player->HasSpell(rank))
++            return true;
++    return false;
+ }
+ 
+ constexpr char ActivePresetSetting[] = "core.area52.mystic.active";
+@@ -289,15 +305,25 @@
+     for (auto const& grant : SpellGrants)
+     {
+         bool const enabled = GrantsActive(player, grant.Enchant) &&
+-            (grant.Enchant != 81248 || player->HasActiveSpell(33831));
++            (grant.Enchant != 81248 || player->HasActiveSpell(33831)) && GrantRequirementMet(player, grant.Requires);
+         std::set<std::uint32_t> visited;
+         for (auto rank = grant.Spell; rank && visited.insert(rank).second;
+             rank = sSpellMgr->GetNextSpellInChain(rank))
+-            SetGrantedSpell(player, grant.Enchant, rank,
+-                enabled && (rank == grant.Spell || player->HasSpell(rank)));
++        {
++            SpellInfo const* info = sSpellMgr->GetSpellInfo(rank);
++            bool const rankDue = grant.Enchant == 979740 && grant.Spell == 826679 ?
++                info && GrantRankDue(rank == grant.Spell, player->HasSpell(rank), info->SpellLevel, player->GetLevel()) :
++                rank == grant.Spell || player->HasSpell(rank);
++            SetGrantedSpell(player, grant.Enchant, rank, enabled && info &&
++                rankDue);
++        }
+         if (grant.Enchant == 81248)
+             player->SetTemporarySpellReplacement(33831, enabled ? 81249 : 0);
+-    }
++        if (grant.Replaces)
++            player->SetTemporarySpellReplacement(grant.Replaces, enabled ? grant.Spell : 0);
++    }
++    for (auto const& retired : RetiredSpellGrants)
++        SetGrantedSpell(player, retired.Enchant, retired.Spell, false);
+     RefreshEpicReplacements(player);
+ }
+ 
+@@ -760,7 +786,8 @@
+             continue;
+         }
+         if (HasEldritchEquipmentHandlers(spell) || HasArea52EpicEquipmentHandlers(spell) ||
+-            HasArea52HopliteHandlers(spell) || HasArea52BattlemageHandlers(spell))
++            HasArea52HopliteHandlers(spell) || HasArea52BattlemageHandlers(spell) || HasArea52MarksmanHandlers(spell) ||
++            HasArea52DragonWarriorHandlers(spell))
+         {
+             Connected.emplace(spell, 1);
+             continue;
+@@ -1375,6 +1402,22 @@
+     new area52_legendary_batch_metadata();
+     RegisterSpellScript(spell_area52_battlemage);
+     RegisterSpellScript(spell_area52_battlemage_damage);
++    RegisterSpellScript(spell_area52_compound_power);
++    RegisterSpellScript(spell_area52_compound_power_slice_and_dice);
++    RegisterSpellScript(spell_area52_sniper);
++    RegisterSpellScript(spell_area52_compound_shot);
++    RegisterSpellScript(aura_area52_compound_shot_recast);
++    RegisterSpellScript(spell_area52_combo_shot_volley);
++    RegisterSpellScript(spell_area52_syndicate_sniper_training);
++    RegisterSpellScript(spell_area52_syndicate_capstone);
++    RegisterSpellScript(spell_area52_syndicate_sniper_shot);
++    RegisterSpellScript(aura_area52_dragon_charge);
++    RegisterSpellScript(spell_area52_dragon_charge_impact);
++    RegisterSpellScript(spell_area52_dragon_roar_stun);
++    new area52_unstoppable_force();
++    new area52_pr37_metadata();
++    RegisterSpellScript(spell_area52_skull_crusher_cooldown);
++    RegisterSpellScript(aura_area52_archetype_cleanup);
+     RegisterSpellScript(spell_area52_legendary_proc);
+     RegisterSpellScript(spell_area52_unbounded_deathbringer);
+     new area52_legendary_metadata();
+@@ -1428,7 +1471,8 @@
+             auto const& entry = Data.BySpell.at(grant.Enchant);
+             if (InvestmentMet(player, entry, false) && InvestmentMet(player, entry, true) &&
+                 (grant.Enchant != 978724 || player->HasSpell(2565)) &&
+-                (grant.Enchant != 81248 || player->HasActiveSpell(33831)))
++                (grant.Enchant != 81248 || player->HasActiveSpell(33831)) &&
++                GrantRequirementMet(player, grant.Requires))
+                 SetGrantedSpell(player, grant.Enchant, grant.Spell, true);
+         }
+     constexpr std::array<std::uint32_t, 6> spellGrantingEnchants = {81116, 92580, 926573, 954081, 978217, 983240};
+--- a/src/server/coa/AscensionMysticSpellGrants.h
++++ b/src/server/coa/AscensionMysticSpellGrants.h
+@@ -10,8 +10,10 @@
+ {
+     std::uint32_t Enchant;
+     std::uint32_t Spell;
++    std::uint32_t Requires = 0;
++    std::uint32_t Replaces = 0;
+ };
+-inline constexpr std::array<SpellGrant, 8> SpellGrants = {{
++inline constexpr std::array<SpellGrant, 15> SpellGrants = {{
+     {81248, 81249},
+     {86576, 92752},
+     {84408, 84409},
+@@ -19,7 +21,22 @@
+     {92574, 92575},
+     {92582, 92584},
+     {965937, 965939},
+-    {978724, 922565}
++    {978724, 922565},
++    {978716, 978717},
++    {978716, 978718},
++    {979740, 826679, 19434},
++    {979740, 850515, 19434},
++    {982890, 982891, 8676},
++    {954252, 954250, 12292, 12292},
++    {954252, 954256, 20252, 20252}
+ }};
++inline constexpr std::array<SpellGrant, 1> RetiredSpellGrants = {{
++    {979740, 984925}
++}};
++
++inline bool GrantRankDue(bool firstRank, bool known, std::uint32_t spellLevel, std::uint32_t level)
++{
++    return firstRank || (spellLevel ? spellLevel <= level : known);
++}
+ }
+ #endif
+--- a/src/server/game/Entities/Player/Player.cpp
++++ b/src/server/game/Entities/Player/Player.cpp
+@@ -13931,6 +13931,18 @@
+ 
+     std::vector<uint32> pending{spellId};
+     for (size_t index = 0; index < pending.size(); ++index)
++    {
++        if (HasAura(979740) && sSpellMgr->GetFirstSpellInChain(pending[index]) == 826679)
++        {
++            std::set<uint32> visited;
++            for (uint32 aimed = 19434; aimed && visited.insert(aimed).second;
++                aimed = sSpellMgr->GetNextSpellInChain(aimed))
++                if (HasActiveSpell(aimed) && std::find(pending.begin(), pending.end(), aimed) == pending.end())
++                {
++                    pending.push_back(aimed);
++                    origins.push_back(aimed);
++                }
++        }
+         for (auto const& [original, replacement] : m_temporarySpellReplacements)
+             if (replacement == pending[index] && original != replacement &&
+                 HasActiveSpell(original) && HasActiveSpell(replacement) &&
+@@ -13939,6 +13951,7 @@
+                 pending.push_back(original);
+                 origins.push_back(original);
+             }
++    }
+     return origins;
+ }
+ 
+--- a/src/server/game/Entities/Unit/Unit.cpp
++++ b/src/server/game/Entities/Unit/Unit.cpp
+@@ -17,6 +17,7 @@
+ 
+ #include "Unit.h"
+ #include "../../../coa/AscensionFreePick.h"
++#include "../../../coa/Area52MarksmanRules.h"
+ #include "../../../coa/Area52DependencyRules.h"
+ #include "../../../coa/Area52FollowupProcRules.h"
+ #include "../../../coa/Area52WyvernSleep.h"
+@@ -13424,8 +13425,18 @@
+             castTime = CanInstantCast() ? 0 : int32(float(castTime) * GetFloatValue(UNIT_MOD_CAST_SPEED));
+             break;
+         case SPELL_DAMAGE_CLASS_RANGED:
+-            castTime = int32(float(castTime) * m_modAttackSpeedPct[RANGED_ATTACK]);
++        {
++            float multiplier = m_modAttackSpeedPct[RANGED_ATTACK];
++            Player* player = ToPlayer();
++            if (AscensionFreePick::Applies(player) && HasAura(978716) &&
++                (player->MatchesSpellInteraction(spellInfo->Id, 56641) ||
++                    player->MatchesSpellInteraction(spellInfo->Id, 826679)))
++                for (uint32 munitions : {978717u, 978718u})
++                    if (AuraEffect const* effect = GetAuraEffect(munitions, EFFECT_1))
++                        multiplier = Area52Marksman::WithoutMunitionsHaste(multiplier, effect->GetAmount());
++            castTime = int32(float(castTime) * multiplier);
+             break;
++        }
+         default:
+             break;
+     }
+--- a/src/server/game/Spells/SpellEffects.cpp
++++ b/src/server/game/Spells/SpellEffects.cpp
+@@ -382,7 +382,9 @@
+     Unit* target = unitTarget ? unitTarget : m_caster;
+     Player* player = target ? target->ToPlayer() : nullptr;
+     SpellEffectInfo const& effect = m_spellInfo->Effects[effIndex];
+-    ModifyAscensionCooldown(player, effect.MiscValue, damage, effect.MiscValueB != 0);
++    // Ascension names the original spell; a temporarily replaced spell keeps its cooldown on the replacement.
++    uint32 const spellId = player ? player->GetTemporarySpellReplacement(effect.MiscValue) : effect.MiscValue;
++    ModifyAscensionCooldown(player, spellId, damage, effect.MiscValueB != 0);
+ }
+ 
+ void Spell::EffectAscensionPlaySpellVisualKit(SpellEffIndex effIndex)
