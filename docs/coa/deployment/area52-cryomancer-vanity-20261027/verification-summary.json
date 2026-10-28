@@ -1,0 +1,35 @@
+{
+  "package": "area52-cryomancer-vanity-20261027",
+  "status": "offline_checks_passed_preflight_pending",
+  "binary_sha256": "27f4100bccd28c8908d7db7b9ad35809c4ef3ce355906d5911047f2bb66ffd5c",
+  "baseline": {
+    "binary": "7a610f0cea04e1e6d299612a86308c88982551b1b1e75e3fa656c86ebeff4fdb",
+    "candidate": "27f4100bccd28c8908d7db7b9ad35809c4ef3ce355906d5911047f2bb66ffd5c",
+    "compose": "9a02c8f54169a0ec98f8f3adbe25531561e21935e57b357389167a821d0d065d",
+    "source": {
+      "src/server/coa/Area52ArchetypeVanityData.h": {
+        "target": "/home/dml/games/ascension-freepick-test/private/active-build-source/src/server/coa/Area52ArchetypeVanityData.h",
+        "before_sha256": "561ece33b1762776e2f3796cebb60e19e9e9ebfdec066712c0f5cf5fe1c1b619"
+      }
+    }
+  },
+  "reports": {
+    "build-rewards": "e73d3bb9b5c3465efe0ef9986fd863727829c35c572e32f7a4268c7229e5f31f",
+    "source-rewards": "47eb6c26f2492ffe5fe883ae9d3c51c1165737bc3bd19e97a51b5313b289e5d7",
+    "focused-package-files": "b25efe82263ba130c5016aa071d74ea73f0ec52c4c9827d3655939c94b5dced4"
+  },
+  "wardrobe_set_variants": 61,
+  "client": {
+    "before_sha256": "38ef85f5d7ebf559c747fd6c536d6c6c785a3ba27bf701533a5670d0c2088577",
+    "after_sha256": "4079f0befb0f55b8e338cc247a45b3452888becd8feb92ec60d684427f59ef3b",
+    "installed_unchanged": true,
+    "preserved_other_archive_members": true,
+    "changed_members": [
+      "DBFilesClient\\CharacterCreationArchetypeDetails.dbc",
+      "DBFilesClient\\ItemSet.dbc",
+      "DBFilesClient\\ItemSetAppearances.dbc",
+      "DBFilesClient\\VanityCollection.dbc"
+    ]
+  },
+  "limits": "Native catalog build and offline lookup/file hook fixtures; no live UI certification. No SQL or status changes. Existing ownership preserved."
+}
