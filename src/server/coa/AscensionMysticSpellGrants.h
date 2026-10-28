@@ -13,7 +13,7 @@ struct SpellGrant
     std::uint32_t Requires = 0;
     std::uint32_t Replaces = 0;
 };
-inline constexpr std::array<SpellGrant, 17> SpellGrants = {{
+inline constexpr std::array<SpellGrant, 22> SpellGrants = {{
     {81248, 81249},
     {84408, 84409},
     {84466, 84467},
@@ -30,10 +30,24 @@ inline constexpr std::array<SpellGrant, 17> SpellGrants = {{
     {954252, 954256, 20252, 20252},
     {977906, 947470, 2098},
     {977906, 977908},
-    {982965, 982966, 12323}
+    {982965, 982966, 12323},
+    {978226, 978617, 1752, 1752},
+    {978226, 978618, 2098, 2098},
+    {978226, 979023, 48505, 48505},
+    {814183, 814184, 14183, 14183},
+    {977831, 977832, 8921}
 }};
 inline constexpr std::array<SpellGrant, 1> RetiredSpellGrants = {{
     {979740, 984925}
+}};
+
+struct EnchantUnlock
+{
+    std::uint32_t Enchant;
+    std::uint32_t Spell;
+};
+inline constexpr std::array<EnchantUnlock, 1> EnchantUnlocks = {{
+    {978226, 48525}
 }};
 
 inline bool GrantRankDue(bool firstRank, bool known, std::uint32_t spellLevel, std::uint32_t level)

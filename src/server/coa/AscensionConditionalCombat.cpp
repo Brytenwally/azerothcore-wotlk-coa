@@ -61,7 +61,7 @@ void ApplyArea52MysticTargetDamageContracts(SpellInfo* spellInfo)
         uint32 Spell;
         uint32 Family;
     };
-    static constexpr Contract contracts[] = {{954353, 4}};
+    static constexpr Contract contracts[] = {{954353, 4}, {978621, 7}, {978622, 7}, {979024, 7}, {979045, 8}};
     if (!spellInfo || std::none_of(std::begin(contracts), std::end(contracts), [spellInfo](Contract const& contract)
         { return contract.Spell == spellInfo->Id && contract.Family == spellInfo->SpellFamilyName; }))
         return;
