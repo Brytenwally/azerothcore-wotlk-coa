@@ -5,6 +5,8 @@
 #include "SpellDefines.h"
 #include "AscensionConditionalCombatData.h"
 #include "AscensionWhiteWalkerSupportRules.h"
+#include <algorithm>
+#include <iterator>
 
 namespace
 {
@@ -43,6 +45,28 @@ void ApplyArea52TargetDamageContracts(SpellInfo* spellInfo)
     for (uint8 index = 0; index < (spellInfo->Id == 979053 ? 1 : 2); ++index)
     {
         auto& effect = spellInfo->Effects[index];
+        if (effect.Effect != SPELL_EFFECT_APPLY_AURA || effect.ApplyAuraName != SPELL_AURA_ADD_PCT_MODIFIER ||
+            (effect.MiscValue != 36 && effect.MiscValue != 38) ||
+            effect.TargetA.GetTarget() != TARGET_UNIT_CASTER || effect.TargetB.GetTarget())
+            continue;
+        effect.MiscValueB = effect.MiscValue == 36 ? ASCENSION_CLASSMASK_PLAYER_DAMAGE : ASCENSION_CLASSMASK_NPC_DAMAGE;
+        effect.ApplyAuraName = SPELL_AURA_MOD_DAMAGE_DONE_VERSUS_AURASTATE;
+    }
+}
+
+void ApplyArea52MysticTargetDamageContracts(SpellInfo* spellInfo)
+{
+    struct Contract
+    {
+        uint32 Spell;
+        uint32 Family;
+    };
+    static constexpr Contract contracts[] = {{954353, 4}};
+    if (!spellInfo || std::none_of(std::begin(contracts), std::end(contracts), [spellInfo](Contract const& contract)
+        { return contract.Spell == spellInfo->Id && contract.Family == spellInfo->SpellFamilyName; }))
+        return;
+    for (auto& effect : spellInfo->Effects)
+    {
         if (effect.Effect != SPELL_EFFECT_APPLY_AURA || effect.ApplyAuraName != SPELL_AURA_ADD_PCT_MODIFIER ||
             (effect.MiscValue != 36 && effect.MiscValue != 38) ||
             effect.TargetA.GetTarget() != TARGET_UNIT_CASTER || effect.TargetB.GetTarget())
@@ -139,4 +163,5 @@ void ApplyAscensionConditionalCombatContracts(SpellInfo* spellInfo)
     ApplyReaperTheTimeHasComeDamageContract(spellInfo);
     ApplyFrozenPowerDamageContract(spellInfo);
     ApplyArea52TargetDamageContracts(spellInfo);
+    ApplyArea52MysticTargetDamageContracts(spellInfo);
 }
