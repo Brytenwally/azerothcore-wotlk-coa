@@ -64,6 +64,8 @@ extern pEffect SpellEffects[TOTAL_SPELL_EFFECTS];
 #include "Area52LegendaryBatchRules.h"
 #include "Area52LegendaryBatch.inc"
 #include "Area52Felfire.inc"
+#include "Area52GutripperRules.h"
+#include "Area52Gutripper.inc"
 #include "Area52CorruptedBear.inc"
 #include "Area52CastMovement.inc"
 #include "Area52Dependencies.inc"
@@ -781,7 +783,7 @@ void LoadConnections()
         }
         if (HasEldritchEquipmentHandlers(spell) || HasArea52EpicEquipmentHandlers(spell) ||
             HasArea52HopliteHandlers(spell) || HasArea52BattlemageHandlers(spell) || HasArea52MarksmanHandlers(spell) ||
-            HasArea52DragonWarriorHandlers(spell))
+            HasArea52DragonWarriorHandlers(spell) || HasArea52GutripperHandlers(spell))
         {
             Connected.emplace(spell, 1);
             continue;
@@ -1405,6 +1407,14 @@ void AddSC_AscensionMysticEnchant()
     RegisterSpellScript(spell_area52_syndicate_capstone);
     RegisterSpellScript(spell_area52_syndicate_sniper_shot);
     RegisterSpellScript(aura_area52_dragon_charge);
+    RegisterSpellScript(spell_area52_disembowel);
+    RegisterSpellScript(spell_area52_blood_and_guts);
+    RegisterSpellScript(spell_area52_executing_disembowel);
+    RegisterSpellScript(spell_area52_executing_disembowel_burst);
+    RegisterSpellScript(spell_area52_gutripper_execute);
+    RegisterSpellScript(spell_area52_sudden_death_cooldown);
+    RegisterSpellScript(spell_area52_necrotic_execute);
+    new area52_deadly_combo();
     RegisterSpellScript(spell_area52_dragon_charge_impact);
     RegisterSpellScript(spell_area52_dragon_roar_stun);
     new area52_unstoppable_force();
