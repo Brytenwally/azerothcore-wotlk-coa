@@ -1,0 +1,33 @@
+{
+  "package": "area52-cryotherapy-crash-20261028",
+  "status": "offline_checks_passed_preflight_pending",
+  "binary_sha256": "715f29aa365e836c49c02a732317f7d7250ea3e7376acef58e07f8465fd1d71c",
+  "baseline": {
+    "binary": "27f4100bccd28c8908d7db7b9ad35809c4ef3ce355906d5911047f2bb66ffd5c",
+    "candidate": "715f29aa365e836c49c02a732317f7d7250ea3e7376acef58e07f8465fd1d71c",
+    "compose": "29c542c37c9297b83c7d2ad917a911e41fd87f082c30b9877a69a1b42a886cb9",
+    "source": {
+      "src/server/coa/Area52Cryotherapist.inc": {
+        "target": "/home/dml/games/ascension-freepick-test/private/active-build-source/src/server/coa/Area52Cryotherapist.inc",
+        "before_sha256": "fbc3cdc06ce0fd4dde408464731ecc6681bab4c96084c6ed881b878c43586e8d"
+      }
+    }
+  },
+  "reports": {
+    "build-crash": "ad34ad56c77c02a58b418f14f93400f481a41f9f20bb38fbc27de9dc8ae1c58b",
+    "source-crash": "4b8f960fbf3165e226764fc154f04947327ea5b3b0adc9f306a78f53c1feb1df",
+    "focused-crash": "2d57e1e150b16471f006a351f73cc8f15c9ca760d689723e89f8fd6b50f06686"
+  },
+  "client": {
+    "flags": {
+      "92752": 655360,
+      "300024": 0
+    },
+    "before_sha256": "4079f0befb0f55b8e338cc247a45b3452888becd8feb92ec60d684427f59ef3b",
+    "candidate_sha256": "88d1f4772b079eb90da6e44ae364045f1f0347f51300d701f50f643ec8ecff8a",
+    "changed_spell": 92752,
+    "changed_field": 5,
+    "installed_unchanged": true
+  },
+  "limits": "Native build, exact aura-load sanitizer regression and offline file hook fixtures; no live UI certification. No SQL or status changes. Existing ownership preserved."
+}

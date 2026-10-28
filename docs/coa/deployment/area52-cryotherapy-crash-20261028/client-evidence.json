@@ -1,0 +1,11 @@
+{
+  "flags": {
+    "92752": 655360,
+    "300024": 0
+  },
+  "before_sha256": "4079f0befb0f55b8e338cc247a45b3452888becd8feb92ec60d684427f59ef3b",
+  "candidate_sha256": "88d1f4772b079eb90da6e44ae364045f1f0347f51300d701f50f643ec8ecff8a",
+  "changed_spell": 92752,
+  "changed_field": 5,
+  "installed_unchanged": true
+}
