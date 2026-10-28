@@ -1,0 +1,35 @@
+{
+  "package": "area52-account-friends-routing-20261027",
+  "status": "offline_verified",
+  "baseline_package": "area52-account-friends-20261027",
+  "baseline_binary_sha256": "093ebdd412fc8af6b300c28ddcdeb4c9aad26a337cc11d3b8c8cc5c0b65ac993",
+  "binary_sha256": "2a09dbfbfb03902b966634b24a52c2faaa91ee72005eb1c78c91bc40667097ed",
+  "reports": {
+    "build-routing": "f75b4b3c09a186d453dba99854f641e8644f1084d397438313826f108aa2fc74",
+    "source-routing": "2b4bd5ce3480a1de002fd3e5081a7fb58eeea37c2e7f17b09d36405aef4ad0b9",
+    "focused-routing": "800551b6db5ca8b25e78340d5b1a550b381dec98c67833ee51f168e017988efc",
+    "package-routing": "8e9a9a8319c06a755e3d7aeb24883585ab32b151ba13c35b660e86498dcb668e"
+  },
+  "source_targets": [
+    {
+      "path": "src/server/game/Server/Protocol/Opcodes.cpp",
+      "before": "ac7e43d72d74945690a42f40c769ed84111ddd1064b0d93bd67cb41fe2aa681d",
+      "after": "8f9a2908d9fe9dd38c84d5509614a23db6aacff804bf91873cd402c7aab98dd0"
+    }
+  ],
+  "changed_build_inputs": [
+    "src/server/game/Server/Protocol/Opcodes.cpp"
+  ],
+  "patch_sha256": "e42d76b04a514323fe35b6f34f70c072eba7de9426f0420f7419e937a0536f23",
+  "source_overlays_sha256": "4b90eb4758051011b72b4a437952a81cfce3b0495296f3eadae860e1200bca35",
+  "reused_friend_evidence": "account-friends-20261027/qualification.json; all friend implementation inputs unchanged",
+  "publication_tests": 14,
+  "deployment_tests": 11,
+  "activation": "not_performed",
+  "publication": "not_performed",
+  "limitations": [
+    "Offline native dispatcher regression; no live gameplay.",
+    "No account-friend migration is repeated; completed data and realm fixes are preserved.",
+    "Bot work remains separate and unchanged."
+  ]
+}
