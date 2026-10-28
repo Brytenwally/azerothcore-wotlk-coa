@@ -65,6 +65,8 @@ extern pEffect SpellEffects[TOTAL_SPELL_EFFECTS];
 #include "Area52DragonWarrior.inc"
 #include "Area52GutripperRules.h"
 #include "Area52Gutripper.inc"
+#include "Area52KnightOfTheEclipseRules.h"
+#include "Area52KnightOfTheEclipse.inc"
 #include "Area52CorruptedBear.inc"
 #include "Area52CastMovement.inc"
 #include "Area52Dependencies.inc"
@@ -99,6 +101,33 @@ struct State : DataMap::Base
 bool Applies(Player const* player)
 {
     return Active && AscensionFreePick::Applies(player);
+}
+
+bool EnchantUnlocked(Player const* player, std::uint32_t enchant)
+{
+    for (auto const& unlock : EnchantUnlocks)
+        if (unlock.Enchant == enchant && !player->HasSpell(unlock.Spell))
+            return false;
+    return true;
+}
+
+std::uint32_t HighestActiveRank(Player const* player, std::uint32_t spell)
+{
+    std::uint32_t highest = 0;
+    std::set<std::uint32_t> visited;
+    for (auto rank = sSpellMgr->GetFirstSpellInChain(spell); rank && visited.insert(rank).second;
+        rank = sSpellMgr->GetNextSpellInChain(rank))
+        if (player->HasActiveSpell(rank))
+            highest = rank;
+    return highest;
+}
+
+void ReplaceRanks(Player* player, std::uint32_t original, std::uint32_t replacement)
+{
+    std::set<std::uint32_t> visited;
+    for (auto rank = sSpellMgr->GetFirstSpellInChain(original); rank && visited.insert(rank).second;
+        rank = sSpellMgr->GetNextSpellInChain(rank))
+        player->SetTemporarySpellReplacement(rank, replacement && player->HasActiveSpell(rank) ? replacement : 0);
 }
 
 bool GrantRequirementMet(Player const* player, std::uint32_t required)
@@ -306,7 +335,8 @@ void Synchronize(Player* player)
     for (auto const& grant : SpellGrants)
     {
         bool const enabled = GrantsActive(player, grant.Enchant) &&
-            (grant.Enchant != 81248 || player->HasActiveSpell(33831)) && GrantRequirementMet(player, grant.Requires);
+            (grant.Enchant != 81248 || player->HasActiveSpell(33831)) && GrantRequirementMet(player, grant.Requires) &&
+            EnchantUnlocked(player, grant.Enchant);
         std::set<std::uint32_t> visited;
         for (auto rank = grant.Spell; rank && visited.insert(rank).second;
             rank = sSpellMgr->GetNextSpellInChain(rank))
@@ -318,7 +348,7 @@ void Synchronize(Player* player)
         if (grant.Enchant == 81248)
             player->SetTemporarySpellReplacement(33831, enabled ? 81249 : 0);
         if (grant.Replaces)
-            player->SetTemporarySpellReplacement(grant.Replaces, enabled ? grant.Spell : 0);
+            ReplaceRanks(player, grant.Replaces, enabled ? HighestActiveRank(player, grant.Spell) : 0);
     }
     for (auto const& retired : RetiredSpellGrants)
         SetGrantedSpell(player, retired.Enchant, retired.Spell, false);
@@ -779,7 +809,8 @@ void LoadConnections()
         }
         if (HasEldritchEquipmentHandlers(spell) || HasArea52EpicEquipmentHandlers(spell) ||
             HasArea52HopliteHandlers(spell) || HasArea52BattlemageHandlers(spell) || HasArea52MarksmanHandlers(spell) ||
-            HasArea52DragonWarriorHandlers(spell) || HasArea52GutripperHandlers(spell))
+            HasArea52DragonWarriorHandlers(spell) || HasArea52GutripperHandlers(spell) ||
+            HasArea52KnightOfTheEclipseHandlers(spell))
         {
             Connected.emplace(spell, 1);
             continue;
@@ -1410,6 +1441,14 @@ void AddSC_AscensionMysticEnchant()
     RegisterSpellScript(spell_area52_sudden_death_cooldown);
     RegisterSpellScript(spell_area52_necrotic_execute);
     new area52_deadly_combo();
+    RegisterSpellScript(spell_area52_eclipse_memory);
+    RegisterSpellScript(spell_area52_eclipse_strike);
+    RegisterSpellScript(spell_area52_solar_strike);
+    RegisterSpellScript(spell_area52_knight_haste);
+    RegisterSpellScript(spell_area52_sunfire);
+    RegisterSpellScript(spell_area52_infused_energy);
+    RegisterSpellScript(spell_area52_demonic_moonfire);
+    new area52_improved_insect_swarm();
     RegisterSpellScript(spell_area52_dragon_charge_impact);
     RegisterSpellScript(spell_area52_dragon_roar_stun);
     new area52_unstoppable_force();
@@ -1466,7 +1505,7 @@ void RestoreArea52MysticSpellsForLogin(Player* player, PreparedQueryResult resul
             if (InvestmentMet(player, entry, false) && InvestmentMet(player, entry, true) &&
                 (grant.Enchant != 978724 || player->HasSpell(2565)) &&
                 (grant.Enchant != 81248 || player->HasActiveSpell(33831)) &&
-                GrantRequirementMet(player, grant.Requires))
+                GrantRequirementMet(player, grant.Requires) && EnchantUnlocked(player, grant.Enchant))
                 SetGrantedSpell(player, grant.Enchant, grant.Spell, true);
         }
     constexpr std::array<std::uint32_t, 6> spellGrantingEnchants = {81116, 92580, 926573, 954081, 978217, 983240};
