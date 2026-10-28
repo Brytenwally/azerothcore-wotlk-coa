@@ -1,0 +1,78 @@
+import os
+from pathlib import Path
+import shutil
+import subprocess
+import tempfile
+
+HERE = Path(__file__).resolve().parent
+ROOT = HERE.parents[2]
+
+HARNESS = r'''#include "Area52MarksmanRules.h"
+#include <cassert>
+#include <initializer_list>
+using namespace Area52Marksman;
+
+int main()
+{
+    ShotEffect steady = CompoundPowerShot(SteadyShot);
+    assert(steady.ComboPoints == 2 && !steady.Empowers && steady.Consumes);
+    ShotEffect arcane = CompoundPowerShot(ArcaneShot);
+    assert(arcane.ComboPoints == 2 && arcane.Empowers && !arcane.Consumes);
+    for (unsigned shot : {MultiShot, ChimeraShot, CompoundShot})
+    {
+        ShotEffect effect = CompoundPowerShot(shot);
+        assert(effect.ComboPoints == 0 && effect.Empowers && !effect.Consumes && Triggers(effect));
+    }
+    assert(!Triggers(CompoundPowerShot(19434)));
+    assert(!Triggers(CompoundPowerShot(0)));
+
+    unsigned still = 0;
+    unsigned stacks = 0;
+    for (int second = 1; second <= 9; ++second)
+    {
+        SniperStep step = SniperTick(still, false);
+        still = step.Still;
+        assert(!step.Clear);
+        stacks += step.AddStack;
+        assert(step.AddStack == (second % 3 == 0));
+    }
+    assert(stacks == 3);
+    SniperStep moved = SniperTick(still, true);
+    assert(moved.Clear && !moved.AddStack && moved.Still == 0);
+    assert(!SniperTick(moved.Still, false).AddStack);
+    return 0;
+}
+'''
+
+
+def command(source, exe):
+    if os.environ.get('VCToolsInstallDir'):
+        compiler = Path(os.environ['VCToolsInstallDir']) / 'bin/Hostx64/x64/cl.exe'
+        return [str(compiler), '/nologo', '/std:c++20', '/EHsc', '/W4', '/WX', '/I', str(ROOT / 'src/server/coa'),
+                str(source), '/Fe' + str(exe)]
+    compiler = shutil.which(os.environ.get('CXX', 'g++'))
+    assert compiler, 'Set CXX to a C++17 compiler or run from an MSVC developer environment.'
+    return [compiler, '-std=c++17', '-Wall', '-Wextra', '-Werror', '-I', str(ROOT / 'src/server/coa'), str(source),
+            '-o', str(exe)]
+
+
+def main():
+    grants = (ROOT / 'src/server/coa/AscensionMysticSpellGrants.h').read_text(encoding='utf-8')
+    for grant in ('{978716, 978717}', '{978716, 978718}', '{979740, 984925, 19434}', '{982890, 982891, 8676}'):
+        assert grant in grants, grant
+    sql = (ROOT / 'data/sql/updates/pending_db_world/rev_20261028_10_compound_power_build.sql').read_text(
+        encoding='utf-8')
+    for binding in ("(979740, 'spell_area52_compound_power')", "(-5171, 'spell_area52_compound_power_slice_and_dice')",
+                    "(81166, 'spell_area52_sniper')"):
+        assert binding in sql, binding
+    with tempfile.TemporaryDirectory(prefix='coa-area52-marksman-') as directory:
+        out = Path(directory)
+        cpp, exe = out / 'marksman.cpp', out / 'marksman.exe'
+        cpp.write_text(HARNESS, encoding='utf-8')
+        subprocess.run(command(cpp, exe), cwd=out, check=True, timeout=60)
+        subprocess.run([str(exe)], cwd=out, check=True, timeout=15)
+    print('area52 marksman rules: ok')
+
+
+if __name__ == '__main__':
+    main()

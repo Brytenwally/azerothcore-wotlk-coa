@@ -54,6 +54,8 @@ extern pEffect SpellEffects[TOTAL_SPELL_EFFECTS];
 #include "Area52BattlemageRules.h"
 #include "Area52LegendaryProcs.inc"
 #include "Area52Battlemage.inc"
+#include "Area52MarksmanRules.h"
+#include "Area52Marksman.inc"
 #include "Area52LegendaryBatchRules.h"
 #include "Area52LegendaryBatch.inc"
 #include "Area52Felfire.inc"
@@ -93,6 +95,18 @@ struct State : DataMap::Base
 bool Applies(Player const* player)
 {
     return Active && AscensionFreePick::Applies(player);
+}
+
+bool GrantRequirementMet(Player const* player, std::uint32_t required)
+{
+    if (!required)
+        return true;
+    std::set<std::uint32_t> visited;
+    for (auto rank = sSpellMgr->GetFirstSpellInChain(required); rank && visited.insert(rank).second;
+        rank = sSpellMgr->GetNextSpellInChain(rank))
+        if (player->HasSpell(rank))
+            return true;
+    return false;
 }
 
 constexpr char ActivePresetSetting[] = "core.area52.mystic.active";
@@ -288,7 +302,7 @@ void Synchronize(Player* player)
     for (auto const& grant : SpellGrants)
     {
         bool const enabled = GrantsActive(player, grant.Enchant) &&
-            (grant.Enchant != 81248 || player->HasActiveSpell(33831));
+            (grant.Enchant != 81248 || player->HasActiveSpell(33831)) && GrantRequirementMet(player, grant.Requires);
         std::set<std::uint32_t> visited;
         for (auto rank = grant.Spell; rank && visited.insert(rank).second;
             rank = sSpellMgr->GetNextSpellInChain(rank))
@@ -753,7 +767,7 @@ void LoadConnections()
             continue;
         }
         if (HasEldritchEquipmentHandlers(spell) || HasArea52EpicEquipmentHandlers(spell) ||
-            HasArea52HopliteHandlers(spell) || HasArea52BattlemageHandlers(spell))
+            HasArea52HopliteHandlers(spell) || HasArea52BattlemageHandlers(spell) || HasArea52MarksmanHandlers(spell))
         {
             Connected.emplace(spell, 1);
             continue;
@@ -1366,6 +1380,9 @@ void AddSC_AscensionMysticEnchant()
     new area52_legendary_batch_metadata();
     RegisterSpellScript(spell_area52_battlemage);
     RegisterSpellScript(spell_area52_battlemage_damage);
+    RegisterSpellScript(spell_area52_compound_power);
+    RegisterSpellScript(spell_area52_compound_power_slice_and_dice);
+    RegisterSpellScript(spell_area52_sniper);
     RegisterSpellScript(spell_area52_legendary_proc);
     new area52_legendary_metadata();
     new area52_cast_movement_metadata();
@@ -1418,7 +1435,8 @@ void RestoreArea52MysticSpellsForLogin(Player* player, PreparedQueryResult resul
             auto const& entry = Data.BySpell.at(grant.Enchant);
             if (InvestmentMet(player, entry, false) && InvestmentMet(player, entry, true) &&
                 (grant.Enchant != 978724 || player->HasSpell(2565)) &&
-                (grant.Enchant != 81248 || player->HasActiveSpell(33831)))
+                (grant.Enchant != 81248 || player->HasActiveSpell(33831)) &&
+                GrantRequirementMet(player, grant.Requires))
                 SetGrantedSpell(player, grant.Enchant, grant.Spell, true);
         }
     constexpr std::array<std::uint32_t, 6> spellGrantingEnchants = {81116, 92580, 926573, 954081, 978217, 983240};
