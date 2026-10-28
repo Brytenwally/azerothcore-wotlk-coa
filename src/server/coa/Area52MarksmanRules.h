@@ -11,6 +11,15 @@ constexpr std::uint32_t CompoundShotRecast = 826680;
 constexpr std::uint32_t ComboShot = 850515;
 constexpr std::uint32_t ComboShotVolley = 850517;
 constexpr std::int32_t RecastWindowMs = 3000;
+constexpr std::uint32_t SyndicateSniperShotEnchant = 982890;
+constexpr std::uint32_t SyndicateSniperShot = 982891;
+constexpr std::uint32_t SniperTrainingTalent = 53302;
+constexpr std::uint32_t SniperTrainingBuff = 64418;
+constexpr std::uint32_t SyndicateSniperTraining = 983867;
+constexpr std::uint32_t SyndicateCapstone = 983869;
+constexpr std::uint32_t HoneIn = 983887;
+constexpr std::uint32_t HoneInDamage = 983888;
+constexpr std::uint8_t CapstoneStacks = 4;
 constexpr std::uint32_t Sniper = 81166;
 constexpr std::uint32_t SniperStack = 81167;
 constexpr std::uint32_t SniperStackSeconds = 3;
@@ -40,6 +49,21 @@ inline ShotEffect CompoundPowerShot(std::uint32_t firstRank)
 inline bool Triggers(ShotEffect effect)
 {
     return effect.ComboPoints || effect.Empowers || effect.Consumes;
+}
+
+inline std::uint32_t SyndicateTrainingFor(std::uint32_t talentRank)
+{
+    return SyndicateSniperTraining + (talentRank - SniperTrainingTalent);
+}
+
+inline std::uint32_t SniperTrainingBuffFor(std::uint32_t talentRank)
+{
+    return SniperTrainingBuff + (talentRank - SniperTrainingTalent);
+}
+
+inline bool HonesIn(std::uint8_t capstoneStacks, bool targetPlayerControlled)
+{
+    return capstoneStacks >= CapstoneStacks && !targetPlayerControlled;
 }
 
 struct SniperStep
