@@ -1,0 +1,44 @@
+{
+  "package": "area52-cryotherapist-verification-20261027",
+  "status": "engineering_verified_packaging_preflight_pending",
+  "entries": [
+    {
+      "kind": "mystic",
+      "id": 86576
+    }
+  ],
+  "reports": {
+    "build-final-state": "c331cf3de7b0fd7b9f04b159db88ab008fa18747f9408281aee4095b8469163e",
+    "source-final-state": "a0975593af92411e7e52557f34546d50b06fff9155b22916b98aa1bb8b207970",
+    "focused-tooltip-update": "e7cd969863fc08b9189f6d725180d48e1aee6ab90007c7a4c3cc905da95d2c31",
+    "ownership-current": "9914ed3e397ecc7a64c337531cc94b0b9043dc4fc29f3e1143f03372b2dd6a8a",
+    "sql-hooks-qualified": "4ad942f16f53465d414a13001a7ff22bad5e899e3e0598a4cc08d7d524526d3c"
+  },
+  "binary_sha256": "7a610f0cea04e1e6d299612a86308c88982551b1b1e75e3fa656c86ebeff4fdb",
+  "baseline_binary_sha256": "2a09dbfbfb03902b966634b24a52c2faaa91ee72005eb1c78c91bc40667097ed",
+  "source": [
+    {
+      "path": "src/server/coa/Area52Cryotherapist.inc",
+      "baseline_sha256": null,
+      "candidate_sha256": "fbc3cdc06ce0fd4dde408464731ecc6681bab4c96084c6ed881b878c43586e8d"
+    },
+    {
+      "path": "src/server/coa/Area52CryotherapistRules.h",
+      "baseline_sha256": null,
+      "candidate_sha256": "eeff0c028163fa0e14fb52b4f919997712bd4bbdd451a4dec60cce3f55b4473c"
+    },
+    {
+      "path": "src/server/coa/AscensionMysticKnightEpics.cpp",
+      "baseline_sha256": "6e853533244f4dcdf5857c5f151ae5c9b9bd0e4329af67ba16e12ba42877d6b7",
+      "candidate_sha256": "0d03eb9c8940d0a576c2ce6234209e64fdbd12f175b6ed19293dfbbdd91cf075"
+    },
+    {
+      "path": "src/server/coa/AscensionMysticSpellGrants.h",
+      "baseline_sha256": "e75c6ee03b9efe7e22a8c7d72ec2de24e61ccd0f0ba5e1ef206e9e7d7fdb9af0",
+      "candidate_sha256": "4dad3723b8e514258c4995f42256cceca888107842c4cf8b856938f527b31066"
+    }
+  ],
+  "client_qualification_sha256": "576f03fc8d868cb32c167f87b10b8ea1705cdee12f533a48462c0792f34ec087",
+  "release_qualification_sha256": "6ec75b1450c9e32c81926b25c1268b05b18f9b1c488e0d425764fc0dbfc0b840",
+  "limits": "Offline native build, extracted production functions with engine adapters, lifecycle/startup/grant ownership, production-schema SQL and actual hook rollback. No gameplay certification; activation and publication unperformed."
+}
