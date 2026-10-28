@@ -21,6 +21,15 @@ Bootstrap verifies the package and imported content, and requires an empty schem
 If an import fails, recreate that partially imported schema before retrying.
 Subsequent SQL migrations use the normal server updater.
 
+The package predates the Area 52 work and holds none of its `coa_*` tables. Four migrations create what later
+updates and the server need but no migration used to create, so the updater runs through on a fresh install:
+`rev_20261005_51` (`coa_client_spell_description`), `rev_20261009_64` (thirteen world tables: dungeon health,
+loot, spell damage, bosses, creature damage and heal, XP hotspots, client shapeshift and vanity rows, gameobject
+scale, Manastorm curves), `rev_20261016_29` (`coa_dungeon_boss_kit`, `manastorm_treasure_keeper_rule`) and
+`rev_20261018_00` (`worldforged_upgrade.unlock_creature`). They follow the server's reads and the updates' writes;
+on a database that already has the tables they change nothing. Tables they create start empty, so the features
+that read them (dungeon boss kits, XP hotspots, the vanity store) have no data until a realm fills them.
+
 ## Audit
 
 Compare an existing world database with the package without changing it:
