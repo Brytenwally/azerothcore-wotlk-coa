@@ -31,6 +31,9 @@ int main()
     assert(GrantRankDue(true, false, 20, 1) && GrantRankDue(false, true, 80, 60));
     assert(GrantRankDue(false, false, 60, 60) && !GrantRankDue(false, false, 70, 60));
     assert(!GrantRankDue(false, false, 0, 60));
+    assert(SyndicateTrainingFor(53302) == 983867 && SyndicateTrainingFor(53304) == SyndicateCapstone);
+    assert(SniperTrainingBuffFor(53303) == 64419);
+    assert(HonesIn(4, false) && !HonesIn(3, false) && !HonesIn(4, true));
 
     unsigned still = 0;
     unsigned stacks = 0;
@@ -78,6 +81,12 @@ def main():
                 "(826680, 'aura_area52_compound_shot_recast')", "(850517, 'spell_area52_combo_shot_volley')"):
         assert row in recast, row
     assert '{979740, 984925}' in grants
+    capstone = (ROOT / 'data/sql/updates/pending_db_world/rev_20261028_31_syndicate_sniper_capstone.sql').read_text(
+        encoding='utf-8')
+    for row in ('(983869, 0, 9, 131072, 0, 0, 256, 1, 2, 0, 0, 0, 0, 100, 8000, 0)',
+                "(-53302, 'spell_area52_syndicate_sniper_training')", "(983869, 'spell_area52_syndicate_capstone')",
+                "(982891, 'spell_area52_syndicate_sniper_shot')"):
+        assert row in capstone, row
     with tempfile.TemporaryDirectory(prefix='coa-area52-marksman-') as directory:
         out = Path(directory)
         cpp, exe = out / 'marksman.cpp', out / 'marksman.exe'

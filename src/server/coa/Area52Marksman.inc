@@ -236,3 +236,88 @@ class spell_area52_combo_shot_volley : public SpellScript
             EFFECT_ALL, TARGET_UNIT_CONE_ENEMY_104);
     }
 };
+
+class spell_area52_syndicate_sniper_training : public AuraScript
+{
+    PrepareAuraScript(spell_area52_syndicate_sniper_training);
+
+    void Mirror(AuraEffect const*)
+    {
+        Player* player = GetTarget()->ToPlayer();
+        if (!player || !AscensionFreePick::Applies(player))
+            return;
+        uint32 const training = Area52Marksman::SyndicateTrainingFor(GetId());
+        Aura const* buff = player->GetAura(Area52Marksman::SniperTrainingBuffFor(GetId()));
+        if (!buff || !player->HasAura(Area52Marksman::SyndicateSniperShotEnchant))
+        {
+            player->RemoveAurasDueToSpell(training);
+            return;
+        }
+        Aura* mirror = player->GetAura(training);
+        if (!mirror)
+        {
+            player->CastSpell(player, training, true);
+            mirror = player->GetAura(training);
+        }
+        if (!mirror)
+            return;
+        if (mirror->GetStackAmount() != buff->GetStackAmount())
+            mirror->SetStackAmount(buff->GetStackAmount());
+        mirror->SetDuration(buff->GetDuration());
+    }
+
+    void Register() override
+    {
+        OnEffectPeriodic += AuraEffectPeriodicFn(spell_area52_syndicate_sniper_training::Mirror, EFFECT_0,
+            SPELL_AURA_PERIODIC_TRIGGER_SPELL);
+    }
+};
+
+class spell_area52_syndicate_capstone : public AuraScript
+{
+    PrepareAuraScript(spell_area52_syndicate_capstone);
+
+    bool Validate(SpellInfo const*) override
+    {
+        return ValidateSpellInfo({Area52Marksman::HoneIn, Area52Marksman::HoneInDamage});
+    }
+
+    bool Ready(ProcEventInfo& event)
+    {
+        Unit* target = event.GetActionTarget();
+        return target && AscensionFreePick::Applies(GetTarget()->ToPlayer()) &&
+            Area52Marksman::HonesIn(GetStackAmount(), target->IsControlledByPlayer());
+    }
+
+    void HoneIn(AuraEffect const*, ProcEventInfo&)
+    {
+        Unit* hunter = GetTarget();
+        hunter->CastSpell(hunter, Area52Marksman::HoneIn, true);
+        hunter->CastSpell(hunter, Area52Marksman::HoneInDamage, true);
+    }
+
+    void Register() override
+    {
+        DoCheckProc += AuraCheckProcFn(spell_area52_syndicate_capstone::Ready);
+        OnEffectProc += AuraEffectProcFn(spell_area52_syndicate_capstone::HoneIn, EFFECT_2, SPELL_AURA_DUMMY);
+    }
+};
+
+class spell_area52_syndicate_sniper_shot : public SpellScript
+{
+    PrepareSpellScript(spell_area52_syndicate_sniper_shot);
+
+    void SpendHoneIn()
+    {
+        if (Unit* hunter = GetCaster())
+        {
+            hunter->RemoveAurasDueToSpell(Area52Marksman::HoneIn);
+            hunter->RemoveAurasDueToSpell(Area52Marksman::HoneInDamage);
+        }
+    }
+
+    void Register() override
+    {
+        AfterCast += SpellCastFn(spell_area52_syndicate_sniper_shot::SpendHoneIn);
+    }
+};

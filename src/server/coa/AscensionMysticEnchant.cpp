@@ -1391,6 +1391,9 @@ void AddSC_AscensionMysticEnchant()
     RegisterSpellScript(spell_area52_compound_shot);
     RegisterSpellScript(aura_area52_compound_shot_recast);
     RegisterSpellScript(spell_area52_combo_shot_volley);
+    RegisterSpellScript(spell_area52_syndicate_sniper_training);
+    RegisterSpellScript(spell_area52_syndicate_capstone);
+    RegisterSpellScript(spell_area52_syndicate_sniper_shot);
     RegisterSpellScript(aura_area52_dragon_charge);
     RegisterSpellScript(spell_area52_dragon_charge_impact);
     RegisterSpellScript(spell_area52_dragon_roar_stun);
