@@ -6,7 +6,11 @@ namespace Area52Marksman
 {
 constexpr std::uint32_t CompoundPower = 979740;
 constexpr std::uint32_t CompoundFlurry = 984926;
-constexpr std::uint32_t CompoundShot = 984925;
+constexpr std::uint32_t CompoundShot = 826679;
+constexpr std::uint32_t CompoundShotRecast = 826680;
+constexpr std::uint32_t ComboShot = 850515;
+constexpr std::uint32_t ComboShotVolley = 850517;
+constexpr std::int32_t RecastWindowMs = 3000;
 constexpr std::uint32_t Sniper = 81166;
 constexpr std::uint32_t SniperStack = 81167;
 constexpr std::uint32_t SniperStackSeconds = 3;

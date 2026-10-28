@@ -8,9 +8,11 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
 
 HARNESS = r'''#include "Area52MarksmanRules.h"
+#include "AscensionMysticSpellGrants.h"
 #include <cassert>
 #include <initializer_list>
 using namespace Area52Marksman;
+using AscensionMysticEnchant::GrantRankDue;
 
 int main()
 {
@@ -25,6 +27,10 @@ int main()
     }
     assert(!Triggers(CompoundPowerShot(19434)));
     assert(!Triggers(CompoundPowerShot(0)));
+    assert(CompoundShot == 826679 && ComboShot == 850515 && CompoundShotRecast == 826680 && RecastWindowMs == 3000);
+    assert(GrantRankDue(true, false, 20, 1) && GrantRankDue(false, true, 80, 60));
+    assert(GrantRankDue(false, false, 60, 60) && !GrantRankDue(false, false, 70, 60));
+    assert(!GrantRankDue(false, false, 0, 60));
 
     unsigned still = 0;
     unsigned stacks = 0;
@@ -58,13 +64,20 @@ def command(source, exe):
 
 def main():
     grants = (ROOT / 'src/server/coa/AscensionMysticSpellGrants.h').read_text(encoding='utf-8')
-    for grant in ('{978716, 978717}', '{978716, 978718}', '{979740, 984925, 19434}', '{982890, 982891, 8676}'):
+    for grant in ('{978716, 978717}', '{978716, 978718}', '{979740, 826679, 19434}', '{979740, 850515, 19434}',
+                  '{982890, 982891, 8676}'):
         assert grant in grants, grant
     sql = (ROOT / 'data/sql/updates/pending_db_world/rev_20261028_10_compound_power_build.sql').read_text(
         encoding='utf-8')
     for binding in ("(979740, 'spell_area52_compound_power')", "(-5171, 'spell_area52_compound_power_slice_and_dice')",
                     "(81166, 'spell_area52_sniper')"):
         assert binding in sql, binding
+    recast = (ROOT / 'data/sql/updates/pending_db_world/rev_20261028_30_compound_shot_recast.sql').read_text(
+        encoding='utf-8')
+    for row in ('(826679, 826686, 7)', "(-826679, 'spell_area52_compound_shot')",
+                "(826680, 'aura_area52_compound_shot_recast')", "(850517, 'spell_area52_combo_shot_volley')"):
+        assert row in recast, row
+    assert '{979740, 984925}' in grants
     with tempfile.TemporaryDirectory(prefix='coa-area52-marksman-') as directory:
         out = Path(directory)
         cpp, exe = out / 'marksman.cpp', out / 'marksman.exe'

@@ -11,12 +11,29 @@ bool HasAuraScriptNamed(uint32 spell, char const* name)
     return found;
 }
 
+bool HasSpellScriptNamed(uint32 spell, char const* name)
+{
+    std::list<SpellScript*> scripts;
+    sScriptMgr->CreateSpellScripts(spell, scripts);
+    bool found = false;
+    for (auto* script : scripts)
+    {
+        found |= *script->_GetScriptName() == name;
+        delete script;
+    }
+    return found;
+}
+
 bool HasArea52MarksmanHandlers(uint32 spell)
 {
     if (spell == Area52Marksman::CompoundPower)
         return sSpellMgr->GetSpellProcEntry(spell) && sSpellMgr->GetSpellInfo(Area52Marksman::CompoundFlurry) &&
             HasAuraScriptNamed(spell, "spell_area52_compound_power") &&
-            HasAuraScriptNamed(Area52Marksman::SliceAndDice, "spell_area52_compound_power_slice_and_dice");
+            HasAuraScriptNamed(Area52Marksman::SliceAndDice, "spell_area52_compound_power_slice_and_dice") &&
+            sSpellMgr->GetSpellInfo(Area52Marksman::ComboShot) &&
+            HasSpellScriptNamed(Area52Marksman::CompoundShot, "spell_area52_compound_shot") &&
+            HasAuraScriptNamed(Area52Marksman::CompoundShotRecast, "aura_area52_compound_shot_recast") &&
+            HasSpellScriptNamed(Area52Marksman::ComboShotVolley, "spell_area52_combo_shot_volley");
     if (spell == Area52Marksman::Sniper)
         return sSpellMgr->GetSpellInfo(Area52Marksman::SniperStack) && HasAuraScriptNamed(spell, "spell_area52_sniper");
     return false;
@@ -138,4 +155,84 @@ class spell_area52_sniper : public AuraScript
     }
 
     std::uint32_t _still = 0;
+};
+
+class spell_area52_compound_shot : public SpellScript
+{
+    PrepareSpellScript(spell_area52_compound_shot);
+
+    bool Validate(SpellInfo const*) override
+    {
+        return ValidateSpellInfo({Area52Marksman::CompoundShotRecast});
+    }
+
+    void OpenRecastWindow()
+    {
+        Player* player = GetCaster() ? GetCaster()->ToPlayer() : nullptr;
+        if (!player || !AscensionFreePick::Applies(player))
+            return;
+        player->CastSpell(player, Area52Marksman::CompoundShotRecast, true);
+        if (Aura* recast = player->GetAura(Area52Marksman::CompoundShotRecast))
+            recast->SetDuration(Area52Marksman::RecastWindowMs);
+    }
+
+    void Register() override
+    {
+        AfterCast += SpellCastFn(spell_area52_compound_shot::OpenRecastWindow);
+    }
+};
+
+class aura_area52_compound_shot_recast : public AuraScript
+{
+    PrepareAuraScript(aura_area52_compound_shot_recast);
+
+    static void Swap(Unit* target, bool toComboShot)
+    {
+        Player* player = target ? target->ToPlayer() : nullptr;
+        if (!player)
+            return;
+        std::set<uint32> visited;
+        for (uint32 rank = Area52Marksman::CompoundShot; rank && visited.insert(rank).second;
+            rank = sSpellMgr->GetNextSpellInChain(rank))
+            player->SetTemporarySpellReplacement(rank,
+                toComboShot && player->HasActiveSpell(rank) ? Area52Marksman::ComboShot : 0);
+    }
+
+    void Open(AuraEffect const*, AuraEffectHandleModes)
+    {
+        Swap(GetTarget(), true);
+    }
+
+    void Close(AuraEffect const*, AuraEffectHandleModes)
+    {
+        Swap(GetTarget(), false);
+    }
+
+    void Register() override
+    {
+        AfterEffectApply += AuraEffectApplyFn(aura_area52_compound_shot_recast::Open, EFFECT_1,
+            SPELL_AURA_ABILITY_IGNORE_AURASTATE, AURA_EFFECT_HANDLE_REAL);
+        AfterEffectRemove += AuraEffectRemoveFn(aura_area52_compound_shot_recast::Close, EFFECT_1,
+            SPELL_AURA_ABILITY_IGNORE_AURASTATE, AURA_EFFECT_HANDLE_REAL);
+    }
+};
+
+class spell_area52_combo_shot_volley : public SpellScript
+{
+    PrepareSpellScript(spell_area52_combo_shot_volley);
+
+    void KeepFighting(std::list<WorldObject*>& targets)
+    {
+        targets.remove_if([](WorldObject* target)
+        {
+            Unit* unit = target->ToUnit();
+            return !unit || !unit->IsInCombat();
+        });
+    }
+
+    void Register() override
+    {
+        OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_area52_combo_shot_volley::KeepFighting,
+            EFFECT_ALL, TARGET_UNIT_CONE_ENEMY_104);
+    }
 };

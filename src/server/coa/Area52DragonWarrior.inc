@@ -1,16 +1,3 @@
-bool HasSpellScriptNamed(uint32 spell, char const* name)
-{
-    std::list<SpellScript*> scripts;
-    sScriptMgr->CreateSpellScripts(spell, scripts);
-    bool found = false;
-    for (auto* script : scripts)
-    {
-        found |= *script->_GetScriptName() == name;
-        delete script;
-    }
-    return found;
-}
-
 bool HasArea52DragonWarriorHandlers(uint32 spell)
 {
     if (spell == Area52DragonWarrior::DragonWarrior)
