@@ -6,7 +6,7 @@
 -- (AscensionMysticSpellGrants.h). Unstoppable Force is scripted in Area52DragonWarrior.inc.
 DELETE FROM `spell_proc` WHERE `SpellId` IN (81101, 964332, 954252, 954261);
 INSERT INTO `spell_proc` (`SpellId`, `SchoolMask`, `SpellFamilyName`, `SpellFamilyMask0`, `SpellFamilyMask1`, `SpellFamilyMask2`, `ProcFlags`, `SpellTypeMask`, `SpellPhaseMask`, `HitMask`, `AttributesMask`, `DisableEffectsMask`, `ProcsPerMinute`, `Chance`, `Cooldown`, `Charges`) VALUES
-(81101, 0, 4, 2097152, 0, 0, 16, 7, 2, 0, 0, 0, 0, 100, 3000, 0),
+(81101, 0, 4, 2097152, 0, 0, 16, 7, 2, 0, 0, 0, 0, 100, 0, 0),
 (964332, 0, 4, 2097152, 0, 0, 16, 7, 2, 0, 0, 0, 0, 100, 0, 0),
 (954252, 0, 4, 536870912, 1024, 0, 16, 7, 2, 0, 0, 0, 0, 100, 0, 0),
 (954261, 0, 4, 2097152, 0, 0, 16, 7, 2, 0, 0, 0, 0, 100, 0, 1);

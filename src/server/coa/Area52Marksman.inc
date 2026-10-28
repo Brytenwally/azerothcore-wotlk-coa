@@ -161,6 +161,12 @@ class spell_area52_compound_shot : public SpellScript
 {
     PrepareSpellScript(spell_area52_compound_shot);
 
+    bool Load() override
+    {
+        Unit* owner = GetCaster();
+        return AscensionFreePick::Applies(owner ? owner->ToPlayer() : nullptr);
+    }
+
     bool Validate(SpellInfo const*) override
     {
         return ValidateSpellInfo({Area52Marksman::CompoundShotRecast});
@@ -185,6 +191,12 @@ class spell_area52_compound_shot : public SpellScript
 class aura_area52_compound_shot_recast : public AuraScript
 {
     PrepareAuraScript(aura_area52_compound_shot_recast);
+
+    bool Load() override
+    {
+        Unit* owner = GetUnitOwner();
+        return AscensionFreePick::Applies(owner ? owner->ToPlayer() : nullptr);
+    }
 
     static void Swap(Unit* target, bool toComboShot)
     {
@@ -221,6 +233,12 @@ class spell_area52_combo_shot_volley : public SpellScript
 {
     PrepareSpellScript(spell_area52_combo_shot_volley);
 
+    bool Load() override
+    {
+        Unit* owner = GetCaster();
+        return AscensionFreePick::Applies(owner ? owner->ToPlayer() : nullptr);
+    }
+
     void KeepFighting(std::list<WorldObject*>& targets)
     {
         targets.remove_if([](WorldObject* target)
@@ -240,6 +258,12 @@ class spell_area52_combo_shot_volley : public SpellScript
 class spell_area52_syndicate_sniper_training : public AuraScript
 {
     PrepareAuraScript(spell_area52_syndicate_sniper_training);
+
+    bool Load() override
+    {
+        Unit* owner = GetUnitOwner();
+        return AscensionFreePick::Applies(owner ? owner->ToPlayer() : nullptr);
+    }
 
     void Mirror(AuraEffect const*)
     {
@@ -277,6 +301,12 @@ class spell_area52_syndicate_capstone : public AuraScript
 {
     PrepareAuraScript(spell_area52_syndicate_capstone);
 
+    bool Load() override
+    {
+        Unit* owner = GetUnitOwner();
+        return AscensionFreePick::Applies(owner ? owner->ToPlayer() : nullptr);
+    }
+
     bool Validate(SpellInfo const*) override
     {
         return ValidateSpellInfo({Area52Marksman::HoneIn, Area52Marksman::HoneInDamage});
@@ -307,9 +337,25 @@ class spell_area52_syndicate_sniper_shot : public SpellScript
 {
     PrepareSpellScript(spell_area52_syndicate_sniper_shot);
 
+    bool Load() override
+    {
+        Unit* owner = GetCaster();
+        return AscensionFreePick::Applies(owner ? owner->ToPlayer() : nullptr);
+    }
+
+    void CaptureHoneIn()
+    {
+        Unit* hunter = GetCaster();
+        if (hunter && AscensionFreePick::Applies(hunter->ToPlayer()))
+            if (AuraEffect const* effect = hunter->GetAuraEffect(Area52Marksman::HoneInDamage, EFFECT_0))
+                HoneInBonus = effect->GetAmount();
+    }
+
+    int32 HoneInBonus = 0;
+
     void SpendHoneIn()
     {
-        if (Unit* hunter = GetCaster())
+        if (Unit* hunter = GetCaster(); hunter && AscensionFreePick::Applies(hunter->ToPlayer()))
         {
             hunter->RemoveAurasDueToSpell(Area52Marksman::HoneIn);
             hunter->RemoveAurasDueToSpell(Area52Marksman::HoneInDamage);
@@ -321,6 +367,7 @@ class spell_area52_syndicate_sniper_shot : public SpellScript
         Unit* hunter = GetCaster();
         if (!hunter || !AscensionFreePick::Applies(hunter->ToPlayer()))
             return;
+        SetHitDamage(Area52Marksman::WithSniperTraining(GetHitDamage(), HoneInBonus));
         for (uint32 rank = 0; rank < 3; ++rank)
             if (AuraEffect const* training = hunter->GetAuraEffect(Area52Marksman::SyndicateSniperTraining + rank,
                 EFFECT_0))
@@ -332,6 +379,7 @@ class spell_area52_syndicate_sniper_shot : public SpellScript
 
     void Register() override
     {
+        BeforeCast += SpellCastFn(spell_area52_syndicate_sniper_shot::CaptureHoneIn);
         AfterCast += SpellCastFn(spell_area52_syndicate_sniper_shot::SpendHoneIn);
         OnHit += SpellHitFn(spell_area52_syndicate_sniper_shot::AddSniperTraining);
     }

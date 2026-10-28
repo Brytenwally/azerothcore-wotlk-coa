@@ -28,7 +28,7 @@ int main()
     assert(!Triggers(CompoundPowerShot(19434)));
     assert(!Triggers(CompoundPowerShot(0)));
     assert(CompoundShot == 826679 && ComboShot == 850515 && CompoundShotRecast == 826680 && RecastWindowMs == 3000);
-    assert(GrantRankDue(true, false, 20, 1) && GrantRankDue(false, true, 80, 60));
+    assert(GrantRankDue(true, false, 20, 1) && !GrantRankDue(false, true, 80, 60));
     assert(GrantRankDue(false, false, 60, 60) && !GrantRankDue(false, false, 70, 60));
     assert(!GrantRankDue(false, false, 0, 60));
     assert(SyndicateTrainingFor(53302) == 983867 && SyndicateTrainingFor(53304) == SyndicateCapstone);

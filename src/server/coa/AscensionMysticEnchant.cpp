@@ -51,18 +51,19 @@ extern pEffect SpellEffects[TOTAL_SPELL_EFFECTS];
 #include "Creature.h"
 #include "Area52FollowupProcs.inc"
 #include "Area52LegendaryRules.h"
+#include "GameTime.h"
+#include "CellImpl.h"
+#include "GridNotifiersImpl.h"
 #include "Area52BattlemageRules.h"
 #include "Area52LegendaryProcs.inc"
 #include "Area52Battlemage.inc"
 #include "Area52MarksmanRules.h"
 #include "Area52Marksman.inc"
+#include "Area52DragonWarriorRules.h"
+#include "Area52DragonWarrior.inc"
 #include "Area52LegendaryBatchRules.h"
 #include "Area52LegendaryBatch.inc"
 #include "Area52Felfire.inc"
-#include "CellImpl.h"
-#include "GridNotifiersImpl.h"
-#include "Area52DragonWarriorRules.h"
-#include "Area52DragonWarrior.inc"
 #include "Area52CorruptedBear.inc"
 #include "Area52CastMovement.inc"
 #include "Area52Dependencies.inc"
@@ -310,8 +311,11 @@ void Synchronize(Player* player)
             rank = sSpellMgr->GetNextSpellInChain(rank))
         {
             SpellInfo const* info = sSpellMgr->GetSpellInfo(rank);
+            bool const rankDue = grant.Enchant == 979740 && grant.Spell == 826679 ?
+                info && GrantRankDue(rank == grant.Spell, player->HasSpell(rank), info->SpellLevel, player->GetLevel()) :
+                rank == grant.Spell || player->HasSpell(rank);
             SetGrantedSpell(player, grant.Enchant, rank, enabled && info &&
-                GrantRankDue(rank == grant.Spell, player->HasSpell(rank), info->SpellLevel, player->GetLevel()));
+                rankDue);
         }
         if (grant.Enchant == 81248)
             player->SetTemporarySpellReplacement(33831, enabled ? 81249 : 0);
@@ -1398,6 +1402,8 @@ void AddSC_AscensionMysticEnchant()
     RegisterSpellScript(spell_area52_dragon_charge_impact);
     RegisterSpellScript(spell_area52_dragon_roar_stun);
     new area52_unstoppable_force();
+    new area52_pr37_metadata();
+    RegisterSpellScript(spell_area52_skull_crusher_cooldown);
     RegisterSpellScript(spell_area52_legendary_proc);
     new area52_legendary_metadata();
     new area52_cast_movement_metadata();

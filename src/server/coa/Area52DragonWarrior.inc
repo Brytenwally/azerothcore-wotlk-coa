@@ -4,7 +4,7 @@ bool HasArea52DragonWarriorHandlers(uint32 spell)
         return sSpellMgr->GetSpellProcEntry(spell) && sSpellMgr->GetSpellProcEntry(Area52DragonWarrior::DraconicSlam) &&
             sSpellMgr->GetSpellInfo(Area52DragonWarrior::DragonRoar) &&
             sSpellMgr->GetSpellInfo(Area52DragonWarrior::DragonCharge) &&
-            HasSpellScriptNamed(Area52DragonWarrior::DragonCharge, "aura_area52_dragon_charge") &&
+            HasAuraScriptNamed(Area52DragonWarrior::DragonCharge, "aura_area52_dragon_charge") &&
             HasSpellScriptNamed(Area52DragonWarrior::DragonChargeImpact, "spell_area52_dragon_charge_impact") &&
             HasSpellScriptNamed(Area52DragonWarrior::DragonRoarDummy, "spell_area52_dragon_roar_stun");
     return spell == Area52DragonWarrior::UnstoppableForce;
@@ -13,6 +13,12 @@ bool HasArea52DragonWarriorHandlers(uint32 spell)
 class aura_area52_dragon_charge : public AuraScript
 {
     PrepareAuraScript(aura_area52_dragon_charge);
+
+    bool Load() override
+    {
+        Unit* owner = GetUnitOwner();
+        return AscensionFreePick::Applies(owner ? owner->ToPlayer() : nullptr);
+    }
 
     bool Validate(SpellInfo const*) override
     {
@@ -78,6 +84,12 @@ class spell_area52_dragon_charge_impact : public SpellScript
 {
     PrepareSpellScript(spell_area52_dragon_charge_impact);
 
+    bool Load() override
+    {
+        Unit* owner = GetCaster();
+        return AscensionFreePick::Applies(owner ? owner->ToPlayer() : nullptr);
+    }
+
     void Damage(SpellEffIndex)
     {
         Unit* target = GetHitUnit();
@@ -95,6 +107,12 @@ class spell_area52_dragon_charge_impact : public SpellScript
 class spell_area52_dragon_roar_stun : public SpellScript
 {
     PrepareSpellScript(spell_area52_dragon_roar_stun);
+
+    bool Load() override
+    {
+        Unit* owner = GetCaster();
+        return AscensionFreePick::Applies(owner ? owner->ToPlayer() : nullptr);
+    }
 
     void Stun(SpellEffIndex effIndex)
     {
@@ -133,5 +151,55 @@ public:
                 target->HasAuraType(SPELL_AURA_MOD_STUN),
                 target->HasAuraWithMechanic(immobilized) || target->HasAuraType(SPELL_AURA_MOD_ROOT)))
             chance = 100.0f;
+    }
+};
+
+class spell_area52_skull_crusher_cooldown : public SpellScript
+{
+    PrepareSpellScript(spell_area52_skull_crusher_cooldown);
+
+    bool Load() override
+    {
+        Unit* owner = GetCaster();
+        return AscensionFreePick::Applies(owner ? owner->ToPlayer() : nullptr);
+    }
+
+    void LimitCooldown(SpellEffIndex index)
+    {
+        Player* player = GetCaster() ? GetCaster()->ToPlayer() : nullptr;
+        if (!player || !AscensionFreePick::Applies(player))
+            return;
+        if (player->HasSpellCooldown(81101))
+            PreventHitDefaultEffect(index);
+        else
+            player->AddSpellCooldown(81101, 0, 3000);
+    }
+
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(spell_area52_skull_crusher_cooldown::LimitCooldown,
+            EFFECT_1, SPELL_EFFECT_ASCENSION_MODIFY_COOLDOWN);
+    }
+};
+
+class area52_pr37_metadata : public GlobalScript
+{
+public:
+    area52_pr37_metadata() : GlobalScript("area52_pr37_metadata") { }
+
+    void OnLoadSpellCustomAttr(SpellInfo* info) override
+    {
+        if (!sConfigMgr->GetOption<bool>("CoA.Enable", true) ||
+            sConfigMgr->GetOption<std::string>("CoA.ClassModel", "coa") != "hero" ||
+            sConfigMgr->GetOption<std::string>("CoA.RealmType", "live") != "live" ||
+            (sConfigMgr->GetOption<uint32>("CoA.GameModeMask", 0) & ~uint32(0x400)))
+            return;
+        if (info->Id == 983869)
+        {
+            info->Effects[EFFECT_2].Effect = SPELL_EFFECT_APPLY_AURA;
+            info->Effects[EFFECT_2].TargetA = SpellImplicitTargetInfo(TARGET_UNIT_CASTER);
+        }
+        if (info->Id == 954261)
+            info->Effects[EFFECT_1].Effect = SPELL_EFFECT_APPLY_AURA;
     }
 };

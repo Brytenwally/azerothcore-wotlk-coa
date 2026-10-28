@@ -35,7 +35,7 @@ inline constexpr std::array<SpellGrant, 1> RetiredSpellGrants = {{
 
 inline bool GrantRankDue(bool firstRank, bool known, std::uint32_t spellLevel, std::uint32_t level)
 {
-    return firstRank || known || (spellLevel && spellLevel <= level);
+    return firstRank || (spellLevel ? spellLevel <= level : known);
 }
 }
 #endif
