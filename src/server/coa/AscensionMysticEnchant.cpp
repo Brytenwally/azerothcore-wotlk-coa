@@ -56,6 +56,8 @@ extern pEffect SpellEffects[TOTAL_SPELL_EFFECTS];
 #include "Area52Battlemage.inc"
 #include "Area52MarksmanRules.h"
 #include "Area52Marksman.inc"
+#include "Area52DragonWarriorRules.h"
+#include "Area52DragonWarrior.inc"
 #include "Area52LegendaryBatchRules.h"
 #include "Area52LegendaryBatch.inc"
 #include "Area52Felfire.inc"
@@ -310,6 +312,8 @@ void Synchronize(Player* player)
                 enabled && (rank == grant.Spell || player->HasSpell(rank)));
         if (grant.Enchant == 81248)
             player->SetTemporarySpellReplacement(33831, enabled ? 81249 : 0);
+        if (grant.Replaces)
+            player->SetTemporarySpellReplacement(grant.Replaces, enabled ? grant.Spell : 0);
     }
     RefreshEpicReplacements(player);
 }
@@ -767,7 +771,8 @@ void LoadConnections()
             continue;
         }
         if (HasEldritchEquipmentHandlers(spell) || HasArea52EpicEquipmentHandlers(spell) ||
-            HasArea52HopliteHandlers(spell) || HasArea52BattlemageHandlers(spell) || HasArea52MarksmanHandlers(spell))
+            HasArea52HopliteHandlers(spell) || HasArea52BattlemageHandlers(spell) || HasArea52MarksmanHandlers(spell) ||
+            HasArea52DragonWarriorHandlers(spell))
         {
             Connected.emplace(spell, 1);
             continue;
@@ -1378,6 +1383,9 @@ void AddSC_AscensionMysticEnchant()
     RegisterSpellScript(spell_area52_compound_power);
     RegisterSpellScript(spell_area52_compound_power_slice_and_dice);
     RegisterSpellScript(spell_area52_sniper);
+    RegisterSpellScript(spell_area52_dragon_fury);
+    RegisterSpellScript(spell_area52_dragon_roar_stun);
+    new area52_unstoppable_force();
     RegisterSpellScript(spell_area52_legendary_proc);
     new area52_legendary_metadata();
     new area52_cast_movement_metadata();
