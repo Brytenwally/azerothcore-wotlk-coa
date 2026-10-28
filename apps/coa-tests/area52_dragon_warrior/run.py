@@ -40,6 +40,8 @@ def main():
     grants = (ROOT / 'src/server/coa/AscensionMysticSpellGrants.h').read_text(encoding='utf-8')
     assert '{954252, 954250, 12292, 12292}' in grants
     assert '{954252, 954256, 20252, 20252}' in grants
+    effects = (ROOT / 'src/server/game/Spells/SpellEffects.cpp').read_text(encoding='utf-8')
+    assert 'player->GetTemporarySpellReplacement(effect.MiscValue)' in effects
     sql = (ROOT / 'data/sql/updates/pending_db_world/rev_20261028_20_dragon_warrior_build.sql').read_text(
         encoding='utf-8')
     for row in ("(954251, 'spell_area52_dragon_roar_stun')",
