@@ -755,7 +755,7 @@ void LoadConnections()
                 SpellEffects[effect.Effect] == &Spell::EffectUnused ||
                 effect.Effect == SPELL_EFFECT_DUMMY || effect.Effect == SPELL_EFFECT_SCRIPT_EFFECT)
                 node.Supported = false;
-            if (effect.ApplyAuraName)
+            if (effect.IsAura() && effect.ApplyAuraName)
             {
                 auto const aura = effect.ApplyAuraName;
                 if (aura >= TOTAL_AURAS || aura == SPELL_AURA_DUMMY || aura == SPELL_AURA_PERIODIC_DUMMY ||
@@ -766,7 +766,7 @@ void LoadConnections()
                 if (aura == SPELL_AURA_PROC_TRIGGER_SPELL && !sSpellMgr->GetSpellProcEntry(spell))
                     node.Supported = false;
             }
-            if ((effect.ApplyAuraName == SPELL_AURA_PROC_TRIGGER_SPELL ||
+            if (effect.IsAura() && (effect.ApplyAuraName == SPELL_AURA_PROC_TRIGGER_SPELL ||
                 effect.ApplyAuraName == SPELL_AURA_PERIODIC_TRIGGER_SPELL) && !effect.TriggerSpell)
                 node.Supported = false;
             if (effect.TriggerSpell)
