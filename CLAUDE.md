@@ -22,6 +22,8 @@ the connected ones too and report any part that does nothing.
   fixes are `<legendaryenchantname>-build: <topic>`. Put each change's SQL in a new
   `data/sql/updates/pending_db_world/` file rather than editing one already pushed (the owner may have applied it),
   and hand the owner a copy to apply at once.
+- An enchant connected through a build's `HasArea52<Build>Handlers` keeps its DBC `StackAmount` as the copy limit,
+  as native connections do; the older equipment, Hoplite and Battlemage handlers still allow one copy.
 - Code layout per build: `src/server/coa/Area52<Build>Rules.h` (ids and pure functions) and
   `src/server/coa/Area52<Build>.inc`, included by `AscensionMysticEnchant.cpp` (after `GridNotifiersImpl.h` when it
   searches the grid). Add `HasArea52<Build>Handlers(spell)` to the handler list in `LoadConnections` (checked before
