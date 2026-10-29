@@ -72,6 +72,8 @@ extern pEffect SpellEffects[TOTAL_SPELL_EFFECTS];
 #include "Area52TreeOfWrath.inc"
 #include "Area52MasterOfShadowsRules.h"
 #include "Area52MasterOfShadows.inc"
+#include "Area52EvokerRules.h"
+#include "Area52Evoker.inc"
 #include "Area52CorruptedBear.inc"
 #include "Area52CastMovement.inc"
 #include "Area52Dependencies.inc"
@@ -823,7 +825,7 @@ void LoadConnections()
             HasArea52HopliteHandlers(spell) || HasArea52BattlemageHandlers(spell) || HasArea52MarksmanHandlers(spell) ||
             HasArea52DragonWarriorHandlers(spell) || HasArea52GutripperHandlers(spell) ||
             HasArea52KnightOfTheEclipseHandlers(spell) || HasArea52TreeOfWrathHandlers(spell) ||
-            HasArea52MasterOfShadowsHandlers(spell))
+            HasArea52MasterOfShadowsHandlers(spell) || HasArea52EvokerHandlers(spell))
         {
             Connected.emplace(spell, 1);
             continue;
@@ -1474,6 +1476,12 @@ void AddSC_AscensionMysticEnchant()
     RegisterSpellScript(spell_area52_pestilence);
     RegisterSpellScript(spell_area52_find_weakness);
     new area52_master_of_shadows_casts();
+    RegisterSpellScript(spell_area52_evoker);
+    RegisterSpellScript(spell_area52_arcane_evoked);
+    RegisterSpellScript(spell_area52_element_bound_missiles);
+    new area52_evoker_damage();
+    new area52_evoker_casts();
+    new area52_evoked_triggers();
     RegisterSpellScript(spell_area52_dragon_charge_impact);
     RegisterSpellScript(spell_area52_dragon_roar_stun);
     new area52_unstoppable_force();

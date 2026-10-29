@@ -120,11 +120,18 @@ the connected ones too and report any part that does nothing.
   under Nature's Swiftness.
 - Ascension effect 169 (spread aura) has no handler (78 spells use it); Pestilence copies Corruption in its own
   script, as the owner chose.
+- A buff whose DBC `ProcCharges` the owner does not want (Evoker's stacks) gets `Aura::SetCharges(0)` after each
+  cast; a `spell_proc` row cannot clear it, because `Charges` 0 there falls back to the DBC value.
+- To give one cast a bonus that lands at its hit (a missile's crit damage, a Fireball that spent Brain Freeze),
+  remember the `Spell*` in `ALLSPELLHOOK_ON_BEFORE_EFFECTS` and compare it with `Player::m_spellModTakingSpell`,
+  which is the hitting spell during delayed hits too. Clear the claim when a new cast reuses the pointer.
+- Crit damage bonuses that depend on the target (Shatter: 25%, 10% versus players) go through
+  `GetArea52CritDamageBonusPct`, called from `Unit::SpellCriticalDamageBonus` on the bonus part.
 
 ## Builds done (2026-10-28)
 
 `compoundpower-build` (Marksman), `dragonwarrior-build` (Dragon Warrior), `bloodandguts-build` (Gutripper),
-`knightoftheeclipse-build` (Knight of the Eclipse), `treeofwrath-build` (Tree of Wrath) and
-`masterofshadows-build` (Master of Shadows), with their follow-ups. Harnesses: `area52_marksman`,
-`area52_dragon_warrior`, `area52_gutripper`, `area52_knight_of_the_eclipse`, `area52_tree_of_wrath`,
-`area52_master_of_shadows`.
+`knightoftheeclipse-build` (Knight of the Eclipse), `treeofwrath-build` (Tree of Wrath),
+`masterofshadows-build` (Master of Shadows) and `evoker-build` (Evoker), with their follow-ups. Harnesses:
+`area52_marksman`, `area52_dragon_warrior`, `area52_gutripper`, `area52_knight_of_the_eclipse`,
+`area52_tree_of_wrath`, `area52_master_of_shadows`, `area52_evoker`.
