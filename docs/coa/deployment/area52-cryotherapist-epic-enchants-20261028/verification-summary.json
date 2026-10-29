@@ -1,0 +1,20 @@
+{
+  "package": "area52-cryotherapist-epic-enchants-20261028",
+  "status": "prepared; stable CheckOnly pending",
+  "entries": [
+    979778,
+    997220,
+    414032
+  ],
+  "binary_sha256": "1f2d797600442d0dc924aedf8c9e43d2c1aeb595824fab11dded82f40361d137",
+  "baseline_binary_sha256": "e100f71129b87137531643db01eccbedd96d9cc0c791aaaf640dfd9d437da2e2",
+  "checks": {
+    "build-fixed": "ba77f7802b2411dd21cd26688ef299114eec18a17161d41dc20239fb469cd24b",
+    "focused-fixed": "2b16427b9f1d3770f87334ee090234de52c5b5a9ee9c4a36416c83b40bdbd106",
+    "focused-hooks": "889fbf72897651d332847dc457eeab673ff4fdba12b5247b5eba81afaca8efff",
+    "source-checks": "d8ed679891d8d263bb6a6935caad2bcf8be62d11ed001add3169c2c0e28e047b"
+  },
+  "hook_qualification_sha256": "70679c1a7b7b483cf9b8b7beac21a673c76c1bc525e9ef1527e5f08b934c76f4",
+  "candidate_evidence_sha256": "3c8ccb61b82a7f056a36b9c29836e15c41bee7037b1ea719b1381413f58935b9",
+  "limits": "Offline engineering verification; no gameplay certification. Source publication is a scoped frozen patch against the active server baseline."
+}
