@@ -133,9 +133,9 @@ class spell_area52_dragon_roar_stun : public SpellScript
 class area52_unstoppable_force : public AllSpellScript
 {
 public:
-    area52_unstoppable_force() : AllSpellScript("area52_unstoppable_force", {ALLSPELLHOOK_ON_CRIT_CHANCE}) { }
+    area52_unstoppable_force() : AllSpellScript("area52_unstoppable_force", {ALLSPELLHOOK_ON_CALCULATED_TARGET}) { }
 
-    void OnSpellCritChance(Spell* spell, Unit* target, float& chance) override
+    void OnSpellCalculatedTarget(Spell* spell, Unit* target, TargetInfo& hit) override
     {
         Player* player = spell->GetCaster() ? spell->GetCaster()->ToPlayer() : nullptr;
         SpellInfo const* info = spell->GetSpellInfo();
@@ -153,7 +153,30 @@ public:
                 target->HasAuraType(SPELL_AURA_MOD_STUN),
                 target->HasAuraWithMechanic(immobilized) || target->HasAuraType(SPELL_AURA_MOD_ROOT),
                 Area52DragonWarrior::IsThunderSlam(info->Id)))
-            chance = 100.0f;
+            hit.crit = true;
+    }
+};
+
+class spell_area52_intensify_rage : public AuraScript
+{
+    PrepareAuraScript(spell_area52_intensify_rage);
+
+    bool Load() override
+    {
+        return AscensionFreePick::Applies(GetUnitOwner() ? GetUnitOwner()->ToPlayer() : nullptr);
+    }
+
+    void CoolDragonRoar(AuraEffect const*, SpellModifier*& mod)
+    {
+        if (mod)
+            mod->mask = GetSpellInfo()->Effects[EFFECT_0].SpellClassMask |
+                flag96(0, 0, Area52DragonWarrior::DragonRoarFamilyMask2);
+    }
+
+    void Register() override
+    {
+        DoEffectCalcSpellMod += AuraEffectCalcSpellModFn(spell_area52_intensify_rage::CoolDragonRoar, EFFECT_0,
+            SPELL_AURA_ADD_PCT_MODIFIER);
     }
 };
 

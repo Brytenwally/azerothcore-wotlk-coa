@@ -1479,6 +1479,7 @@ void AddSC_AscensionMysticEnchant()
     new area52_unstoppable_force();
     new area52_pr37_metadata();
     RegisterSpellScript(spell_area52_skull_crusher_cooldown);
+    RegisterSpellScript(spell_area52_intensify_rage);
     RegisterSpellScript(spell_area52_legendary_proc);
     new area52_legendary_metadata();
     new area52_cast_movement_metadata();

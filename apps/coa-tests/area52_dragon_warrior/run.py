@@ -42,6 +42,15 @@ def main():
     assert '{954252, 954256, 20252, 20252}' in grants
     effects = (ROOT / 'src/server/game/Spells/SpellEffects.cpp').read_text(encoding='utf-8')
     assert 'player->GetTemporarySpellReplacement(effect.MiscValue)' in effects
+    assert 'for (uint32 rank = sSpellMgr->GetFirstSpellInChain(effect.MiscValue); rank;' in effects
+    rules = (ROOT / 'src/server/coa/Area52DragonWarrior.inc').read_text(encoding='utf-8')
+    assert '{ALLSPELLHOOK_ON_CALCULATED_TARGET}' in rules and 'hit.crit = true;' in rules
+    assert 'flag96(0, 0, Area52DragonWarrior::DragonRoarFamilyMask2)' in rules
+    rage = (ROOT / 'data/sql/updates/pending_db_world/rev_20261029_30_dragon_warrior_intensify_rage.sql').read_text(
+        encoding='utf-8')
+    for row in ("(946908, 'spell_area52_intensify_rage')", "(46908, 'spell_area52_intensify_rage')",
+                "(56924, 'spell_area52_intensify_rage')"):
+        assert row in rage, row
     sql = (ROOT / 'data/sql/updates/pending_db_world/rev_20261028_20_dragon_warrior_build.sql').read_text(
         encoding='utf-8')
     for row in ("(954251, 'spell_area52_dragon_roar_stun')",
