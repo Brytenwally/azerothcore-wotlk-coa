@@ -10,6 +10,8 @@
 namespace
 {
 constexpr uint32 TREE_OF_LIFE = 33891;
+constexpr uint32 TREE_OF_WRATH = 86435;
+constexpr uint32 SHAMAN_LIGHTNING_BOLT_AND_CHAIN = 0x3;
 constexpr uint32 DRUID_THORNS = 0x100;
 constexpr uint32 DRUID_NATURES_GRASP = 0x100000;
 constexpr uint32 DRUID_INNERVATE = 0x1000;
@@ -30,10 +32,24 @@ bool IsNamedTreeSpell(SpellInfo const* spell)
     return (flags[0] & (DRUID_THORNS | DRUID_NATURES_GRASP)) || (flags[1] & (DRUID_INNERVATE | DRUID_BARKSKIN));
 }
 
-bool AllowedInTreeOfLife(SpellInfo const* spell)
+bool IsTreeOfWrathLightning(SpellInfo const* spell)
 {
-    return spell->Id == TREE_OF_LIFE || IsHealingSpell(spell) || IsNamedTreeSpell(spell) ||
-        (spell->IsPositive() && spell->CheckShapeshift(FORM_TREE) == SPELL_CAST_OK);
+    return spell->SpellFamilyName == SPELLFAMILY_SHAMAN &&
+        (spell->SpellFamilyFlags[0] & SHAMAN_LIGHTNING_BOLT_AND_CHAIN);
+}
+
+bool AllowedInTreeForm(SpellInfo const* spell, ShapeshiftForm form)
+{
+    return spell->Id == TREE_OF_LIFE || spell->Id == TREE_OF_WRATH || IsHealingSpell(spell) ||
+        IsNamedTreeSpell(spell) || (form == FORM_TREE_OF_WRATH && IsTreeOfWrathLightning(spell)) ||
+        (spell->IsPositive() && spell->CheckShapeshift(form) == SPELL_CAST_OK);
+}
+
+bool InTreeForm(Player const* player)
+{
+    ShapeshiftForm const form = player->GetShapeshiftForm();
+    return (form == FORM_TREE && player->HasAura(TREE_OF_LIFE)) ||
+        (form == FORM_TREE_OF_WRATH && player->HasAura(TREE_OF_WRATH));
 }
 
 class aura_ascension_tree_of_life : public AuraScript
@@ -59,10 +75,9 @@ public:
     void OnSpellCheckCast(Spell* spell, bool strict, SpellCastResult& result) override
     {
         Player* player = spell->GetCaster()->ToPlayer();
-        if (!strict || result != SPELL_CAST_OK || !player || spell->IsTriggered() ||
-            player->GetShapeshiftForm() != FORM_TREE || !player->HasAura(TREE_OF_LIFE))
+        if (!strict || result != SPELL_CAST_OK || !player || spell->IsTriggered() || !InTreeForm(player))
             return;
-        if (!AllowedInTreeOfLife(spell->GetSpellInfo()))
+        if (!AllowedInTreeForm(spell->GetSpellInfo(), player->GetShapeshiftForm()))
             player->RemoveAurasByType(SPELL_AURA_MOD_SHAPESHIFT);
     }
 };

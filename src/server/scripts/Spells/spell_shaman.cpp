@@ -65,6 +65,7 @@ enum ShamanSpells
     SPELL_SHAMAN_TOTEM_EARTHEN_POWER            = 59566,
     SPELL_SHAMAN_TOTEM_HEALING_STREAM_HEAL      = 52042,
     SPELL_SHAMAN_BLESSING_OF_THE_ETERNALS_R1    = 51554,
+    SPELL_SHAMAN_BLESSING_OF_THE_ETERNALS_ME    = 951554,
     SPELL_SHAMAN_STORMSTRIKE                    = 17364,
     SPELL_SHAMAN_LAVA_LASH                      = 60103,
     SPELL_SHAMAN_LIGHTNING_BOLT_OVERLOAD        = 45284,
@@ -743,6 +744,10 @@ class spell_sha_earthliving_weapon : public AuraScript
                 chance += aurEff->GetAmount();
             }
         }
+
+        if (AuraEffect const* aurEff = caster->GetAuraEffect(SPELL_SHAMAN_BLESSING_OF_THE_ETERNALS_ME, EFFECT_1))
+            if (eventInfo.GetProcTarget()->HasAuraState(AURA_STATE_HEALTHLESS_35_PERCENT))
+                chance += aurEff->GetAmount();
 
         return roll_chance_i(chance);
     }

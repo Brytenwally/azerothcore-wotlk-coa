@@ -1712,6 +1712,7 @@ void AuraEffect::HandleShapeshiftBoosts(Unit* target, bool apply) const
                     break;
                 // Master Shapeshifter - Tree of Life
                 case FORM_TREE:
+                case FORM_TREE_OF_WRATH:
                     if (AuraEffect const* aurEff = target->GetDummyAuraEffect(SPELLFAMILY_GENERIC, 2851, 0))
                     {
                         int32 bp = aurEff->GetAmount();
@@ -2175,6 +2176,7 @@ void AuraEffect::HandleAuraModShapeshift(AuraApplication const* aurApp, uint8 mo
         case FORM_STEALTH:                                  // 0x1E
         case FORM_MOONKIN:                                  // 0x1F
         case FORM_SPIRITOFREDEMPTION:                       // 0x20
+        case FORM_TREE_OF_WRATH:                            // 0x30
             break;
         default:
             LOG_ERROR("spells.aura.effect", "Auras: Unknown Shapeshift Type: {}", GetMiscValue());
@@ -2189,6 +2191,7 @@ void AuraEffect::HandleAuraModShapeshift(AuraApplication const* aurApp, uint8 mo
         {
             case FORM_CAT:
             case FORM_TREE:
+            case FORM_TREE_OF_WRATH:
             case FORM_TRAVEL:
             case FORM_AQUA:
             case FORM_BEAR:

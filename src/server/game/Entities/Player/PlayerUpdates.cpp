@@ -1090,7 +1090,7 @@ void Player::UpdateWeaponSkill(Unit* victim, WeaponAttackType attType, Item* ite
     if (IsInFeralForm())
         return; // always maximized SKILL_FERAL_COMBAT in fact
 
-    if (GetShapeshiftForm() == FORM_TREE)
+    if (GetShapeshiftForm() == FORM_TREE || GetShapeshiftForm() == FORM_TREE_OF_WRATH)
         return; // use weapon but not skill up
 
     if (victim->IsCreature() && victim->ToCreature()->HasFlagsExtra(CREATURE_FLAG_EXTRA_NO_SKILL_GAINS))

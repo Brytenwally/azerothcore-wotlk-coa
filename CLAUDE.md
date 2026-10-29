@@ -52,6 +52,11 @@ the connected ones too and report any part that does nothing.
   swap before unlearning the granted spell and sets it after learning, so neither entry goes missing or doubles.
 - `SetTemporarySpellReplacement` needs both spells known, so a temporary swap must grant the replacement too
   (Combo Shot 850515 for Compound Shot's recast window 826680).
+- **Modifiers follow the replacement** (owner's rule): unless the owner says otherwise, every enchant or talent that
+  modifies a spell also modifies the spell that replaces it (Transcendental Embrace buffs Chain Heal, so it buffs
+  Living Lightning too). Replacements often share the original's family flags, so masks carry over by themselves;
+  check them, and extend scripts keyed to the original (`spell_sha_chain_heal` on Living Lightning) or mask-less
+  bonuses (the extra Chain Heal jump) to the replacement.
 
 ## Procs on this core
 
@@ -91,9 +96,20 @@ the connected ones too and report any part that does nothing.
   spell runs before `ALLSPELLHOOK_ON_CAST`, so never read them there (Deadly Combo always saw 0).
 - "Next X" buffs without charges must be removed by a script on X (Execute spends Deadly Combo, Judge, Jury,
   Executioner and Weakness).
+- Ascension forms beyond the core's `ShapeshiftForm` enum (Tree of Wrath is form 48) need an enum value and the
+  matching cases in `HandleAuraModShapeshift` and the form switches; the owner's client `SpellShapeshiftForm.dbc`
+  gives their flags (form 48 copies Tree of Life's). `AscensionTreeOfLife.cpp` holds the tree forms' cast rule.
+- Cooldown spellmods (op 11) apply only to spells that already have a cooldown, so a "+X s cooldown" on a spell
+  without one (Lightning Bolt in Tree of Wrath) needs `AddSpellCooldown` in a cast script. Hidden helpers often carry
+  dead values: an amount of 0 (Tree of Wrath - Hit Chance) or an empty mask; take the tooltip's number instead.
+- Effect 165 names one spell id, usually rank 1, while the cooldown sits on the rank cast; cut a ranked spell's
+  cooldown over its whole chain in the script (Living Lightning).
+- Many hidden helpers have ProcFlags 0 and no `spell_proc` row, so they never fire: give them a row or a script
+  (Tree of Wrath's Lightning Rod aura 86436, Nature's Flow, Charged Tides).
 
 ## Builds done (2026-10-28)
 
-`compoundpower-build` (Marksman), `dragonwarrior-build` (Dragon Warrior), `bloodandguts-build` (Gutripper) and
-`knightoftheeclipse-build` (Knight of the Eclipse), with their follow-ups. Harnesses: `area52_marksman`,
-`area52_dragon_warrior`, `area52_gutripper`, `area52_knight_of_the_eclipse`.
+`compoundpower-build` (Marksman), `dragonwarrior-build` (Dragon Warrior), `bloodandguts-build` (Gutripper),
+`knightoftheeclipse-build` (Knight of the Eclipse) and `treeofwrath-build` (Tree of Wrath, 2026-10-29), with their
+follow-ups. Harnesses: `area52_marksman`, `area52_dragon_warrior`, `area52_gutripper`,
+`area52_knight_of_the_eclipse`, `area52_tree_of_wrath`.
