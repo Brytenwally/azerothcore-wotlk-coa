@@ -1,0 +1,250 @@
+--- a/data/sql/updates/pending_db_characters/wizard_frostbolt_aura_source.sql
++++ b/data/sql/updates/pending_db_characters/wizard_frostbolt_aura_source.sql
+@@ -0,0 +1,2 @@
++ALTER TABLE `character_aura`
++    ADD COLUMN `sourceAuraSpell` INT UNSIGNED NOT NULL DEFAULT 0;
+--- a/src/server/coa/Area52WizardFrostbolt.inc
++++ b/src/server/coa/Area52WizardFrostbolt.inc
+@@ -0,0 +1,83 @@
++/* Copyright (C) 2016+ AzerothCore, GNU AGPL v3. */
++void ConfigureWizardFrostbolt(SpellInfo* info)
++{
++    if (info->Id == Area52WizardFrostbolt::Power || info->Id == Area52WizardFrostbolt::Cooldown)
++    {
++        info->AttributesEx4 |= SPELL_ATTR4_AURA_EXPIRES_OFFLINE;
++        if (info->Id == Area52WizardFrostbolt::Cooldown)
++            info->AttributesCu |= SPELL_ATTR0_CU_FORCE_AURA_SAVING;
++    }
++    if (info->Id != Area52WizardFrostbolt::Enchant)
++        return;
++    for (auto& effect : info->Effects)
++        if (effect.Effect == SPELL_EFFECT_APPLY_AURA)
++        {
++            effect.ApplyAuraName = SPELL_AURA_DUMMY;
++            effect.SpellClassMask = flag96(0, 0, 0);
++        }
++}
++
++void RefreshWizardFrostbolt(Player* player)
++{
++    using namespace Area52WizardFrostbolt;
++    Aura* buff = player->GetAura(Power, player->GetGUID());
++    if (!buff)
++        return;
++    auto const* source = buff->GetTriggeredByAuraSpellInfo();
++    if (!source || source->Id != Enchant)
++        return;
++    Aura* enchant = player->GetAura(Enchant, player->GetGUID());
++    if (!Applies(player) || !AscensionMysticEnchant::GrantsActive(player, Enchant) || !enchant)
++    {
++        buff->Remove();
++        return;
++    }
++    if (AuraEffect* effect = buff->GetEffect(EFFECT_0))
++        effect->ChangeAmount(int32(SpellPower(player->GetLevel(), enchant->GetStackAmount())));
++}
++
++class WizardFrostboltCasts final : public AllSpellScript
++{
++public:
++    WizardFrostboltCasts() : AllSpellScript("Area52WizardFrostboltCasts", {ALLSPELLHOOK_ON_HIT_RESULT}) { }
++
++    void OnSpellHitResult(Spell* spell, Unit* target, uint8 miss, uint32 damage, uint32, bool) override
++    {
++        using namespace Area52WizardFrostbolt;
++        if (!spell || !target)
++            return;
++        Player* player = spell->GetCaster()->ToPlayer();
++        if (!player || !Eligible(Applies(player), AscensionMysticEnchant::GrantsActive(player, Enchant),
++            player->IsAlive(), spell->IsTriggered(), player->MatchesSpellInteraction(spell->GetSpellInfo()->Id, 116),
++            damage != 0, miss != SPELL_MISS_NONE, player->HasAura(Cooldown), spell->GetScriptValue(Enchant) != 0))
++            return;
++        Aura* enchant = player->GetAura(Enchant, player->GetGUID());
++        SpellInfo const* companion = sSpellMgr->GetSpellInfo(Companion);
++        if (!enchant || !companion)
++            return;
++        spell->SetScriptValue(Enchant, 1);
++        if (!roll_chance_i(companion->ProcChance))
++            return;
++        uint32 const copies = enchant->GetStackAmount();
++        int32 power = int32(SpellPower(player->GetLevel(), copies));
++        player->CastSpell(player, Cooldown, true);
++        player->CastCustomSpell(player, Power, &power, nullptr, nullptr, true, nullptr, enchant->GetEffect(EFFECT_0));
++        player->EnergizeBySpell(player, Mana, ManaReturn(player->GetCreateMana(), copies), POWER_MANA);
++    }
++};
++
++class WizardFrostboltCleanup final : public UnitScript
++{
++public:
++    WizardFrostboltCleanup() : UnitScript("Area52WizardFrostboltCleanup", true, {UNITHOOK_ON_AURA_REMOVE}) { }
++
++    void OnAuraRemove(Unit* unit, AuraApplication* application, AuraRemoveMode) override
++    {
++        Player* player = unit ? unit->ToPlayer() : nullptr;
++        if (!Applies(player) || !application || application->GetBase()->GetId() != Area52WizardFrostbolt::Enchant)
++            return;
++        if (Aura* buff = player->GetAura(Area52WizardFrostbolt::Power, player->GetGUID()))
++            if (auto const* source = buff->GetTriggeredByAuraSpellInfo(); source && source->Id == Area52WizardFrostbolt::Enchant)
++                buff->Remove();
++    }
++};
+--- a/src/server/coa/Area52WizardFrostboltRules.h
++++ b/src/server/coa/Area52WizardFrostboltRules.h
+@@ -0,0 +1,22 @@
++/* Copyright (C) 2016+ AzerothCore, GNU AGPL v3. */
++#ifndef AREA52_WIZARD_FROSTBOLT_RULES_H
++#define AREA52_WIZARD_FROSTBOLT_RULES_H
++#include <cstdint>
++namespace Area52WizardFrostbolt
++{
++constexpr std::uint32_t Enchant = 781474, Companion = 781475, Power = 781300, Mana = 781301, Cooldown = 780999;
++inline std::uint32_t SpellPower(std::uint32_t level, std::uint32_t copies)
++{
++    return level * 2 * copies / 5;
++}
++inline std::uint32_t ManaReturn(std::uint32_t baseMana, std::uint32_t copies)
++{
++    return std::uint64_t(baseMana) * 4 * copies / 100;
++}
++inline bool Eligible(bool area52, bool active, bool alive, bool triggered, bool matching,
++    bool damage, bool missed, bool cooldown, bool rolled)
++{
++    return area52 && active && alive && !triggered && matching && damage && !missed && !cooldown && !rolled;
++}
++}
++#endif
+--- a/src/server/coa/AscensionMysticKnightEpics.cpp
++++ b/src/server/coa/AscensionMysticKnightEpics.cpp
+@@ -9,6 +9,7 @@
+ #include "CellImpl.h"
+ #include "GridNotifiersImpl.h"
+ #include "Area52CryotherapistRules.h"
++#include "Area52WizardFrostboltRules.h"
+ #include "Random.h"
+ #include "Player.h"
+ #include "ScriptMgr.h"
+@@ -118,6 +119,7 @@
+ }
+ #include "Area52GlacialLight.inc"
+ #include "Area52StayFrosty.inc"
++#include "Area52WizardFrostbolt.inc"
+ class EpicWorld final : public WorldScript
+ {
+ public:
+@@ -148,6 +150,7 @@
+             return;
+         ConfigureNimbleMind(info);
+         ConfigureStayFrosty(info);
++        ConfigureWizardFrostbolt(info);
+         if (info->Id == 983723)
+             info->AuraInterruptFlags &= ~AURA_INTERRUPT_FLAG_LEAVE_COMBAT;
+         if (info->Id == 35395 || (info->Id >= 35601 && info->Id <= 35607))
+@@ -237,9 +240,19 @@
+         if (Applies(player) && (std::find(CryoPenance.begin(), CryoPenance.end(), spell) != CryoPenance.end() || spell == 14251 || std::find(HeroicStrike.begin(), HeroicStrike.end(), spell) != HeroicStrike.end() ||
+             std::find(Consecration.begin(), Consecration.end(), spell) != Consecration.end() ||
+             std::find(Devastate.begin(), Devastate.end(), spell) != Devastate.end()))
++        {
+             Synchronize(player);
+-    }
+-    void OnPlayerLevelChanged(Player* player, uint8) override { if (Applies(player)) Synchronize(player); }
++            RefreshWizardFrostbolt(player);
++        }
++    }
++    void OnPlayerLevelChanged(Player* player, uint8) override
++    {
++        if (Applies(player))
++        {
++            Synchronize(player);
++            RefreshWizardFrostbolt(player);
++        }
++    }
+     void OnPlayerLearnSpell(Player* player, uint32 spell) override { Refresh(player, spell); }
+     void OnPlayerForgotSpell(Player* player, uint32 spell) override { Refresh(player, spell); }
+ };
+@@ -257,6 +270,7 @@
+     {
+         Player* player = GetTarget()->ToPlayer();
+         Synchronize(player);
++        RefreshWizardFrostbolt(player);
+         if (GetId() == Light)
+         {
+             player->RemoveAurasDueToSpell(926590, player->GetGUID());
+@@ -610,6 +624,8 @@
+     new EpicWorld();
+     new GlacialLightSpells();
+     new StayFrostyCasts();
++    new WizardFrostboltCasts();
++    new WizardFrostboltCleanup();
+     new StayFrostyProcs();
+     RegisterSpellScript(aura_area52_stay_frosty);
+     new GlacialLightAbsorbs();
+@@ -752,7 +768,10 @@
+ void AscensionMysticEnchant::RefreshEpicReplacements(Player* player)
+ {
+     if (Applies(player))
++    {
+         Synchronize(player);
++        RefreshWizardFrostbolt(player);
++    }
+ }
+ 
+ bool AscensionMysticEnchant::HasGlacialLight(Unit const* target)
+--- a/src/server/database/Database/Implementation/CharacterDatabase.cpp
++++ b/src/server/database/Database/Implementation/CharacterDatabase.cpp
+@@ -133,7 +133,7 @@
+                      "knownTitles, actionBars, grantableLevels, innTriggerId, extraBonusTalentCount, UNIX_TIMESTAMP(creation_date) FROM characters WHERE guid = ?", CONNECTION_ASYNC);
+ 
+     PrepareStatement(CHAR_SEL_CHARACTER_AURAS, "SELECT casterGuid, itemGuid, spell, effectMask, recalculateMask, stackCount, amount0, amount1, amount2, "
+-                     "base_amount0, base_amount1, base_amount2, maxDuration, remainTime, remainCharges FROM character_aura WHERE guid = ?", CONNECTION_ASYNC);
++                     "base_amount0, base_amount1, base_amount2, maxDuration, remainTime, remainCharges, sourceAuraSpell FROM character_aura WHERE guid = ?", CONNECTION_ASYNC);
+     PrepareStatement(CHAR_SEL_CHARACTER_SPELL, "SELECT spell, specMask FROM character_spell WHERE guid = ?", CONNECTION_ASYNC);
+     PrepareStatement(CHAR_SEL_CHARACTER_QUESTSTATUS, "SELECT quest, status, explored, timer, mobcount1, mobcount2, mobcount3, mobcount4, "
+                      "itemcount1, itemcount2, itemcount3, itemcount4, itemcount5, itemcount6, playercount FROM character_queststatus WHERE guid = ? AND status <> 0", CONNECTION_ASYNC);
+@@ -302,8 +302,8 @@
+     PrepareStatement(CHAR_DEL_EQUIP_SET, "DELETE FROM character_equipmentsets WHERE setguid=?", CONNECTION_ASYNC);
+ 
+     // Auras
+-    PrepareStatement(CHAR_INS_AURA, "INSERT INTO character_aura (guid, casterGuid, itemGuid, spell, effectMask, recalculateMask, stackcount, amount0, amount1, amount2, base_amount0, base_amount1, base_amount2, maxDuration, remainTime, remainCharges) "
+-                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", CONNECTION_ASYNC);
++    PrepareStatement(CHAR_INS_AURA, "INSERT INTO character_aura (guid, casterGuid, itemGuid, spell, effectMask, recalculateMask, stackcount, amount0, amount1, amount2, base_amount0, base_amount1, base_amount2, maxDuration, remainTime, remainCharges, sourceAuraSpell) "
++                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", CONNECTION_ASYNC);
+ 
+     // Account data
+     PrepareStatement(CHAR_SEL_ACCOUNT_DATA, "SELECT type, time, data FROM account_data WHERE accountId = ?", CONNECTION_ASYNC);
+--- a/src/server/game/Entities/Player/PlayerStorage.cpp
++++ b/src/server/game/Entities/Player/PlayerStorage.cpp
+@@ -5922,6 +5922,9 @@
+                 }
+ 
+                 aura->SetLoadedState(maxduration, remaintime, remaincharges, stackcount, recalculatemask, &damage[0]);
++                if (AscensionFreePick::Enabled() && getClass() == CLASS_HERO && spellid == 781300 &&
++                    fields[15].Get<uint32>() == 781474 && caster_guid == GetGUID())
++                    aura->SetTriggeredByAuraSpellInfo(sSpellMgr->GetSpellInfo(781474));
+                 aura->ApplyForTargets();
+                 LOG_DEBUG("entities.player", "Added aura spellid {}, effectmask {}", spellInfo->Id, effmask);
+             }
+@@ -7446,7 +7449,10 @@
+         stmt->SetData(index++, baseDamage[2]);
+         stmt->SetData(index++, itr->second->GetMaxDuration());
+         stmt->SetData(index++, itr->second->GetDuration());
+-        stmt->SetData(index, itr->second->GetCharges());
++        stmt->SetData(index++, itr->second->GetCharges());
++        SpellInfo const* sourceAura = aura->GetTriggeredByAuraSpellInfo();
++        stmt->SetData(index, AscensionFreePick::Applies(this) && aura->GetId() == 781300 &&
++            sourceAura && sourceAura->Id == 781474 ? sourceAura->Id : 0u);
+         trans->Append(stmt);
+     }
+ }
+--- a/src/server/game/Spells/SpellInfo.cpp
++++ b/src/server/game/Spells/SpellInfo.cpp
+@@ -1480,6 +1480,9 @@
+ 
+ bool SpellInfo::IsAffectedBySpellMod(SpellModifier const* mod) const
+ {
++    if (AscensionFreePick::Enabled() && mod->spellId == 781474)
++        return Id == 781300 && (mod->op == SPELLMOD_EFFECT1 || mod->op == SPELLMOD_EFFECT2);
++
+     if (AscensionFreePick::Enabled() && (mod->spellId == 47294 || mod->spellId == 47295 || mod->spellId == 47296))
+     {
+         Unit const* owner = mod->ownerAura ? mod->ownerAura->GetUnitOwner() : nullptr;
