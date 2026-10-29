@@ -76,6 +76,9 @@ the connected ones too and report any part that does nothing.
   damage-versus-target auras; check every "+X% damage" buff for them (Deadly Combo, Solar/Lunar Knight).
 - Ascension cooldown effect 165 names the original spell; `EffectAscensionModifyCooldown` sends it to a temporary
   replacement (Skull Crusher cools down Dragon Roar).
+- Spell.dbc keeps stale aura types on effects that apply no aura (Piercing Cleaver's TRIGGER_SPELL effect carries
+  aura 42). The connection check reads aura fields only on aura effects; when an enchant shows unsupported, look for
+  such leftovers before assuming a missing handler.
 - Engine support: aura 262 (ignore aura state) and 286 (periodic crit) work; aura 337 (spell override) and effect
   178 have no handler, so script them (Dragon Charge, Compound Shot recast).
 - Coefficients come from tooltip formulas. `spell_bonus_data` `ap_bonus`/`direct_bonus` also apply to melee-class

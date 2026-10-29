@@ -39,6 +39,8 @@ def main():
     grants = (ROOT / 'src/server/coa/AscensionMysticSpellGrants.h').read_text(encoding='utf-8')
     for grant in ('{977906, 947470, 2098}', '{977906, 977908}', '{982965, 982966, 12323}'):
         assert grant in grants, grant
+    enchant = (ROOT / 'src/server/coa/AscensionMysticEnchant.cpp').read_text(encoding='utf-8')
+    assert 'if (effect.IsAura() && effect.ApplyAuraName)' in enchant
     sql = (ROOT / 'data/sql/updates/pending_db_world/rev_20261028_40_gutripper_build.sql').read_text(encoding='utf-8')
     for row in ('(947470, 947481, 12)', '(982966, 983158, 8)',
                 '(977906, 0, 8, 0, 6, 0, 16, 1, 2, 0, 0, 0, 0, 100, 0, 0)',
