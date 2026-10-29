@@ -50,6 +50,8 @@ the connected ones too and report any part that does nothing.
 - A swap shows the replacement in the original's spellbook entry, so `SetTemporarySpellReplacement` hides the
   replacement's own entry while the swap lasts and restores it when the swap ends. `Synchronize` undoes a grant's
   swap before unlearning the granted spell and sets it after learning, so neither entry goes missing or doubles.
+- Shapeshift forms are the exception: the shapeshift bar lists learned forms, not superseded entries, so a form swap
+  (Tree of Wrath for Tree of Life) hides the original form and leaves the replacement's own entry.
 - `SetTemporarySpellReplacement` needs both spells known, so a temporary swap must grant the replacement too
   (Combo Shot 850515 for Compound Shot's recast window 826680).
 - **Modifiers follow the replacement** (owner's rule): unless the owner says otherwise, every enchant or talent that
