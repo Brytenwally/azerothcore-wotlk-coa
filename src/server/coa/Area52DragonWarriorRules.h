@@ -17,6 +17,7 @@ constexpr std::uint32_t DragonRoarDummy = 954251;
 constexpr std::uint32_t DeathWish = 12292;
 constexpr std::uint32_t UnstoppableForce = 911167;
 constexpr std::uint32_t SlamFamilyMask0 = 0x200000;
+constexpr std::uint32_t DragonRoarFamilyMask2 = 0x100000;
 constexpr std::int32_t ChargeTickMs = 100;
 constexpr float ChargeImpactReach = 2.0f;
 constexpr std::int32_t SlowImmuneDamageFactor = 3;

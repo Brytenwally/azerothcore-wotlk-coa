@@ -102,8 +102,12 @@ the connected ones too and report any part that does nothing.
 - Cooldown spellmods (op 11) apply only to spells that already have a cooldown, so a "+X s cooldown" on a spell
   without one (Lightning Bolt in Tree of Wrath) needs `AddSpellCooldown` in a cast script. Hidden helpers often carry
   dead values: an amount of 0 (Tree of Wrath - Hit Chance) or an empty mask; take the tooltip's number instead.
-- Effect 165 names one spell id, usually rank 1, while the cooldown sits on the rank cast; cut a ranked spell's
-  cooldown over its whole chain in the script (Living Lightning).
+- Effect 165 names one spell id, usually rank 1, while the cooldown sits on the rank cast; the effect now walks
+  the named spell's rank chain (and each rank's replacement), so Ascension's cooldown helpers reach every rank.
+- A crit chance set in `OnSpellCritChance` is still reduced by the target's crit-taken modifiers (resilience); a
+  hit that must crit sets `TargetInfo::crit` in `OnSpellCalculatedTarget` (Unstoppable Force, Dark Intent).
+- When a replacement does not share the original's family flags (Dragon Roar for Death Wish), widen the modifiers
+  aimed at the original with `DoEffectCalcSpellMod` (Intensify Rage, enchant and talent).
 - Many hidden helpers have ProcFlags 0 and no `spell_proc` row, so they never fire: give them a row or a script
   (Tree of Wrath's Lightning Rod aura 86436, Nature's Flow, Charged Tides).
 - `SPELLVALUE_FORCED_CRIT_RESULT` only shows a crit; for a real one set `TargetInfo::crit` in

@@ -1472,6 +1472,7 @@ void AddSC_AscensionMysticEnchant()
     RegisterSpellScript(spell_area52_dragon_charge_impact);
     RegisterSpellScript(spell_area52_dragon_roar_stun);
     new area52_unstoppable_force();
+    RegisterSpellScript(spell_area52_intensify_rage);
     RegisterSpellScript(spell_area52_legendary_proc);
     new area52_legendary_metadata();
     new area52_cast_movement_metadata();

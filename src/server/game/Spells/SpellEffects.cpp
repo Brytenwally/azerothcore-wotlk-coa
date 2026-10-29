@@ -384,7 +384,25 @@ void Spell::EffectAscensionModifyCooldown(SpellEffIndex effIndex)
     SpellEffectInfo const& effect = m_spellInfo->Effects[effIndex];
     // Ascension names the original spell; a temporarily replaced spell keeps its cooldown on the replacement.
     uint32 const spellId = player ? player->GetTemporarySpellReplacement(effect.MiscValue) : effect.MiscValue;
-    ModifyAscensionCooldown(player, spellId, damage, effect.MiscValueB != 0);
+    if (!player)
+    {
+        ModifyAscensionCooldown(player, spellId, damage, effect.MiscValueB != 0);
+        return;
+    }
+
+    // Ascension names a ranked spell by its first rank, but the cooldown sits on the rank that was cast.
+    std::vector<uint32> cooling;
+    for (uint32 rank = sSpellMgr->GetFirstSpellInChain(effect.MiscValue); rank;
+        rank = sSpellMgr->GetNextSpellInChain(rank))
+    {
+        uint32 const id = player->GetTemporarySpellReplacement(rank);
+        if (player->GetSpellCooldownDelay(id) && std::find(cooling.begin(), cooling.end(), id) == cooling.end())
+            cooling.push_back(id);
+    }
+    if (cooling.empty())
+        cooling.push_back(spellId);
+    for (uint32 id : cooling)
+        ModifyAscensionCooldown(player, id, damage, effect.MiscValueB != 0);
 }
 
 void Spell::EffectAscensionPlaySpellVisualKit(SpellEffIndex effIndex)
