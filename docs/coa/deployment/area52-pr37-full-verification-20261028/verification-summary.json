@@ -1,0 +1,17 @@
+{
+  "package": "area52-pr37-full-verification-20261028",
+  "checks": {
+    "build-package-candidate": "227466e00cb8ab5c7105167c320ac523923101f8d864231d3f6f423ab049f72b",
+    "focused-client-package": "bff84b57e8a35feed16e9e12793b7210b9432fafac34a62be075f76aa31ff4d2",
+    "source-final-full": "46134c274ceb90fbb20b792633205cdd914b35c795d1524f1179976ceeac866b",
+    "ownership-review": "94a083973995d144ce24c0f9ae56da922d047ce4a9bcadffa1377dfa44c8cfed",
+    "talent-lifecycle-adapted": "41b020a25468f658a4fd9daec1a14b4be6a3ad099cf8f05b96edc328e2e38c2d"
+  },
+  "binary_sha256": "e100f71129b87137531643db01eccbedd96d9cc0c791aaaf640dfd9d437da2e2",
+  "sql_qualification": "2ae3c8a6e5b0909f4e1a55b5e0541e23300e439aadc279e90b088fd242589f69",
+  "client_hook": "7935b4f2c28ed2ab8ceb5dd78042a452178baed9e1b39d83c7ddff8ed72cce84",
+  "login_evidence": "3c37fa0fa230f2c4b4b91541becf1a644c8d88990feb83daffccc411001c6b70",
+  "patch_apply_reverse": "passed",
+  "status": "offline engineering checks passed; activation remains owner-controlled",
+  "limits": "Native extracted-method adapters, source/data tracing and compilation; no gameplay certification."
+}
