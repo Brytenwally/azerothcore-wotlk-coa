@@ -84,7 +84,8 @@ the connected ones too and report any part that does nothing.
 - Coefficients come from tooltip formulas. `spell_bonus_data` `ap_bonus`/`direct_bonus` also apply to melee-class
   spells; for a physical spell "SP" is physical-school spell power, usually near zero. Terms the native data cannot
   express (Disembowel's AP x combo points squared) go in `DoEffectCalcAmount`. Combo points are still on the caster
-  during the hit and in the `ALLSPELLHOOK_ON_CAST` hook; they are cleared in the finish phase.
+  in `ALLSPELLHOOK_ON_BEFORE_EFFECTS` and during the hit; they are cleared in the finish phase, which for an instant
+  spell runs before `ALLSPELLHOOK_ON_CAST`, so never read them there (Deadly Combo always saw 0).
 - "Next X" buffs without charges must be removed by a script on X (Execute spends Deadly Combo, Judge, Jury,
   Executioner and Weakness).
 

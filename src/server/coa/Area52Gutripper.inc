@@ -247,9 +247,9 @@ class spell_area52_necrotic_execute : public AuraScript
 class area52_deadly_combo : public AllSpellScript
 {
 public:
-    area52_deadly_combo() : AllSpellScript("area52_deadly_combo", {ALLSPELLHOOK_ON_CAST}) { }
+    area52_deadly_combo() : AllSpellScript("area52_deadly_combo", {ALLSPELLHOOK_ON_BEFORE_EFFECTS}) { }
 
-    void OnSpellCast(Spell* spell, Unit* caster, SpellInfo const* info, bool) override
+    void OnSpellBeforeEffects(Spell* spell, Unit* caster, SpellInfo const* info) override
     {
         Player* player = caster ? caster->ToPlayer() : nullptr;
         if (!player || spell->IsTriggered() || !info->NeedsComboPoints() ||

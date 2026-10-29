@@ -41,6 +41,8 @@ def main():
         assert grant in grants, grant
     enchant = (ROOT / 'src/server/coa/AscensionMysticEnchant.cpp').read_text(encoding='utf-8')
     assert 'if (effect.IsAura() && effect.ApplyAuraName)' in enchant
+    scripts = (ROOT / 'src/server/coa/Area52Gutripper.inc').read_text(encoding='utf-8')
+    assert 'ALLSPELLHOOK_ON_BEFORE_EFFECTS' in scripts and 'ALLSPELLHOOK_ON_CAST' not in scripts
     sql = (ROOT / 'data/sql/updates/pending_db_world/rev_20261028_40_gutripper_build.sql').read_text(encoding='utf-8')
     for row in ('(947470, 947481, 12)', '(982966, 983158, 8)',
                 '(977906, 0, 8, 0, 6, 0, 16, 1, 2, 0, 0, 0, 0, 100, 0, 0)',
