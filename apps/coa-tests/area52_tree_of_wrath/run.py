@@ -43,6 +43,10 @@ def main():
     grants = (ROOT / 'src/server/coa/AscensionMysticSpellGrants.h').read_text(encoding='utf-8')
     for grant in ('{86438, 86435, 33891, 33891}', '{86438, 86441, 1064, 1064}'):
         assert grant in grants, grant
+    player = (ROOT / 'src/server/game/Entities/Player/Player.cpp').read_text(encoding='utf-8')
+    form = player.index('originalInfo->HasAura(SPELL_AURA_MOD_SHAPESHIFT)')
+    assert form < player.index('WorldPacket packet(SMSG_SUPERCEDED_SPELL, 8);')
+    assert 'if (previous == original)\n            SendLearnPacket(original, false);' in player[form:]
     defines = (ROOT / 'src/server/game/Entities/Unit/UnitDefines.h').read_text(encoding='utf-8')
     assert 'FORM_TREE_OF_WRATH                  = 0x30,' in defines
     tree = (ROOT / 'src/server/coa/AscensionTreeOfLife.cpp').read_text(encoding='utf-8')

@@ -13971,6 +13971,18 @@ void Player::SetTemporarySpellReplacement(uint32 original, uint32 replacement)
             return;
         m_temporarySpellReplacements[original] = replacement;
     }
+    SpellInfo const* originalInfo = sSpellMgr->GetSpellInfo(original);
+    if (previous != replacement && IsInWorld() && HasActiveSpell(original) && originalInfo &&
+        originalInfo->HasAura(SPELL_AURA_MOD_SHAPESHIFT))
+    {
+        // The shapeshift bar lists learned forms, not superseded spellbook entries: hide the original form while a
+        // replacement form keeps its own entry, and show the original again when the swap ends.
+        if (previous == original)
+            SendLearnPacket(original, false);
+        else if (replacement == original)
+            SendLearnPacket(original, true);
+        return;
+    }
     if (previous != replacement && IsInWorld() && HasActiveSpell(original))
     {
         // The client turns the original's spellbook entry into the replacement, so the replacement's own entry
