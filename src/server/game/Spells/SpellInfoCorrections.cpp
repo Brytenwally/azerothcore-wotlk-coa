@@ -362,7 +362,7 @@ void SpellMgr::LoadSpellInfoCorrections()
 
     ApplySpellFix({ 48422 }, [](SpellInfo* spellInfo)
     {
-        spellInfo->Stances = 1 << (FORM_TREE - 1);
+        spellInfo->Stances = (1 << (FORM_TREE - 1)) | (uint64(1) << (FORM_TREE_OF_WRATH - 1));
     });
 
     // Elemental Oath

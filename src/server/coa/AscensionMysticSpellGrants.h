@@ -13,7 +13,7 @@ struct SpellGrant
     std::uint32_t Requires = 0;
     std::uint32_t Replaces = 0;
 };
-inline constexpr std::array<SpellGrant, 22> SpellGrants = {{
+inline constexpr std::array<SpellGrant, 24> SpellGrants = {{
     {81248, 81249},
     {84408, 84409},
     {84466, 84467},
@@ -35,7 +35,9 @@ inline constexpr std::array<SpellGrant, 22> SpellGrants = {{
     {978226, 978618, 2098, 2098},
     {978226, 979023, 48505, 48505},
     {814183, 814184, 14183, 14183},
-    {977831, 977832, 8921}
+    {977831, 977832, 8921},
+    {86438, 86435, 33891, 33891},
+    {86438, 86441, 1064, 1064}
 }};
 inline constexpr std::array<SpellGrant, 1> RetiredSpellGrants = {{
     {979740, 984925}
