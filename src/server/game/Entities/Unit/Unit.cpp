@@ -17,6 +17,7 @@
 
 #include "Unit.h"
 #include "../../../coa/AscensionFreePick.h"
+#include "../../../coa/Area52MarksmanRules.h"
 #include "../../../coa/Area52FollowupProcRules.h"
 #include "../../../coa/Area52WyvernSleep.h"
 #include "../../../coa/Area52HopliteRemainingRules.h"
@@ -13394,8 +13395,18 @@ void Unit::ModSpellCastTime(SpellInfo const* spellInfo, int32& castTime, Spell* 
             castTime = CanInstantCast() ? 0 : int32(float(castTime) * GetFloatValue(UNIT_MOD_CAST_SPEED));
             break;
         case SPELL_DAMAGE_CLASS_RANGED:
-            castTime = int32(float(castTime) * m_modAttackSpeedPct[RANGED_ATTACK]);
+        {
+            float multiplier = m_modAttackSpeedPct[RANGED_ATTACK];
+            Player* player = ToPlayer();
+            if (AscensionFreePick::Applies(player) && HasAura(978716) &&
+                (player->MatchesSpellInteraction(spellInfo->Id, 56641) ||
+                    player->MatchesSpellInteraction(spellInfo->Id, 826679)))
+                for (uint32 munitions : {978717u, 978718u})
+                    if (AuraEffect const* effect = GetAuraEffect(munitions, EFFECT_1))
+                        multiplier = Area52Marksman::WithoutMunitionsHaste(multiplier, effect->GetAmount());
+            castTime = int32(float(castTime) * multiplier);
             break;
+        }
         default:
             break;
     }
