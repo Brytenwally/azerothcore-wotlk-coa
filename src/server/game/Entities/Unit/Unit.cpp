@@ -10640,6 +10640,8 @@ float Unit::SpellTakenCritChance(Unit const* caster, SpellInfo const* spellProto
     return crit_chance;
 }
 
+int32 GetArea52CritDamageBonusPct(Unit const* caster, SpellInfo const* spell, Unit const* victim);
+
 uint32 Unit::SpellCriticalDamageBonus(Unit const* caster, SpellInfo const* spellProto, uint32 damage, Unit const* victim)
 {
     // Calculate critical bonus
@@ -10671,6 +10673,9 @@ uint32 Unit::SpellCriticalDamageBonus(Unit const* caster, SpellInfo const* spell
             AddPct(crit_bonus, crit_mod);
 
         crit_bonus -= damage;
+
+        if (int32 area52Bonus = GetArea52CritDamageBonusPct(caster, spellProto, victim))
+            AddPct(crit_bonus, area52Bonus);
 
         // adds additional damage to critBonus (from talents)
         if (Player* modOwner = caster->GetSpellModOwner())
