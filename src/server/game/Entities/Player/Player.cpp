@@ -13955,10 +13955,10 @@ void Player::SetTemporarySpellReplacement(uint32 original, uint32 replacement)
 {
     auto itr = m_temporarySpellReplacements.find(original);
     uint32 previous = itr == m_temporarySpellReplacements.end() ? original : itr->second;
-    bool const sharedReplacement = replacement && std::any_of(m_temporarySpellReplacements.begin(),
-        m_temporarySpellReplacements.end(), [this, original, replacement](auto const& entry)
+    bool const previousStillShown = std::any_of(m_temporarySpellReplacements.begin(),
+        m_temporarySpellReplacements.end(), [this, original, previous](auto const& entry)
         {
-            return entry.first != original && entry.second == replacement && HasActiveSpell(entry.first);
+            return entry.first != original && entry.second == previous && HasActiveSpell(entry.first);
         });
     if (!replacement)
     {
@@ -13973,11 +13973,15 @@ void Player::SetTemporarySpellReplacement(uint32 original, uint32 replacement)
     }
     if (previous != replacement && IsInWorld() && HasActiveSpell(original))
     {
-        if (sharedReplacement)
+        // The client turns the original's spellbook entry into the replacement, so the replacement's own entry
+        // must go while the swap lasts and come back when it ends, or the spellbook shows it twice or not at all.
+        if (replacement != original)
             SendLearnPacket(replacement, false);
         WorldPacket packet(SMSG_SUPERCEDED_SPELL, 8);
         packet << previous << replacement;
         GetSession()->SendPacket(&packet);
+        if (previous != original && !previousStillShown && HasActiveSpell(previous))
+            SendLearnPacket(previous, true);
     }
 }
 

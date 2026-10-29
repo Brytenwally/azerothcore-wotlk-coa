@@ -47,6 +47,9 @@ the connected ones too and report any part that does nothing.
 - `Replaces` follows every rank of the replaced spell and points it at the highest granted rank, so it works when
   the character knows a higher rank of either. An enchant that needs a talent (`@unlockby:` on the enchant) is listed
   in `EnchantUnlocks`; its grants stay off without that talent (Knight of the Eclipse needs Eclipse 48525).
+- A swap shows the replacement in the original's spellbook entry, so `SetTemporarySpellReplacement` hides the
+  replacement's own entry while the swap lasts and restores it when the swap ends. `Synchronize` undoes a grant's
+  swap before unlearning the granted spell and sets it after learning, so neither entry goes missing or doubles.
 - `SetTemporarySpellReplacement` needs both spells known, so a temporary swap must grant the replacement too
   (Combo Shot 850515 for Compound Shot's recast window 826680).
 

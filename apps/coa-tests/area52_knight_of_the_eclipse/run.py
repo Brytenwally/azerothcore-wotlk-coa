@@ -41,6 +41,11 @@ def main():
     for grant in ('{978226, 978617, 1752, 1752}', '{978226, 978618, 2098, 2098}', '{978226, 979023, 48505, 48505}',
                   '{814183, 814184, 14183, 14183}', '{977831, 977832, 8921}', '{978226, 48525}'):
         assert grant in grants, grant
+    player = (ROOT / 'src/server/game/Entities/Player/Player.cpp').read_text(encoding='utf-8')
+    assert 'if (replacement != original)\n            SendLearnPacket(replacement, false);' in player
+    assert 'if (previous != original && !previousStillShown && HasActiveSpell(previous))' in player
+    enchant = (ROOT / 'src/server/coa/AscensionMysticEnchant.cpp').read_text(encoding='utf-8')
+    assert enchant.index('if (!enabled && grant.Replaces)') < enchant.index('if (enabled && grant.Replaces)')
     contracts = (ROOT / 'src/server/coa/AscensionConditionalCombat.cpp').read_text(encoding='utf-8')
     assert '{954353, 4}, {978621, 7}, {978622, 7}, {979024, 7}, {979045, 8}' in contracts
     sql = (ROOT / 'data/sql/updates/pending_db_world/rev_20261028_50_knight_of_the_eclipse_build.sql').read_text(

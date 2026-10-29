@@ -337,6 +337,10 @@ void Synchronize(Player* player)
         bool const enabled = GrantsActive(player, grant.Enchant) &&
             (grant.Enchant != 81248 || player->HasActiveSpell(33831)) && GrantRequirementMet(player, grant.Requires) &&
             EnchantUnlocked(player, grant.Enchant);
+        if (!enabled && grant.Enchant == 81248)
+            player->SetTemporarySpellReplacement(33831, 0);
+        if (!enabled && grant.Replaces)
+            ReplaceRanks(player, grant.Replaces, 0);
         std::set<std::uint32_t> visited;
         for (auto rank = grant.Spell; rank && visited.insert(rank).second;
             rank = sSpellMgr->GetNextSpellInChain(rank))
@@ -345,10 +349,10 @@ void Synchronize(Player* player)
             SetGrantedSpell(player, grant.Enchant, rank, enabled && info &&
                 GrantRankDue(rank == grant.Spell, player->HasSpell(rank), info->SpellLevel, player->GetLevel()));
         }
-        if (grant.Enchant == 81248)
-            player->SetTemporarySpellReplacement(33831, enabled ? 81249 : 0);
-        if (grant.Replaces)
-            ReplaceRanks(player, grant.Replaces, enabled ? HighestActiveRank(player, grant.Spell) : 0);
+        if (enabled && grant.Enchant == 81248)
+            player->SetTemporarySpellReplacement(33831, 81249);
+        if (enabled && grant.Replaces)
+            ReplaceRanks(player, grant.Replaces, HighestActiveRank(player, grant.Spell));
     }
     for (auto const& retired : RetiredSpellGrants)
         SetGrantedSpell(player, retired.Enchant, retired.Spell, false);
