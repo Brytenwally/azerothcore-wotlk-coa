@@ -136,6 +136,30 @@ void RemoveSelectionBuffs(Player* player, std::set<uint32> removed, std::set<uin
         player->RemoveAurasDueToSpell(spell, player->GetGUID());
 }
 
+std::vector<uint32> LearnedChildren(uint32 spell)
+{
+    std::vector<uint32> children;
+    if (auto const* info = sSpellMgr->GetSpellInfo(spell))
+        for (auto const& effect : info->GetEffects())
+            if (effect.IsEffect(SPELL_EFFECT_LEARN_SPELL) && effect.TriggerSpell)
+                children.push_back(effect.TriggerSpell);
+    return children;
+}
+
+void LearnEntrySpell(Player* player, uint32 spell)
+{
+    auto const children = LearnedChildren(spell);
+    if (children.empty())
+    {
+        player->learnSpell(spell);
+        return;
+    }
+    std::set<uint32> const allowed(children.begin(), children.end());
+    SpellLearningScope learning(player, allowed);
+    for (uint32 child : children)
+        player->learnSpell(child);
+}
+
 std::set<std::uint32_t> SelectedSpells(std::vector<KnownEntry> const& entries)
 {
     std::set<std::uint32_t> spells;
@@ -220,17 +244,33 @@ bool SynchronizeTalentRanks(Player* player)
     auto const approved = AuthorizedTalentSpells(player);
     bool changed = false;
     for (auto spell : TalentSpells)
-        if (!approved.contains(spell) && (player->HasSpell(spell) || player->HasAura(spell)))
+    {
+        if (approved.contains(spell))
+            continue;
+        if (player->HasSpell(spell) || player->HasAura(spell))
         {
             player->removeSpell(spell, SPEC_MASK_ALL, false);
             player->RemoveAurasDueToSpell(spell, player->GetGUID());
             changed = true;
         }
+        for (uint32 child : LearnedChildren(spell))
+            if (!approved.contains(child) && player->HasSpell(child))
+            {
+                player->removeSpell(child, SPEC_MASK_ALL, false);
+                changed = true;
+            }
+    }
     for (auto spell : TalentSpells)
         if (approved.contains(spell) && !player->HasSpell(spell))
         {
-            player->learnSpell(spell);
-            changed |= player->HasSpell(spell);
+            auto const children = LearnedChildren(spell);
+            bool const missing = children.empty() || std::any_of(children.begin(), children.end(),
+                [player](uint32 child) { return !player->HasSpell(child); });
+            if (!missing)
+                continue;
+            LearnEntrySpell(player, spell);
+            changed |= children.empty() ? player->HasSpell(spell) : std::all_of(children.begin(), children.end(),
+                [player](uint32 child) { return player->HasSpell(child); });
         }
     for (auto spell : TalentSpells)
         if (approved.contains(spell) && player->HasSpell(spell))
@@ -487,7 +527,7 @@ Result Apply(Player* player, std::vector<KnownEntry> const& requested, bool, boo
             player->removeSpell(spell, SPEC_MASK_ALL, false);
     for (auto const& pick : wanted)
         for (std::size_t rank = 0; rank < pick.Rank; ++rank)
-            player->learnSpell(Data.Entries.at(pick.EntryId).Spells[rank]);
+            LearnEntrySpell(player, Data.Entries.at(pick.EntryId).Spells[rank]);
     SynchronizeLinkedSpells(player);
     AscensionMysticEnchant::RefreshEquipped(player);
     AscensionRemovedSpellActionBars::Reconcile(player, actionSpells);
