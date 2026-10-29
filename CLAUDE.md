@@ -106,10 +106,19 @@ the connected ones too and report any part that does nothing.
   cooldown over its whole chain in the script (Living Lightning).
 - Many hidden helpers have ProcFlags 0 and no `spell_proc` row, so they never fire: give them a row or a script
   (Tree of Wrath's Lightning Rod aura 86436, Nature's Flow, Charged Tides).
+- `SPELLVALUE_FORCED_CRIT_RESULT` only shows a crit; for a real one set `TargetInfo::crit` in
+  `OnSpellCalculatedTarget`. "Crits when the trigger crits" pairs that with the helper's `CANT_CRIT` copy for the
+  non-critical case (Dark Intent 980050 / 990248).
+- A spell that spends a buff's spellmods lists the buff in `Spell::m_appliedMods` until the cast phase procs, so
+  `ALLSPELLHOOK_ON_BEFORE_EFFECTS` can tell a Shadow Bolt cast through Nightfall (Shadow Trance 17941) or a heal
+  under Nature's Swiftness.
+- Ascension effect 169 (spread aura) has no handler (78 spells use it); Pestilence copies Corruption in its own
+  script, as the owner chose.
 
 ## Builds done (2026-10-28)
 
 `compoundpower-build` (Marksman), `dragonwarrior-build` (Dragon Warrior), `bloodandguts-build` (Gutripper),
-`knightoftheeclipse-build` (Knight of the Eclipse) and `treeofwrath-build` (Tree of Wrath, 2026-10-29), with their
-follow-ups. Harnesses: `area52_marksman`, `area52_dragon_warrior`, `area52_gutripper`,
-`area52_knight_of_the_eclipse`, `area52_tree_of_wrath`.
+`knightoftheeclipse-build` (Knight of the Eclipse), `treeofwrath-build` (Tree of Wrath) and
+`masterofshadows-build` (Master of Shadows), with their follow-ups. Harnesses: `area52_marksman`,
+`area52_dragon_warrior`, `area52_gutripper`, `area52_knight_of_the_eclipse`, `area52_tree_of_wrath`,
+`area52_master_of_shadows`.
