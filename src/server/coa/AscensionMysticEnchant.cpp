@@ -818,12 +818,17 @@ void LoadConnections()
             continue;
         }
         if (HasEldritchEquipmentHandlers(spell) || HasArea52EpicEquipmentHandlers(spell) ||
-            HasArea52HopliteHandlers(spell) || HasArea52BattlemageHandlers(spell) || HasArea52MarksmanHandlers(spell) ||
-            HasArea52DragonWarriorHandlers(spell) || HasArea52GutripperHandlers(spell) ||
-            HasArea52KnightOfTheEclipseHandlers(spell) || HasArea52TreeOfWrathHandlers(spell) ||
-            HasArea52MasterOfShadowsHandlers(spell) || HasArea52EvokerHandlers(spell))
+            HasArea52HopliteHandlers(spell) || HasArea52BattlemageHandlers(spell))
         {
             Connected.emplace(spell, 1);
+            continue;
+        }
+        if (HasArea52MarksmanHandlers(spell) || HasArea52DragonWarriorHandlers(spell) ||
+            HasArea52GutripperHandlers(spell) || HasArea52KnightOfTheEclipseHandlers(spell) ||
+            HasArea52TreeOfWrathHandlers(spell) || HasArea52MasterOfShadowsHandlers(spell) ||
+            HasArea52EvokerHandlers(spell))
+        {
+            Connected.emplace(spell, std::max<std::uint32_t>(1, info->StackAmount));
             continue;
         }
         auto const grant = std::find_if(SpellGrants.begin(), SpellGrants.end(),

@@ -47,6 +47,9 @@ def command(source, exe):
 def main():
     enchant = (ROOT / 'src/server/coa/AscensionMysticEnchant.cpp').read_text(encoding='utf-8')
     assert 'HasArea52EvokerHandlers(spell)' in enchant
+    build_handlers = enchant.index('HasArea52EvokerHandlers(spell))')
+    assert 'Connected.emplace(spell, std::max<std::uint32_t>(1, info->StackAmount));' in enchant[
+        build_handlers:build_handlers + 200]
     for registration in ('new area52_evoker_casts();', 'new area52_evoker_damage();', 'new area52_evoked_triggers();'):
         assert registration in enchant, registration
     unit = (ROOT / 'src/server/game/Entities/Unit/Unit.cpp').read_text(encoding='utf-8')
