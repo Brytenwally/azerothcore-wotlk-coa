@@ -47,6 +47,11 @@ def main():
     form = player.index('originalInfo->HasAura(SPELL_AURA_MOD_SHAPESHIFT)')
     assert form < player.index('WorldPacket packet(SMSG_SUPERCEDED_SPELL, 8);')
     assert 'if (previous == original)\n            SendLearnPacket(original, false);' in player[form:]
+    freepick = (ROOT / 'src/server/coa/AscensionFreePick.cpp').read_text(encoding='utf-8')
+    assert 'LearnEntrySpell(player, Data.Entries.at(pick.EntryId).Spells[rank]);' in freepick
+    assert 'effect.IsEffect(SPELL_EFFECT_LEARN_SPELL) && effect.TriggerSpell' in freepick
+    shapes = (ROOT / 'src/server/coa/AscensionStockScriptShapes.h').read_text(encoding='utf-8')
+    assert 'KEEP, KEEP, 33891 } },' in shapes
     defines = (ROOT / 'src/server/game/Entities/Unit/UnitDefines.h').read_text(encoding='utf-8')
     assert 'FORM_TREE_OF_WRATH                  = 0x30,' in defines
     tree = (ROOT / 'src/server/coa/AscensionTreeOfLife.cpp').read_text(encoding='utf-8')
