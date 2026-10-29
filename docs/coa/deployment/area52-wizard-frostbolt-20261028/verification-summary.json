@@ -1,0 +1,18 @@
+{
+  "package": "area52-wizard-frostbolt-20261028",
+  "status": "prepared; final CheckOnly pending",
+  "entries": [
+    781474
+  ],
+  "binary_sha256": "c6416c751274e0a0973b591aa4b25b26f3df06fb9073c571462178fa8dd6af85",
+  "baseline_binary_sha256": "1f2d797600442d0dc924aedf8c9e43d2c1aeb595824fab11dded82f40361d137",
+  "checks": {
+    "build-persistence": "b309537d80ff6a6ef5f2dcf811f85b6973da9f0f0ffe981c7ea91fec12fd4381",
+    "focused-complete": "c4c591e157051908bd17b6663f47c48be11b88112d486bac3dc3f5199edaff2d",
+    "focused-sql-hooks": "b525cb512fcf8eb6fc2293d8c5a2326d0366fe137ccd815eef17b29bea5fad45",
+    "focused-package-hooks": "b4cd708a5e5d9ec57752e238ef751d3eead0462542e2284797a59aa2339d6f65",
+    "ownership": "1445bab6a0c186593eb2c726962441c4a56b9ddb8c0fa02da081f7e286c426e4",
+    "source-persistence": "9b05efe5107b4c6ce718583bd0ddc056c1ea67ffeb4c2649188391a789bfd786"
+  },
+  "limits": "Offline engineering candidate; no gameplay certification. Source publication is a scoped patch against the deployed baseline."
+}
