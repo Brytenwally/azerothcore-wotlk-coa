@@ -70,6 +70,8 @@ extern pEffect SpellEffects[TOTAL_SPELL_EFFECTS];
 #include "Area52KnightOfTheEclipse.inc"
 #include "Area52TreeOfWrathRules.h"
 #include "Area52TreeOfWrath.inc"
+#include "Area52MasterOfShadowsRules.h"
+#include "Area52MasterOfShadows.inc"
 #include "Area52CorruptedBear.inc"
 #include "Area52CastMovement.inc"
 #include "Area52Dependencies.inc"
@@ -820,7 +822,8 @@ void LoadConnections()
         if (HasEldritchEquipmentHandlers(spell) || HasArea52EpicEquipmentHandlers(spell) ||
             HasArea52HopliteHandlers(spell) || HasArea52BattlemageHandlers(spell) || HasArea52MarksmanHandlers(spell) ||
             HasArea52DragonWarriorHandlers(spell) || HasArea52GutripperHandlers(spell) ||
-            HasArea52KnightOfTheEclipseHandlers(spell) || HasArea52TreeOfWrathHandlers(spell))
+            HasArea52KnightOfTheEclipseHandlers(spell) || HasArea52TreeOfWrathHandlers(spell) ||
+            HasArea52MasterOfShadowsHandlers(spell))
         {
             Connected.emplace(spell, 1);
             continue;
@@ -1466,6 +1469,11 @@ void AddSC_AscensionMysticEnchant()
     RegisterSpellScript(spell_area52_transcendental_embrace);
     RegisterSpellScript(spell_area52_transcendental_jump);
     new area52_tree_of_wrath_casts();
+    RegisterSpellScript(spell_area52_master_of_shadows);
+    RegisterSpellScript(spell_area52_apprentice_of_shadows);
+    RegisterSpellScript(spell_area52_pestilence);
+    RegisterSpellScript(spell_area52_find_weakness);
+    new area52_master_of_shadows_casts();
     RegisterSpellScript(spell_area52_dragon_charge_impact);
     RegisterSpellScript(spell_area52_dragon_roar_stun);
     new area52_unstoppable_force();
