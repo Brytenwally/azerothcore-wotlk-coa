@@ -43,7 +43,9 @@ the connected ones too and report any part that does nothing.
   spellbook tab. The copy the tooltip shows (`@s:`) often has no row and lands in General (Compound Shot 826679,
   not 984925; Disembowel 947470, not 990240).
 - Granted spells with ranks need a `spell_ranks` chain (copy it from `SpellRank.dbc`; talent chains come from
-  `Talent.dbc` already). Grants learn every rank whose `SpellLevel` the character has reached (`GrantRankDue`).
+  `Talent.dbc` already). Grants listed in `GrantRanksFollowLevel` (Compound Shot and the builds since Gutripper)
+  learn every rank whose `SpellLevel` the character has reached (`GrantRankDue`); add each new ranked grant's
+  enchant there. The other grants learn only the listed rank.
 - Hidden helper auras that Ascension applied server-side (a passive `... SLS` with a proc) can be granted as
   passive spells (Executing Disembowel 977908). `RetiredSpellGrants` removes a grant that was replaced.
 - `Replaces` follows every rank of the replaced spell and points it at the highest granted rank, so it works when

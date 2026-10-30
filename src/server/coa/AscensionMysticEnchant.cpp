@@ -353,7 +353,7 @@ void Synchronize(Player* player)
             rank = sSpellMgr->GetNextSpellInChain(rank))
         {
             SpellInfo const* info = sSpellMgr->GetSpellInfo(rank);
-            bool const rankDue = grant.Enchant == 979740 && grant.Spell == 826679 ?
+            bool const rankDue = GrantRanksFollowLevel(grant.Enchant, grant.Spell) ?
                 info && GrantRankDue(rank == grant.Spell, player->HasSpell(rank), info->SpellLevel, player->GetLevel()) :
                 rank == grant.Spell || player->HasSpell(rank);
             SetGrantedSpell(player, grant.Enchant, rank, enabled && info &&

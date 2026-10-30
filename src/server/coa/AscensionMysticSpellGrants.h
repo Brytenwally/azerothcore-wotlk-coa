@@ -52,6 +52,20 @@ inline constexpr std::array<EnchantUnlock, 1> EnchantUnlocks = {{
     {978226, 48525}
 }};
 
+inline constexpr std::array<std::uint32_t, 6> LevelRankedEnchants = {{
+    977906, 982965, 978226, 814183, 977831, 86438
+}};
+
+inline bool GrantRanksFollowLevel(std::uint32_t enchant, std::uint32_t spell)
+{
+    if (enchant == 979740)
+        return spell == 826679;
+    for (std::uint32_t ranked : LevelRankedEnchants)
+        if (ranked == enchant)
+            return true;
+    return false;
+}
+
 inline bool GrantRankDue(bool firstRank, bool known, std::uint32_t spellLevel, std::uint32_t level)
 {
     return firstRank || (spellLevel ? spellLevel <= level : known);

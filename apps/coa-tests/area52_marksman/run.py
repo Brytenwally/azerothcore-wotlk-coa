@@ -14,6 +14,7 @@ HARNESS = r'''#include "Area52MarksmanRules.h"
 #include <initializer_list>
 using namespace Area52Marksman;
 using AscensionMysticEnchant::GrantRankDue;
+using AscensionMysticEnchant::GrantRanksFollowLevel;
 
 int main()
 {
@@ -32,6 +33,9 @@ int main()
     assert(GrantRankDue(true, false, 20, 1) && !GrantRankDue(false, true, 80, 60));
     assert(GrantRankDue(false, false, 60, 60) && !GrantRankDue(false, false, 70, 60));
     assert(!GrantRankDue(false, false, 0, 60));
+    assert(GrantRanksFollowLevel(979740, 826679) && !GrantRanksFollowLevel(979740, 850515));
+    assert(GrantRanksFollowLevel(977906, 947470) && GrantRanksFollowLevel(86438, 86435));
+    assert(!GrantRanksFollowLevel(954252, 954250) && !GrantRanksFollowLevel(81248, 81249));
     assert(SyndicateTrainingFor(53302) == 983867 && SyndicateTrainingFor(53304) == SyndicateCapstone);
     assert(SniperTrainingBuffFor(53303) == 64419);
     assert(WithSniperTraining(1000, 28) == 1280 && WithSniperTraining(1000, 0) == 1000);
