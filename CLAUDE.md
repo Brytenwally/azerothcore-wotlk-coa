@@ -157,6 +157,10 @@ One commit per tree, `talents-<class>-<tree>` (`talents-druid-balance`), with a 
   targets; on talents that inflates every other talent's values (the Soul Leech overflow). Route such modifiers in
   `Area52DruidTalents::ModifierTarget` (or the class's equivalent) to the spell the tooltip means: Moonglow's
   +25/50/75 is its buff's regeneration while casting (965818 effect 2).
+- Capstones are implemented when the owner asks (Balance, 30/10): `Area52DruidBalanceCapstones.cpp` holds an
+  `ALLSPELLHOOK_ON_HIT_RESULT` script for hit-driven bonuses (extra Moonfire tick through `AuraEffect::PeriodicTick`,
+  Roots silence, Wrath of Cenarius), aura scripts for dispel, apply/remove and expire bonuses, and `spell_proc` rows
+  for capstone procs whose DBC has no proc flags. Internal cooldowns use `AddSpellCooldown` on the capstone's id.
 - Ascension capstone bonuses usually live in hidden helpers (`<Talent> capstone sls`, `816xxx`/`857xxx` ids) that
   have no proc flags or nothing applying them; search by name and description before calling a capstone missing.
 

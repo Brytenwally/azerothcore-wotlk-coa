@@ -1528,10 +1528,13 @@ bool SpellInfo::IsAffectedBySpellMod(SpellModifier const* mod) const
     if (auto const target = AscensionMageTalentTarget(mod->spellId, Id))
         return *target;
 
-    // Nature's Reach and Moonglow carry modifiers without a class mask that SpellAffect.dbc does not route.
+    // Nature's Reach, Moonglow and Nature's Splendor carry modifiers without a class mask that SpellAffect.dbc
+    // does not route (or routes only in part).
     bool const castDamageSpell = Area52DruidTalents::Contains(Area52DruidTalents::NaturesReach, mod->spellId) &&
         !IsPositive() && (IsChanneled() || (CastTimeEntry && CastTimeEntry->CastTime > 0));
-    if (auto const target = Area52DruidTalents::ModifierTarget(mod->spellId, Id, castDamageSpell))
+    uint32 const firstRank = mod->spellId == Area52DruidTalents::SplendorFlourishAndInsectSwarm ?
+        sSpellMgr->GetFirstSpellInChain(Id) : Id;
+    if (auto const target = Area52DruidTalents::ModifierTarget(mod->spellId, Id, firstRank, castDamageSpell))
         return *target;
 
     if (SpellFamilyName == 31 && affectSpell->SpellFamilyName == 31)

@@ -51,6 +51,7 @@ void AddSC_CoADungeonBossSpells();
 void AddSC_AscensionKeepersScrollSteadfast();
 void AddSC_AscensionProfessionSpellAffect();
 void AddSC_AscensionTalentDataProcs();
+void AddSC_Area52DruidBalanceCapstones();
 void AddSC_AscensionPerforatingShots();
 void AddSC_AscensionSummonedEffects();
 void AddSC_AscensionKeepersScrollZoneBuff();
@@ -633,6 +634,7 @@ void AddCoAScripts()
     AddSC_AscensionKeepersScrollSteadfast();
     AddSC_AscensionProfessionSpellAffect();
     AddSC_AscensionTalentDataProcs();
+    AddSC_Area52DruidBalanceCapstones();
     AddSC_AscensionPerforatingShots();
     AddSC_AscensionSummonedEffects();
     AddSC_AscensionKeepersScrollZoneBuff();
