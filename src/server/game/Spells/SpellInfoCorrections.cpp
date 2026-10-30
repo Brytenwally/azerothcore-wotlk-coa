@@ -441,12 +441,6 @@ void SpellMgr::LoadSpellInfoCorrections()
         spellInfo->AttributesEx5 |= SPELL_ATTR5_EXTRA_INITIAL_PERIOD;
     });
 
-    // Marked for Death
-    ApplySpellFix({ 53241, 53243, 53244, 53245, 53246 }, [](SpellInfo* spellInfo)
-    {
-        spellInfo->Effects[EFFECT_0].SpellClassMask = flag96(399361, 276955137, 1);
-    });
-
     ApplySpellFix({
         70728,  // Exploit Weakness
         70840   // Devious Minds
@@ -757,6 +751,26 @@ void SpellMgr::LoadSpellInfoCorrections()
     ApplySpellFix({ 19465 }, [](SpellInfo* spellInfo)
     {
         spellInfo->Effects[EFFECT_2].TargetA = SpellImplicitTargetInfo(TARGET_UNIT_CASTER);
+    });
+
+    // Improved Stings rank 3: Ascension's Viper Sting part modifies damage, which Viper Sting has none of; ranks 1-2
+    // and the tooltip raise its effectiveness (all effects).
+    ApplySpellFix({ 19466 }, [](SpellInfo* spellInfo)
+    {
+        spellInfo->Effects[EFFECT_1].MiscValue = SPELLMOD_ALL_EFFECTS;
+    });
+
+    // Improved Barrage rank 3: a passive talent is cast on its owner, so an enemy-targeted aura effect never lands
+    ApplySpellFix({ 35111 }, [](SpellInfo* spellInfo)
+    {
+        spellInfo->Effects[EFFECT_2].TargetA = SpellImplicitTargetInfo(TARGET_UNIT_CASTER);
+    });
+
+    // Improved Trueshot Aura checks for Trueshot Aura every second instead of every 90 (its script keeps the buff
+    // only while Trueshot Aura is on)
+    ApplySpellFix({ 435104, 435105 }, [](SpellInfo* spellInfo)
+    {
+        spellInfo->Effects[EFFECT_0].Amplitude = 1000;
     });
 
     // Heart of the Phoenix (triggered)

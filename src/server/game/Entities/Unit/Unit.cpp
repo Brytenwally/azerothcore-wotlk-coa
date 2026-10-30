@@ -9603,6 +9603,13 @@ float Unit::SpellPctDamageModsDone(Unit* victim, SpellInfo const* spellProto, Da
                         AddPct(DoneTotalMod, (*i)->GetAmount());
                     break;
                 }
+            // Rapid Killing (Ascension): Hunter shots against targets below 35% health
+            case 417801:
+            case 417802:
+            case 417803:
+                if (victim->HealthBelowPct(35))
+                    AddPct(DoneTotalMod, (*i)->GetAmount());
+                break;
             // Dirty Deeds
             case 6427:
             case 6428:
@@ -11892,6 +11899,13 @@ uint32 Unit::MeleeDamageBonusDone(Unit* victim, uint32 pdamage, WeaponAttackType
                         AddPct(DoneTotalMod, (*i)->GetAmount());
                     break;
                 }
+            // Rapid Killing (Ascension): Hunter shots against targets below 35% health
+            case 417801:
+            case 417802:
+            case 417803:
+                if (victim->HealthBelowPct(35))
+                    AddPct(DoneTotalMod, (*i)->GetAmount());
+                break;
             // Dirty Deeds
             case 6427:
             case 6428:
