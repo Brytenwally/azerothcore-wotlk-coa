@@ -960,6 +960,12 @@ void SpellMgr::LoadSpellInfoCorrections()
         spellInfo->AttributesEx6 |= SPELL_ATTR6_IGNORE_CASTER_DAMAGE_MODIFIERS;
     });
 
+    // Nature's Reach: the tooltip's range bonus is stored as a first-effect modifier
+    ApplySpellFix({ 16819, 16820, 816819 }, [](SpellInfo* spellInfo)
+    {
+        spellInfo->Effects[EFFECT_0].MiscValue = SPELLMOD_RANGE;
+    });
+
     // Improved Earth Shield
     ApplySpellFix({ 51560, 51561 }, [](SpellInfo* spellInfo)
     {

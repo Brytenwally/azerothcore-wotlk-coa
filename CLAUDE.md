@@ -135,6 +135,31 @@ the connected ones too and report any part that does nothing.
 - Crit damage bonuses that depend on the target (Shatter: 25%, 10% versus players) go through
   `GetArea52CritDamageBonusPct`, called from `Unit::SpellCriticalDamageBonus` on the bonus part.
 
+## Talent audit (requested 30/10)
+
+The owner names a talent tree; audit every rank of every talent in it against the DBC and fix the scripting where
+it contradicts the data. Order: classes alphabetically, Death Knight last; within a class, trees alphabetically.
+One commit per tree, `talents-<class>-<tree>` (`talents-druid-balance`), with a harness `area52_<class>_<tree>`.
+
+- The tree's talents and their rank spells come from `CharacterAdvancement.dbc` (type `Talent`/`TalentAbility`,
+  field 32 class type, 33 tab). Rank chains come from `Talent.dbc` (`SpellMgr::LoadSpellTalentRanks`), not
+  `spell_ranks`; check that the Free Pick ranks equal the `Talent.dbc` chain, since negative-id bindings and
+  `GetAuraEffectOfRankedSpell` follow it.
+- Compare with the owner's live database rows (`spell_proc`, `spell_script_names`, `spell_bonus_data`,
+  `spell_linked_spell`, `spell_group`, `spell_custom_attr`), not the repository SQL: the live database ran migrations
+  the repository no longer has.
+- Report per talent: matches the DBC, conflict (fix), needs the owner's decision, or capstone nothing implements.
+  The owner decides whether capstones get new scripting.
+- Old WotLK hard-coded talent rules in `Unit.cpp`/`SpellEffects.cpp` find talents by `SpellIconID`; Ascension's
+  copies often carry new icons (Celestial Bane 24674, not 1771), so those rules silently skip them. They can also
+  double an effect the Ascension data now holds as a spell modifier (Brambles' Thorns bonus).
+- A spell modifier without a class mask reaches every spell of its family unless `SpellAffect.dbc` names its
+  targets; on talents that inflates every other talent's values (the Soul Leech overflow). Route such modifiers in
+  `Area52DruidTalents::ModifierTarget` (or the class's equivalent) to the spell the tooltip means: Moonglow's
+  +25/50/75 is its buff's regeneration while casting (965818 effect 2).
+- Ascension capstone bonuses usually live in hidden helpers (`<Talent> capstone sls`, `816xxx`/`857xxx` ids) that
+  have no proc flags or nothing applying them; search by name and description before calling a capstone missing.
+
 ## Builds done (2026-10-28)
 
 `compoundpower-build` (Marksman), `dragonwarrior-build` (Dragon Warrior), `bloodandguts-build` (Gutripper),

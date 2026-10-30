@@ -66,6 +66,7 @@ extern pEffect SpellEffects[TOTAL_SPELL_EFFECTS];
 #include "Area52Felfire.inc"
 #include "Area52GutripperRules.h"
 #include "Area52Gutripper.inc"
+#include "Area52DruidTalentRules.h"
 #include "Area52KnightOfTheEclipseRules.h"
 #include "Area52KnightOfTheEclipse.inc"
 #include "Area52TreeOfWrathRules.h"

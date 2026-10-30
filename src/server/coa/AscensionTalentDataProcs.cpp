@@ -1,6 +1,7 @@
 /* Copyright (C) 2016+ AzerothCore, GNU AGPL v3. */
 
 #include "GameTime.h"
+#include "Area52DruidTalentRules.h"
 #include "AscensionFreePick.h"
 #include "Player.h"
 #include "ScriptMgr.h"
@@ -148,10 +149,49 @@ class aura_ascension_revitalize : public AuraScript
     }
 };
 
+class aura_ascension_celestial_focus : public AuraScript
+{
+    PrepareAuraScript(aura_ascension_celestial_focus);
+
+    bool Validate(SpellInfo const*) override
+    {
+        return ValidateSpellInfo({Area52DruidTalents::InterruptImmunity});
+    }
+
+    bool CheckProc(ProcEventInfo& event)
+    {
+        SpellInfo const* spell = event.GetSpellInfo();
+        return spell && (spell->HasEffect(SPELL_EFFECT_INTERRUPT_CAST) ||
+            (spell->GetAllEffectsMechanicMask() & (1ULL << MECHANIC_INTERRUPT)));
+    }
+
+    void Shield(ProcEventInfo&)
+    {
+        GetTarget()->CastSpell(GetTarget(), Area52DruidTalents::InterruptImmunity, true);
+    }
+
+    void Register() override
+    {
+        DoCheckProc += AuraCheckProcFn(aura_ascension_celestial_focus::CheckProc);
+        OnProc += AuraProcFn(aura_ascension_celestial_focus::Shield);
+    }
+};
+
+}
+
+int32 GetArea52TalentCritDamageBonusPct(Unit const* caster, SpellInfo const* spell)
+{
+    Player const* player = caster ? caster->ToPlayer() : nullptr;
+    if (!spell || !AscensionFreePick::Applies(player) || spell->DmgClass == SPELL_DAMAGE_CLASS_MELEE ||
+        spell->DmgClass == SPELL_DAMAGE_CLASS_RANGED || !(spell->GetSchoolMask() & SPELL_SCHOOL_MASK_MAGIC))
+        return 0;
+    Aura const* vengeance = player->GetAuraOfRankedSpell(Area52DruidTalents::Vengeance);
+    return vengeance ? Area52DruidTalents::VengeanceCritBonusPct(vengeance->GetSpellInfo()->GetRank()) : 0;
 }
 
 void AddSC_AscensionTalentDataProcs()
 {
     RegisterSpellScript(aura_ascension_eclipse);
     RegisterSpellScript(aura_ascension_revitalize);
+    RegisterSpellScript(aura_ascension_celestial_focus);
 }

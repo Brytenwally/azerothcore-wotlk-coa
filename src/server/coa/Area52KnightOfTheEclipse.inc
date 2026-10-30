@@ -252,15 +252,17 @@ public:
         if (!target || !attacker || !info || !AscensionFreePick::Applies(attacker->ToPlayer()))
             return 0;
         AuraEffect const* enchant = attacker->GetAuraEffect(ImprovedInsectSwarm, EFFECT_0);
-        if (!enchant)
+        AuraEffect const* talent = attacker->GetAuraEffectOfRankedSpell(Area52DruidTalents::CelestialBane, EFFECT_0);
+        int32 const amount = (enchant ? enchant->GetAmount() : 0) + (talent ? talent->GetAmount() : 0);
+        if (!amount)
             return 0;
         int32 bonus = 0;
         if ((info->GetSchoolMask() & SPELL_SCHOOL_MASK_NATURE) && target->GetAuraEffect(SPELL_AURA_PERIODIC_DAMAGE,
             SPELLFAMILY_DRUID, InsectSwarmFlag0, 0, 0, attacker->GetGUID()))
-            bonus += enchant->GetAmount();
+            bonus += amount;
         if ((info->GetSchoolMask() & SPELL_SCHOOL_MASK_ARCANE) && target->GetAuraEffect(SPELL_AURA_PERIODIC_DAMAGE,
             SPELLFAMILY_DRUID, MoonfireFlag0, 0, 0, attacker->GetGUID()))
-            bonus += enchant->GetAmount();
+            bonus += amount;
         return bonus;
     }
 

@@ -40,6 +40,7 @@ enum DruidSpells
     SPELL_DRUID_FERAL_SWIFTNESS_PASSIVE_1   = 24867,
     SPELL_DRUID_FERAL_SWIFTNESS_PASSIVE_2   = 24864,
     SPELL_DRUID_BARKSKIN                    = 22812,
+    SPELL_DRUID_BRAMBLES_R1                 = 16836,
     SPELL_DRUID_GLYPH_OF_BARKSKIN           = 63057,
     SPELL_DRUID_GLYPH_OF_BARKSKIN_TRIGGER   = 63058,
     SPELL_DRUID_ENRAGE_MOD_DAMAGE           = 51185,
@@ -52,7 +53,7 @@ enum DruidSpells
     SPELL_DRUID_LIFEBLOOM_FINAL_HEAL        = 33778,
     SPELL_DRUID_LIVING_SEED_HEAL            = 48503,
     SPELL_DRUID_LIVING_SEED_PROC            = 48504,
-    SPELL_DRUID_NATURES_SPLENDOR            = 57865,
+    SPELL_DRUID_NATURES_SPLENDOR            = 857866, // final rank, whose capstone lengthens Moonfire
     SPELL_DRUID_SURVIVAL_INSTINCTS          = 50322,
     SPELL_DRUID_SAVAGE_ROAR                 = 62071,
     SPELL_DRUID_TIGER_S_FURY_ENERGIZE       = 51178,
@@ -313,12 +314,12 @@ class spell_dru_brambles_treant : public AuraScript
 
     void CalculateAmount(AuraEffect const* /*aurEff*/, int32& amount, bool& /*canBeRecalculated*/)
     {
-        // xinef: chance of success stores proper amount of damage increase
+        // Brambles raises Treant damage by 5% per rank; its chance-of-success effect is the Barkskin daze chance
         // xinef: little hack because GetSpellModOwner will return nullptr pointer at this point (early summoning stage)
         if (GetUnitOwner()->IsSummon())
             if (Unit* owner = GetUnitOwner()->ToTempSummon()->GetSummonerUnit())
-                if (Player* player = owner->GetSpellModOwner())
-                    player->ApplySpellMod(SPELL_DRUID_BARKSKIN, SPELLMOD_CHANCE_OF_SUCCESS, amount);
+                if (Aura const* brambles = owner->GetAuraOfRankedSpell(SPELL_DRUID_BRAMBLES_R1))
+                    amount += 5 * brambles->GetSpellInfo()->GetRank();
     }
 
     void Register() override
@@ -407,10 +408,6 @@ class spell_dru_treant_scaling : public AuraScript
         {
             int32 nature = owner->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_NATURE);
             amount = CalculatePct(std::max<int32>(0, nature), 105);
-
-            // xinef: brambles talent
-            if (AuraEffect const* bramblesEff = owner->GetAuraEffect(SPELL_AURA_ADD_FLAT_MODIFIER, SPELLFAMILY_DRUID, 53, 2))
-                AddPct(amount, bramblesEff->GetAmount());
         }
     }
 

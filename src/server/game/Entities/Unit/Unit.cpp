@@ -9696,15 +9696,6 @@ float Unit::SpellPctDamageModsDone(Unit* victim, SpellInfo const* spellProto, Da
                     AddPct(DoneTotalMod, 10 * stacks);
             }
             break;
-        case SPELLFAMILY_DRUID:
-            // Thorns
-            if (spellProto->SpellFamilyFlags[0] & 0x100)
-            {
-                // Brambles
-                if (AuraEffect* aurEff = GetAuraEffectOfRankedSpell(16836, 0))
-                    AddPct(DoneTotalMod, aurEff->GetAmount());
-            }
-            break;
         case SPELLFAMILY_WARLOCK:
             // Fire and Brimstone
             if (spellProto->SpellFamilyFlags[1] & 0x00020040)
@@ -10638,6 +10629,7 @@ float Unit::SpellTakenCritChance(Unit const* caster, SpellInfo const* spellProto
 }
 
 int32 GetArea52CritDamageBonusPct(Unit const* caster, SpellInfo const* spell, Unit const* victim);
+int32 GetArea52TalentCritDamageBonusPct(Unit const* caster, SpellInfo const* spell);
 
 uint32 Unit::SpellCriticalDamageBonus(Unit const* caster, SpellInfo const* spellProto, uint32 damage, Unit const* victim)
 {
@@ -10671,7 +10663,8 @@ uint32 Unit::SpellCriticalDamageBonus(Unit const* caster, SpellInfo const* spell
 
         crit_bonus -= damage;
 
-        if (int32 area52Bonus = GetArea52CritDamageBonusPct(caster, spellProto, victim))
+        if (int32 area52Bonus = GetArea52CritDamageBonusPct(caster, spellProto, victim) +
+                GetArea52TalentCritDamageBonusPct(caster, spellProto))
             AddPct(crit_bonus, area52Bonus);
 
         // adds additional damage to critBonus (from talents)

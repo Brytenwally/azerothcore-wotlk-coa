@@ -16,6 +16,7 @@
  */
 
 #include "../../coa/AscensionMageTalentTargets.h"
+#include "../../coa/Area52DruidTalentRules.h"
 #include "SpellInfo.h"
 #include "../../coa/AscensionMysticEnchant.h"
 #include "Chat.h"
@@ -1525,6 +1526,12 @@ bool SpellInfo::IsAffectedBySpellMod(SpellModifier const* mod) const
         return false;
 
     if (auto const target = AscensionMageTalentTarget(mod->spellId, Id))
+        return *target;
+
+    // Nature's Reach and Moonglow carry modifiers without a class mask that SpellAffect.dbc does not route.
+    bool const castDamageSpell = Area52DruidTalents::Contains(Area52DruidTalents::NaturesReach, mod->spellId) &&
+        !IsPositive() && (IsChanneled() || (CastTimeEntry && CastTimeEntry->CastTime > 0));
+    if (auto const target = Area52DruidTalents::ModifierTarget(mod->spellId, Id, castDamageSpell))
         return *target;
 
     if (SpellFamilyName == 31 && affectSpell->SpellFamilyName == 31)
