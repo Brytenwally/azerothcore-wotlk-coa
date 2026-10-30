@@ -1626,8 +1626,8 @@ void AuraEffect::HandleShapeshiftBoosts(Unit* target, bool apply) const
                 }
             }
 
-            // Leader of the Pack
-            if (player->HasTalent(17007, player->GetActiveSpec()))
+            // Leader of the Pack (Free Pick learns it as a spell, not a talent)
+            if (player->HasTalent(17007, player->GetActiveSpec()) || player->HasSpell(17007))
             {
                 SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(24932);
                 if (spellInfo && spellInfo->Stances & (1 << (GetMiscValue() - 1)))
@@ -1640,8 +1640,8 @@ void AuraEffect::HandleShapeshiftBoosts(Unit* target, bool apply) const
                 if (GetMiscValue() == FORM_TRAVEL || GetMiscValue() == FORM_NONE) // "while in Travel Form or while not shapeshifted"
                     target->CastSpell(target, 66530, true);
             }
-            // Heart of the Wild
-            if (HotWSpellId)
+            // Heart of the Wild (Free Pick's ranks raise the form passives through their own modifiers)
+            if (HotWSpellId && !AscensionFreePick::Applies(player))
             {
                 // hacky, but the only way as spell family is not SPELLFAMILY_DRUID
                 Unit::AuraEffectList const& mModTotalStatPct = target->GetAuraEffectsByType(SPELL_AURA_MOD_TOTAL_STAT_PERCENTAGE);
@@ -1693,8 +1693,9 @@ void AuraEffect::HandleShapeshiftBoosts(Unit* target, bool apply) const
                         int32 bp = aurEff->GetAmount();
                         target->CastCustomSpell(target, 48418, &bp, nullptr, nullptr, true);
                     }
-                    // Survival of the Fittest
-                    if (AuraEffect const* aurEff = target->GetAuraEffect(SPELL_AURA_MOD_TOTAL_STAT_PERCENTAGE, SPELLFAMILY_DRUID, 961, 0))
+                    // Survival of the Fittest (Free Pick's ranks raise the form's armor through their own modifier)
+                    if (AuraEffect const* aurEff = AscensionFreePick::Applies(player) ? nullptr :
+                        target->GetAuraEffect(SPELL_AURA_MOD_TOTAL_STAT_PERCENTAGE, SPELLFAMILY_DRUID, 961, 0))
                     {
                         int32 bp = aurEff->GetSpellInfo()->Effects[EFFECT_2].CalcValue();
                         target->CastCustomSpell(target, 62069, &bp, nullptr, nullptr, true, 0, this, target->GetGUID());

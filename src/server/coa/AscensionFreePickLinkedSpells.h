@@ -10,8 +10,9 @@ struct LinkedSpellGroup
     std::uint32_t Parent;
     std::array<std::uint32_t, 6> Children;
 };
-inline constexpr std::array<LinkedSpellGroup, 20> LinkedSpellGroups = {{
+inline constexpr std::array<LinkedSpellGroup, 21> LinkedSpellGroups = {{
     {33917, {33876, 33878}},
+    {49377, {16979, 49376}},
     {84864, {986202, 986203}},
     {84865, {986200, 986201}},
     {84866, {92839, 92840}},

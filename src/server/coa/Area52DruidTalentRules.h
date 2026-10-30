@@ -47,6 +47,32 @@ constexpr float InsectSwarmSpreadRadius = 5.0f;
 constexpr std::size_t InsectSwarmSpreadMaxTargets = 10;
 constexpr std::uint32_t VengefulSoulMissingManaPct = 10;
 
+constexpr std::uint32_t SavageDefenseTalent[] = {277401, 277402};
+constexpr std::uint32_t PrimalGoreCapstone = 863504;
+constexpr std::uint32_t LacerateFlag1 = 0x100;
+constexpr std::uint32_t FeralAggression = 16858;
+constexpr std::uint32_t FeralInstinct = 16947;
+constexpr std::uint32_t TigersFury = 5217;
+constexpr std::uint32_t Enrage = 5229;
+constexpr std::int32_t FeralInstinctPct = 3;
+constexpr std::uint32_t KingOfTheJungle = 48492;
+constexpr std::uint32_t KingOfTheJungleCapstone = 48495;
+constexpr std::uint32_t CatFormFlag0 = 0x80000000;
+constexpr std::uint32_t BearFormFlag0 = 0x40000000;
+constexpr std::int32_t KingOfTheJungleGcdMs = -500;
+constexpr std::uint32_t ElderHideCapstone = 16931;
+constexpr std::uint32_t IronfurHealing = 901115;
+constexpr std::uint32_t BrutalImpactCapstone = 816941;
+constexpr std::uint32_t BrutalImpactStrike = 816945;
+constexpr std::uint32_t BashFlag0 = 0x2000;
+constexpr std::uint32_t FeralChargeBear = 16979;
+constexpr std::uint32_t ImprovedMangleCapstone = 48491;
+constexpr std::uint32_t MangleFlag1 = 0x440;
+constexpr std::int32_t ImprovedMangleCooldownMs = 3000;
+constexpr std::uint32_t DreamstateMana = 833956;
+constexpr std::uint32_t EarthAndMoonFinalDebuff = 60433;
+constexpr std::uint32_t EarthAndMoonHealingReduction = 301118;
+
 constexpr std::int32_t VengeanceBasePct = 60;
 constexpr std::int32_t VengeancePctPerRank = 10;
 
@@ -79,6 +105,22 @@ inline std::uint32_t VengefulSoulMana(std::uint32_t maxMana, std::uint32_t mana)
 inline bool ShouldSpreadInsectSwarm(std::int32_t sourceRemainingMs, std::int32_t victimRemainingMs, bool victimHasIt)
 {
     return !victimHasIt || victimRemainingMs < sourceRemainingMs;
+}
+
+inline std::int32_t FeralAggressionAttackPower(std::uint32_t level, std::int32_t pctOfLevel)
+{
+    return std::int32_t(level) * pctOfLevel / 100;
+}
+
+inline std::uint32_t MissingManaShare(std::uint32_t maxMana, std::uint32_t mana, std::uint32_t pct)
+{
+    return mana < maxMana ? (maxMana - mana) * pct / 100 : 0;
+}
+
+inline std::int32_t FeralDamagePct(bool tigersFury, bool feralInstinct, bool aboveThreeQuarters,
+    std::int32_t kingOfTheJungle)
+{
+    return (tigersFury && feralInstinct ? FeralInstinctPct : 0) + (aboveThreeQuarters ? kingOfTheJungle : 0);
 }
 
 inline std::int32_t VengeanceCritBonusPct(std::uint8_t rank)

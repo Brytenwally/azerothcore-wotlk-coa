@@ -69,6 +69,8 @@ struct SpellLearningScope {static bool Allows(Player const* p,unsigned s){return
 std::set<unsigned> KnownEntries(Player const* p){return p->approved;}
 std::set<unsigned> SelectedSpells(std::set<unsigned> s){return s;}
 std::set<unsigned> AuthorizedTalentSpells(Player const* p){return p->approved;}
+std::vector<unsigned> LearnedChildren(unsigned){return {};}
+void LearnEntrySpell(Player* p,unsigned s){p->learnSpell(s);}
 FUNCTIONS
 }
 unsigned GetTalentSpellCost(unsigned id){return AscensionFreePick::TalentSpells.contains(id)?1:0;}

@@ -161,6 +161,15 @@ One commit per tree, `talents-<class>-<tree>` (`talents-druid-balance`), with a 
   `ALLSPELLHOOK_ON_HIT_RESULT` script for hit-driven bonuses (extra Moonfire tick through `AuraEffect::PeriodicTick`,
   Roots silence, Wrath of Cenarius), aura scripts for dispel, apply/remove and expire bonuses, and `spell_proc` rows
   for capstone procs whose DBC has no proc flags. Internal cooldowns use `AddSpellCooldown` on the capstone's id.
+- Free Pick learns talents as spells, so `Player::HasTalent` is false for them: core rules that check it (Leader of
+  the Pack on shapeshift) need `HasSpell` too. Talents whose only effect is a dummy that "teaches" spells (Feral
+  Charge 49377) need an `AscensionFreePickLinkedSpells.h` group, or they teach nothing.
+- Old WotLK shapeshift rules in `HandleShapeshiftBoosts` cast extra auras for talents (Heart of the Wild,
+  Survival of the Fittest) that the Ascension ranks already give through modifiers on the form passives; skip them
+  under Free Pick. Talent rows without a `Talent.dbc` chain (Improved Travel Form) need `spell_ranks` rows, or every
+  rank's aura stacks.
+- `apps/coa-tests/talent_rank_restoration` reads `/data/dbc/CharacterAdvancement.dbc`; copy the owner's file there
+  to run it.
 - Ascension capstone bonuses usually live in hidden helpers (`<Talent> capstone sls`, `816xxx`/`857xxx` ids) that
   have no proc flags or nothing applying them; search by name and description before calling a capstone missing.
 

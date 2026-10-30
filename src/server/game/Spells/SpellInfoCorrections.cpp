@@ -966,6 +966,12 @@ void SpellMgr::LoadSpellInfoCorrections()
         spellInfo->Effects[EFFECT_0].MiscValue = SPELLMOD_RANGE;
     });
 
+    // Feral Aggression: the tooltip's attack power (a share of the level) is stored as a dummy
+    ApplySpellFix({ 16858, 16859, 16860 }, [](SpellInfo* spellInfo)
+    {
+        spellInfo->Effects[EFFECT_1].ApplyAuraName = SPELL_AURA_MOD_ATTACK_POWER;
+    });
+
     // Improved Earth Shield
     ApplySpellFix({ 51560, 51561 }, [](SpellInfo* spellInfo)
     {
