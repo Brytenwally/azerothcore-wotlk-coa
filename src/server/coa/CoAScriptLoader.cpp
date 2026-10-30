@@ -54,6 +54,7 @@ void AddSC_AscensionTalentDataProcs();
 void AddSC_Area52DruidBalanceCapstones();
 void AddSC_Area52DruidFeralTalents();
 void AddSC_Area52DruidRestorationTalents();
+void AddSC_Area52HunterBeastMasteryTalents();
 void AddSC_AscensionPerforatingShots();
 void AddSC_AscensionSummonedEffects();
 void AddSC_AscensionKeepersScrollZoneBuff();
@@ -639,6 +640,7 @@ void AddCoAScripts()
     AddSC_Area52DruidBalanceCapstones();
     AddSC_Area52DruidFeralTalents();
     AddSC_Area52DruidRestorationTalents();
+    AddSC_Area52HunterBeastMasteryTalents();
     AddSC_AscensionPerforatingShots();
     AddSC_AscensionSummonedEffects();
     AddSC_AscensionKeepersScrollZoneBuff();

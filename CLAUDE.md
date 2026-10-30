@@ -172,6 +172,9 @@ One commit per tree, `talents-<class>-<tree>` (`talents-druid-balance`), with a 
   rank's aura stacks.
 - `apps/coa-tests/talent_rank_restoration` reads `/data/dbc/CharacterAdvancement.dbc`; copy the owner's file there
   to run it.
+- Hunter pet talents work through the owner's spell modifiers on the pet's `Tamed Pet Passive NN (DND)` spells
+  (the pet's spells take its owner's modifiers) and through `spell_pet_auras` rows (talent dummy effect -> pet aura),
+  whose amounts come from the pet aura's own DBC values. Check those before calling a pet talent missing.
 - Ascension capstone bonuses usually live in hidden helpers (`<Talent> capstone sls`, `816xxx`/`857xxx` ids) that
   have no proc flags or nothing applying them; search by name and description before calling a capstone missing.
 

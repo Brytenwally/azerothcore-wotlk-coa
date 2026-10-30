@@ -17,6 +17,7 @@
 
 #include "../../coa/AscensionMageTalentTargets.h"
 #include "../../coa/Area52DruidTalentRules.h"
+#include "../../coa/Area52HunterTalentRules.h"
 #include "SpellInfo.h"
 #include "../../coa/AscensionMysticEnchant.h"
 #include "Chat.h"
@@ -1535,6 +1536,10 @@ bool SpellInfo::IsAffectedBySpellMod(SpellModifier const* mod) const
     uint32 const firstRank = mod->spellId == Area52DruidTalents::SplendorFlourishAndInsectSwarm ?
         sSpellMgr->GetFirstSpellInChain(Id) : Id;
     if (auto const target = Area52DruidTalents::ModifierTarget(mod->spellId, Id, firstRank, castDamageSpell))
+        return *target;
+
+    // Improved Aspect of the Monkey's mask also covers Frenzy Effect, whose attack speed its tooltip does not raise.
+    if (auto const target = Area52HunterTalents::ModifierTarget(mod->spellId, Id))
         return *target;
 
     if (SpellFamilyName == 31 && affectSpell->SpellFamilyName == 31)

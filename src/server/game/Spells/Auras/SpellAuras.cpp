@@ -29,6 +29,7 @@
 #include "Spell.h"
 #include "SpellAuraEffects.h"
 #include "../../../coa/AscensionFreePick.h"
+#include "../../../coa/Area52HunterTalentRules.h"
 #include "SpellMgr.h"
 #include "SpellScript.h"
 #include "Unit.h"
@@ -1867,13 +1868,14 @@ void Aura::HandleAuraSpecificMods(AuraApplication const* aurApp, Unit* caster, b
                     // The Beast Within cast on owner if talent present
                     if (Unit* owner = target->GetOwner())
                     {
-                        // Search talent
-                        if (owner->HasAura(34692))
+                        // Search talent: Ascension's rank 1 rages half the time, rank 2 (834692) always
+                        if (AuraEffect const* beastWithin = owner->GetAuraEffectOfRankedSpell(34692, EFFECT_0))
                         {
-                            if (apply)
-                                owner->CastSpell(owner, 34471, true, 0, GetEffect(0));
-                            else
+                            if (!apply)
                                 owner->RemoveAurasDueToSpell(34471);
+                            else if (roll_chance_i(Area52HunterTalents::BeastWithinRageChance(
+                                         sSpellMgr->GetSpellRank(beastWithin->GetId()))))
+                                owner->CastSpell(owner, 34471, true, 0, GetEffect(0));
                         }
                     }
                     break;
