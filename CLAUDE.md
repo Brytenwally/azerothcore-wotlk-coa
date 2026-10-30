@@ -148,8 +148,10 @@ One commit per tree, `talents-<class>-<tree>` (`talents-druid-balance`), with a 
 - Compare with the owner's live database rows (`spell_proc`, `spell_script_names`, `spell_bonus_data`,
   `spell_linked_spell`, `spell_group`, `spell_custom_attr`), not the repository SQL: the live database ran migrations
   the repository no longer has.
-- Report per talent: matches the DBC, conflict (fix), needs the owner's decision, or capstone nothing implements.
-  The owner decides whether capstones get new scripting.
+- Report per talent: matches the DBC, conflict (fix), needs the owner's decision, or missing (a tooltip part or a
+  capstone nothing implements). Missing capstones and tooltip parts count as missing talent functionality and are
+  scripted automatically, like conflicts (owner, 30/10); ask first only when the data conflicts or leaves the
+  behavior in doubt.
 - Old WotLK hard-coded talent rules in `Unit.cpp`/`SpellEffects.cpp` find talents by `SpellIconID`; Ascension's
   copies often carry new icons (Celestial Bane 24674, not 1771), so those rules silently skip them. They can also
   double an effect the Ascension data now holds as a spell modifier (Brambles' Thorns bonus).

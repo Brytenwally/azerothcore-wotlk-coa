@@ -972,6 +972,20 @@ void SpellMgr::LoadSpellInfoCorrections()
         spellInfo->Effects[EFFECT_1].ApplyAuraName = SPELL_AURA_MOD_ATTACK_POWER;
     });
 
+    // Nature's Bounty and Gift of the Earthmother capstones: Regrowth's and Rejuvenation's healing over time
+    // benefits from spell haste; the data stores the capstone as a periodic dummy
+    ApplySpellFix({ 17078 }, [](SpellInfo* spellInfo)
+    {
+        spellInfo->Effects[EFFECT_2].ApplyAuraName = SPELL_AURA_PERIODIC_HASTE;
+        spellInfo->Effects[EFFECT_2].SpellClassMask = flag96(0x40, 0, 0);
+    });
+
+    ApplySpellFix({ 51183 }, [](SpellInfo* spellInfo)
+    {
+        spellInfo->Effects[EFFECT_2].ApplyAuraName = SPELL_AURA_PERIODIC_HASTE;
+        spellInfo->Effects[EFFECT_2].SpellClassMask = flag96(0x10, 0, 0);
+    });
+
     // Improved Earth Shield
     ApplySpellFix({ 51560, 51561 }, [](SpellInfo* spellInfo)
     {

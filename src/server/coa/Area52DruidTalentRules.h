@@ -73,6 +73,22 @@ constexpr std::uint32_t DreamstateMana = 833956;
 constexpr std::uint32_t EarthAndMoonFinalDebuff = 60433;
 constexpr std::uint32_t EarthAndMoonHealingReduction = 301118;
 
+constexpr std::uint32_t NaturesFocusCapstone = 17066;
+constexpr std::uint32_t NaturesFocusGuard = 717066;
+constexpr std::uint32_t NaturesFocusHeal = 717067;
+constexpr std::uint32_t RevitalizeCapstone = 48545;
+constexpr std::uint32_t RevitalizeRefundPct = 30;
+constexpr std::uint32_t LivingSpiritCapstone = 34153;
+constexpr std::uint32_t LivingSpiritBonusPct = 50;
+constexpr float LivingSpiritHealthPct = 50.0f;
+constexpr std::uint32_t SubtletyCapstone = 17120;
+constexpr std::uint32_t CapstoneThreatReduction = 957339;
+constexpr std::uint32_t IntensityMana[] = {817080, 835358, 835359};
+constexpr std::uint32_t ImprovedTreeOfLife = 48535;
+constexpr std::uint32_t TreeForms[] = {33891, 86435};
+constexpr std::uint32_t HealingTouchFlag0 = 0x20;
+constexpr std::uint32_t RejuvenationFlag0 = 0x10;
+
 constexpr std::int32_t VengeanceBasePct = 60;
 constexpr std::int32_t VengeancePctPerRank = 10;
 
@@ -121,6 +137,16 @@ inline std::int32_t FeralDamagePct(bool tigersFury, bool feralInstinct, bool abo
     std::int32_t kingOfTheJungle)
 {
     return (tigersFury && feralInstinct ? FeralInstinctPct : 0) + (aboveThreeQuarters ? kingOfTheJungle : 0);
+}
+
+inline std::uint32_t PctOf(std::uint32_t value, std::uint32_t pct)
+{
+    return value * pct / 100;
+}
+
+inline bool LivingSpiritApplies(float healthPct)
+{
+    return healthPct < LivingSpiritHealthPct;
 }
 
 inline std::int32_t VengeanceCritBonusPct(std::uint8_t rank)

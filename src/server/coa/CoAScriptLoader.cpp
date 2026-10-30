@@ -53,6 +53,7 @@ void AddSC_AscensionProfessionSpellAffect();
 void AddSC_AscensionTalentDataProcs();
 void AddSC_Area52DruidBalanceCapstones();
 void AddSC_Area52DruidFeralTalents();
+void AddSC_Area52DruidRestorationTalents();
 void AddSC_AscensionPerforatingShots();
 void AddSC_AscensionSummonedEffects();
 void AddSC_AscensionKeepersScrollZoneBuff();
@@ -637,6 +638,7 @@ void AddCoAScripts()
     AddSC_AscensionTalentDataProcs();
     AddSC_Area52DruidBalanceCapstones();
     AddSC_Area52DruidFeralTalents();
+    AddSC_Area52DruidRestorationTalents();
     AddSC_AscensionPerforatingShots();
     AddSC_AscensionSummonedEffects();
     AddSC_AscensionKeepersScrollZoneBuff();

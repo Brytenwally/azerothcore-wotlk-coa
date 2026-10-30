@@ -1587,7 +1587,7 @@ void AuraEffect::HandleShapeshiftBoosts(Unit* target, bool apply) const
                 if (!spellInfo || !spellInfo->HasAttribute(SpellAttr0(SPELL_ATTR0_PASSIVE | SPELL_ATTR0_DO_NOT_DISPLAY)))
                     continue;
 
-                if (spellInfo->Stances & (1 << (GetMiscValue() - 1)))
+                if (spellInfo->Stances & (GetMiscValue() <= 32 ? (1u << (GetMiscValue() - 1)) : 0u))
                     target->CastSpell(target, itr->first, true, nullptr, this, target->GetGUID());
             }
 
@@ -1606,7 +1606,7 @@ void AuraEffect::HandleShapeshiftBoosts(Unit* target, bool apply) const
                 if (!spellInfo || !spellInfo->HasAttribute(SpellAttr0(SPELL_ATTR0_PASSIVE | SPELL_ATTR0_DO_NOT_DISPLAY)) || spellInfo->HasEffect(SPELL_EFFECT_LEARN_SPELL))
                     continue;
 
-                if (spellInfo->Stances & (1 << (GetMiscValue() - 1)))
+                if (spellInfo->Stances & (GetMiscValue() <= 32 ? (1u << (GetMiscValue() - 1)) : 0u))
                     target->CastSpell(target, itr->first, true, nullptr, this, target->GetGUID());
             }
 
@@ -1620,7 +1620,7 @@ void AuraEffect::HandleShapeshiftBoosts(Unit* target, bool apply) const
                         SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(glyph->SpellId);
                         if (!spellInfo || !spellInfo->HasAttribute(SpellAttr0(SPELL_ATTR0_PASSIVE | SPELL_ATTR0_DO_NOT_DISPLAY)))
                             continue;
-                        if (spellInfo->Stances & (1 << (GetMiscValue() - 1)))
+                        if (spellInfo->Stances & (GetMiscValue() <= 32 ? (1u << (GetMiscValue() - 1)) : 0u))
                             target->CastSpell(target, glyph->SpellId, TriggerCastFlags(TRIGGERED_FULL_MASK & ~(TRIGGERED_IGNORE_SHAPESHIFT | TRIGGERED_IGNORE_CASTER_AURASTATE)), nullptr, this, target->GetGUID());
                     }
                 }
@@ -1630,7 +1630,7 @@ void AuraEffect::HandleShapeshiftBoosts(Unit* target, bool apply) const
             if (player->HasTalent(17007, player->GetActiveSpec()) || player->HasSpell(17007))
             {
                 SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(24932);
-                if (spellInfo && spellInfo->Stances & (1 << (GetMiscValue() - 1)))
+                if (spellInfo && spellInfo->Stances & (GetMiscValue() <= 32 ? (1u << (GetMiscValue() - 1)) : 0u))
                     target->CastSpell(target, 24932, true, nullptr, this, target->GetGUID());
             }
             // Improved Barkskin - apply/remove armor bonus due to shapeshift
